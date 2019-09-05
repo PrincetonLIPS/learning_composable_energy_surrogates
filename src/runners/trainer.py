@@ -130,11 +130,18 @@ class Trainer(object):
 
         return total_loss.item()
 
-    def val_step(self, step, batch):
+    def val_step(self, step):
         """Do a single validation step. Log stats to tensorboard."""
-        u, p, f, J = batch
-        fhat, Jhat = self.surrogate.f_J(u, p)
-        return self.stats(step, u, f, J, fhat, Jhat, phase="val")
+        for i, batch in enumerate(self.val_loader):
+            u, p, f, J = batch
+            fhat, Jhat = self.surrogate.f_J(u, p)
+            u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
+            f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
+            J_ = torch.cat([J_, J.data], dim=0) if i > 0 else J.data
+            fhat_ = torch.cat([fhat_, fhat.data], dim=0) if i > 0 else fhat.data
+            Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
+
+        return self.stats(step, u_, f_, J_, fhat_, Jhat_, phase="val")
 
     def visualize(self, step, batch, dataset_name):
         u, p, f, J = batch[:4]

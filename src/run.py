@@ -18,78 +18,21 @@ import sys
 import traceback
 
 from .. import arguments
-from .. import fa_combined as fa
 
 # from ..runners.online_trainer import OnlineTrainer
-from ..pde.metamaterial import Metamaterial
-from ..nets.feed_forward_net import FeedForwardNet
-from ..maps.function_space_map import FunctionSpaceMap
-from ..energy_model.fenics_energy_model import FenicsEnergyModel
-from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
-from ..logging.tensorboard_logger import Logger as TFLogger
-from ..runners.trainer import Trainer
-from ..runners.collector import Collector, PolicyCollector
-from ..runners.evaluator import Evaluator
-from ..util.carefully_get import carefully_get
-from ..data.example import Example
-from ..data.buffer import DataBuffer
-from ..geometry.polar import SemiPolarizer
-from ..geometry.remove_rigid_body import RigidRemover
-
-
-def collect_initial_data(args, train_data):
-    ids_to_collectors = {}
-    while train_data.size() < len(train_data):
-
-        while len(ids_to_collectors) < args.max_collectors:
-            new_collector = Collector.remote(args)
-            ids_to_collectors[new_collector.step.remote()] = new_collector
-
-        examples, ids_to_collectors = harvest(ids_to_collectors)
-        for e in examples:
-            train_data.feed(e)
-
-
-def policy_collector_step(args, train_data, ids_to_collectors, surrogate):
-    if len(ids_to_collectors) < args.max_collectors:
-        surrogate = ray.put(surrogate)
-    while len(ids_to_collectors) < args.max_collectors:
-        new_collector = PolicyCollector.remote(args, surrogate)
-        ids_to_collectors[new_collector.step.remote()] = new_collector
-
-    examples, ids_to_collectors = harvest(ids_to_collectors)
-    for e in examples:
-        train_data.feed(e)
-
-    return ids_to_collectors
-
-
-def deploy_step(args, ids_to_evaluators, surrogate):
-    if len(ids_to_evaluators) < args.max_evaluators:
-        surrogate = ray.put(surrogate)
-    while len(ids_to_evaluators) < args.max_evaluators:
-        new_evaluator = Evaluator.remote(args, surrogate)
-        ids_to_evaluators[new_evaluator.step.remote()] = new_evaluator
-
-    deploy_losses, ids_to_evaluators = harvest(ids_to_evaluators, surrogate)
-
-    return deploy_losses, ids_to_evaluators
-
-
-def harvest(ids_to_workers, *step_args, **step_kwargs):
-    ready_ids, remaining_ids = ray.wait(
-        [id for id in ids_to_workers.keys()], timeout=1
-    )
-    results = {id: carefully_get(id) for id in ready_ids}
-    valid_results = []
-    # Restart or kill workers as necessary
-    for id, result in results.items:
-        worker = ids_to_workers.pop(id)
-        if not isinstance(result, Exception):
-            ids_to_workers[worker.step.remote(*step_args, **step_kwargs)] = worker
-            valid_results.append(result)
-
-    return valid_results, ids_to_workers
+from .pde.metamaterial import Metamaterial
+from .nets.feed_forward_net import FeedForwardNet
+from .maps.function_space_map import FunctionSpaceMap
+from .energy_model.surrogate_energy_model import SurrogateEnergyModel
+from .logging.tensorboard_logger import Logger as TFLogger
+from .runners.trainer import Trainer
+from .runners.collector import Collector, PolicyCollector
+from .runners.evaluator import Evaluator
+from .runners.harvester import Harvester
+from .data.buffer import DataBuffer
+from ..util.exponential_moving_stats import ExponentialMovingStats
+from .geometry.polar import SemiPolarizer
+from .geometry.remove_rigid_body import RigidRemover
 
 
 if __name__ == "__main__":
@@ -133,38 +76,78 @@ if __name__ == "__main__":
 
         net = net.cuda()
 
-        sem = SurrogateEnergyModel(args, net, fsm)
+        surrogate = SurrogateEnergyModel(args, net, fsm)
 
         tflogger = TFLogger(out_dir)
 
         train_data = DataBuffer(args.train_size, args.n_safe)
         val_data = DataBuffer(args.val_size)
 
-        trainer = Trainer(args, sem, train_data, val_data, tflogger, pde)
+        trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 
-        collect_initial_data(args, train_data)
+        # Collect initial data
+        train_harvester = Harvester(args, train_data, Collector,
+                                    int(args.max_collectors*(1. - args.val_fraction)))
+        val_harvester = Harvester(args, val_data, Collector,
+                                  int(args.max_collectors*args.val_fraction))
+        while train_data.size() < len(train_data) or val_data.size() < len(val_data):
+            if train_data.size() < len(train_data):
+                train_harvester.step()
+            if val_data.size() < len(val_data):
+                val_harvester.step()
 
-        # --------------------------------------------
-        # I HAVE WRITTEN UP TO HERE
-        # AFTER THIS IS TO-MODIFY
-        # --------------------------------------------
+        dagger_harvester = Harvester(args, train_data,
+                                     PolicyCollector, args.max_collectors)
 
-        for step in range(1, args.max_train_steps):
-            train_loss = trainer.train_step(step)
-            val_loss = trainer.val_step(step)
-            if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
-                trainer.visualize(step - 1, trainer.train_plot_data, "Training")
-                trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
+        deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
+        deploy_harvester = Harvester(
+            args, deploy_ems,
+            Evaluator, args.max_evaluators
+        )
+
+        n_batches = len(trainer.train_loader)
+        step = 0
+        epoch = 0
+
+        ids_to_collectors = {}
+        ids_to_evaluators = {}
+
+        while step < args.max_train_steps:
+
+            # [f_loss, f_pce, J_loss, J_cossim, loss]
+            t_losses = np.Array([5])
+
+            broadcast_surrogate = ray.put(surrogate)
+
+            for bidx, batch in enumerate(trainer.train_loader):
+                t_losses += np.Array(
+                    trainer.train_step(step, batch).item()) / n_batches
+                if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
+                    trainer.visualize(step - 1, trainer.train_plot_data, "Training")
+                    trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
+
+                dagger_harvester.step(broadcast_surrogate)
+                deploy_harvester.step(broadcast_surrogate)
+
+                step += 1
+            epoch += 1
+
+            v_losses = trainer.val_step(step).item()
+
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
-                if evaluator is not None and evaluator.normalizer > 0:
-                    deploy_loss = evaluator.running_error / evaluator.normalizer
-                else:
-                    deploy_loss = None
                 lossfile.write(
-                    "{}: tloss: {}, vloss: {}, dloss: {}\n".format(
-                        step, train_loss, val_loss, deploy_loss
+                    "step {}, epoch {}: "
+                    "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
+                    "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, vL: {:.3e} "
+                    "dloss_mean: {}, dloss_std: {}, dloss_90: {}, "
+                    "dloss_50: {}, dloss_10: {}\n".format(
+                        step, epoch,
+                        t_losses[0], t_losses[1], t_losses[2], t_losses[3], t_losses[4],
+                        v_losses[0], v_losses[1], v_losses[2], v_losses[3], v_losses[4],
+                        deploy_ems.mean, deploy_ems.std,
+                        deploy_ems.m90, deploy_ems.m50, deploy_ems.m10
+                        )
                     )
-                )
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
