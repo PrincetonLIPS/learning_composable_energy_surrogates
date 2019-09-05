@@ -29,6 +29,7 @@ from .data.buffer import DataBuffer
 from .util.exponential_moving_stats import ExponentialMovingStats
 from .geometry.polar import SemiPolarizer
 from .geometry.remove_rigid_body import RigidRemover
+from .util.timer import Timer
 
 
 if __name__ == "__main__":
@@ -93,34 +94,43 @@ if __name__ == "__main__":
             args, val_data, Collector, int(args.max_collectors * val_frac)
         )
         harvested = 0
-        while train_data.size() < len(train_data) or val_data.size() < len(val_data):
-            # print("harvest_step {}: tsuccess {}, tdeath {}, "
-            #       "vsuccess {}, vdeath {}".format(
-            #         harvest_step, train_harvester.n_success, train_harvester.n_death,
-            #         val_harvester.n_success, val_harvester.n_death
-            #         ))
-            # print(train_harvester.last_error)
-            # print(val_harvester.last_error)
-            if train_data.size() < len(train_data):
-                train_harvester.step()
-            if val_data.size() < len(val_data):
-                val_harvester.step()
-            if train_data.size() + val_data.size() > harvested:
-                harvested = train_data.size() + val_data.size()
-                print(
-                    "Harvested {} of {}".format(
-                        harvested, len(train_data) + len(val_data)
+        with Timer() as htimer:
+            while train_data.size() < len(train_data) or val_data.size() < len(
+                val_data
+            ):
+                # print("harvest_step {}: tsuccess {}, tdeath {}, "
+                #       "vsuccess {}, vdeath {}".format(
+                #         harvest_step, train_harvester.n_success, train_harvester.n_death,
+                #         val_harvester.n_success, val_harvester.n_death
+                #         ))
+                # print(train_harvester.last_error)
+                # print(val_harvester.last_error)
+                if train_data.size() < len(train_data):
+                    train_harvester.step()
+                if val_data.size() < len(val_data):
+                    val_harvester.step()
+                if train_data.size() + val_data.size() > harvested:
+                    harvested = train_data.size() + val_data.size()
+                    print(
+                        "Harvested {} of {} at time={}s".format(
+                            harvested, len(train_data) + len(val_data), htimer.interval
+                        )
                     )
-                )
 
         print(
-            "Initial harvest: tsuccess {}, tdeath {}, vsuccess {}, vdeath {}".format(
+            "Initial harvest took {}s: tsuccess {}, tdeath {}, "
+            "vsuccess {}, vdeath {}".format(
+                htimer.interval,
                 train_harvester.n_success,
                 train_harvester.n_death,
                 val_harvester.n_success,
                 val_harvester.n_death,
             )
         )
+
+        # Garbage collect these harvesters and their workers
+        del train_harvester
+        del val_harvester
 
         dagger_harvester = Harvester(
             args, train_data, PolicyCollector, args.max_collectors
@@ -139,12 +149,12 @@ if __name__ == "__main__":
         while step < args.max_train_steps:
 
             # [f_loss, f_pce, J_loss, J_cossim, loss]
-            t_losses = np.Array([5])
+            t_losses = np.zeros(5)
 
             broadcast_surrogate = ray.put(deepcopy(surrogate).cpu().eval())
 
             for bidx, batch in enumerate(trainer.train_loader):
-                t_losses += np.Array(trainer.train_step(step, batch).item()) / n_batches
+                t_losses += np.array(trainer.train_step(step, batch)) / n_batches
                 if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
                     trainer.visualize(step - 1, trainer.train_plot_data, "Training")
                     trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
@@ -155,7 +165,7 @@ if __name__ == "__main__":
                 step += 1
             epoch += 1
 
-            v_losses = trainer.val_step(step).item()
+            v_losses = trainer.val_step(step)
 
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
                 lossfile.write(

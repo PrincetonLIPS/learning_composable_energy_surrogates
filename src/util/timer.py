@@ -14,12 +14,19 @@ class Timer:
     """
 
     def __enter__(self):
-        self.start = time.clock()
+        self.start = time.time()
+        self.end = None
         return self
 
     def __exit__(self, *args):
-        self.end = time.clock()
-        self.interval = self.end - self.start
+        self.end = time.time()
+
+    @property
+    def interval(self):
+        if self.end is None:
+            return time.time() - self.start
+        else:
+            return self.end - self.start
 
 
 def time_fn(fn, *args, **kwargs):

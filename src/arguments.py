@@ -15,8 +15,8 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train_size", type=int, help="n train data", default=4)
-parser.add_argument("--val_size", type=int, help="n val data", default=4)
+parser.add_argument("--train_size", type=int, help="n train data", default=3)
+parser.add_argument("--val_size", type=int, help="n val data", default=3)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist", default=2
 )
@@ -158,7 +158,7 @@ parser.add_argument(
 parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
-parser.add_argument("--batch_size", help="Batch size", type=int, default=4)
+parser.add_argument("--batch_size", help="Batch size", type=int, default=3)
 
 parser.add_argument(
     "--nonlinearity",
