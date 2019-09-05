@@ -11,25 +11,30 @@ import ray
 
 
 @ray.remote
-def evaluate(args, surrogate):
-    make_p(args)
-    pde = Metamaterial(args)
-    fsm = FunctionSpaceMap(pde.V, args.data_V_dim, args.metamaterial_bV_dim)
+class Evaluator(object):
+    def __init__(self, args):
+        self.args = args
 
-    fem = FenicsEnergyModel(args, pde, fsm)
-    bc, _, _, constraint_mask = make_bc(args, fsm)
+    def step(self, surrogate):
+        make_p(self.args)
+        pde = Metamaterial(self.args)
+        fsm = FunctionSpaceMap(pde.V, self.args.data_V_dim,
+                               self.args.metamaterial_bV_dim)
 
-    force_data = make_force(args, fsm)
+        fem = FenicsEnergyModel(self.args, pde, fsm)
+        bc, _, _, constraint_mask = make_bc(self.args, fsm)
 
-    params = torch.Tensor([args.c1, args.c2])
+        force_data = make_force(self.args, fsm)
 
-    surr_soln = surrogate.solve(params, bc, constraint_mask, force_data)
+        params = torch.Tensor([self.args.c1, self.args.c2])
 
-    fem.external_forces.append(fsm.to_V(force_data))
-    true_soln = fem.solve(args)
+        surr_soln = surrogate.solve(params, bc, constraint_mask, force_data)
 
-    surr_soln_V = fsm.to_V(surr_soln)
+        fem.external_forces.append(fsm.to_V(force_data))
+        true_soln = fem.solve(self.args)
 
-    error_V = fa.assemble(fa.inner(surr_soln_V, true_soln) * fsm.boundary_ds)
+        surr_soln_V = fsm.to_V(surr_soln)
 
-    return error_V
+        error_V = fa.assemble(fa.inner(surr_soln_V, true_soln) * fsm.boundary_ds)
+
+        return error_V

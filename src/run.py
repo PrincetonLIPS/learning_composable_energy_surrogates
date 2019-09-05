@@ -29,7 +29,7 @@ from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..logging.tensorboard_logger import Logger as TFLogger
 from ..runners.trainer import Trainer
 from ..runners.collector import Collector, PolicyCollector
-from ..runners.evaluator import evaluate
+from ..runners.evaluator import Evaluator
 from ..util.carefully_get import carefully_get
 from ..data.example import Example
 from ..data.buffer import DataBuffer
@@ -45,7 +45,9 @@ def collect_initial_data(args, train_data):
             new_collector = Collector.remote(args)
             ids_to_collectors[new_collector.step.remote()] = new_collector
 
-        ids_to_collectors = harvest_collectors(train_data, ids_to_collectors)
+        examples, ids_to_collectors = harvest(ids_to_collectors)
+        for e in examples:
+            train_data.feed(e)
 
 
 def policy_collector_step(args, train_data, ids_to_collectors, surrogate):
@@ -55,36 +57,39 @@ def policy_collector_step(args, train_data, ids_to_collectors, surrogate):
         new_collector = PolicyCollector.remote(args, surrogate)
         ids_to_collectors[new_collector.step.remote()] = new_collector
 
-    ids_to_collectors = harvest_collectors(train_data, ids_to_collectors)
-
-
-def harvest_deploy(args, deploy_ids, surrogate):
-    deploy_ids += [evaluate(args, surrogate)
-                   for _ in range(args.max_evaluators - len(deploy_ids))]
-
-    ready_ids, remaining_ids = ray.wait(deploy_ids, timeout=1)
-    results = [carefully_get(id) for id in ready_ids]
-    valid_results = [r for r in results if not isinstance(r, Exception)]
-    return valid_results, remaining_ids
-
-
-def harvest_collectors(train_data, ids_to_collectors):
-    ready_ids, remaining_ids = ray.wait(
-        [id for id in ids_to_collectors.keys()], timeout=1
-    )
-    results = {id: carefully_get(id) for id in ready_ids}
-
-    # Restart or kill workers as necessary
-    for id, result in results.items:
-        if isinstance(result, Example):
-            collector = ids_to_collectors.pop(id)
-            ids_to_collectors[collector.step.remote()] = collector
-            train_data.feed(result)
-        else:
-            assert isinstance(result, Exception)
-            ids_to_collectors.pop(id)
+    examples, ids_to_collectors = harvest(ids_to_collectors)
+    for e in examples:
+        train_data.feed(e)
 
     return ids_to_collectors
+
+
+def deploy_step(args, ids_to_evaluators, surrogate):
+    if len(ids_to_evaluators) < args.max_evaluators:
+        surrogate = ray.put(surrogate)
+    while len(ids_to_evaluators) < args.max_evaluators:
+        new_evaluator = Evaluator.remote(args, surrogate)
+        ids_to_evaluators[new_evaluator.step.remote()] = new_evaluator
+
+    deploy_losses, ids_to_evaluators = harvest(ids_to_evaluators, surrogate)
+
+    return deploy_losses, ids_to_evaluators
+
+
+def harvest(ids_to_workers, *step_args, **step_kwargs):
+    ready_ids, remaining_ids = ray.wait(
+        [id for id in ids_to_workers.keys()], timeout=1
+    )
+    results = {id: carefully_get(id) for id in ready_ids}
+    valid_results = []
+    # Restart or kill workers as necessary
+    for id, result in results.items:
+        worker = ids_to_workers.pop(id)
+        if not isinstance(result, Exception):
+            ids_to_workers[worker.step.remote(*step_args, **step_kwargs)] = worker
+            valid_results.append(result)
+
+    return valid_results, ids_to_workers
 
 
 if __name__ == "__main__":
