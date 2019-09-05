@@ -27,8 +27,7 @@ from .runners.evaluator import Evaluator
 from .runners.harvester import Harvester
 from .data.buffer import DataBuffer
 from .util.exponential_moving_stats import ExponentialMovingStats
-from .geometry.polar import SemiPolarizer
-from .geometry.remove_rigid_body import RigidRemover
+
 from .util.timer import Timer
 
 
@@ -57,20 +56,9 @@ if __name__ == "__main__":
         with open(os.path.join(out_dir, "args.txt"), "w+") as argfile:
             for arg in vars(args):
                 argfile.write(arg + ": " + str(getattr(args, arg)) + "\n")
-        fsm = FunctionSpaceMap(pde.V, args.bV_dim)
-        preproc_fns = []
-        if args.remove_rigid:
-            preproc_fns.append(RigidRemover(fsm))
-        if args.semipolarize:
-            preproc_fns.append(SemiPolarizer(fsm))
+        fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=True)
 
-        def preproc(x):
-            for fn in preproc_fns:
-                x = fn(x)
-            return x
-
-        net = FeedForwardNet(fsm.vector_dim + 2, args, preproc=preproc)
-
+        net = FeedForwardNet(args, fsm)
         net = net.cuda()
 
         surrogate = SurrogateEnergyModel(args, net, fsm)
@@ -144,20 +132,23 @@ if __name__ == "__main__":
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(5)
 
-            broadcast_net = ray.put(deepcopy(surrogate.net).cpu().eval())
+            broadcast_net_state = ray.put(
+                deepcopy(surrogate.net).cpu().state_dict())
 
+            surrogate.net.train()
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
                 if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
                     trainer.visualize(step - 1, trainer.train_plot_data, "Training")
                     trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
 
-                dagger_harvester.step(init_args=(broadcast_net))
-                deploy_harvester.step(step_args=(broadcast_net))
+                dagger_harvester.step(init_args=(broadcast_net_state,))
+                deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
             epoch += 1
 
+            surrogate.net.eval()
             v_losses = trainer.val_step(step)
 
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:

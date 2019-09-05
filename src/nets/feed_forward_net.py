@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as torchF
 import ast
+from ..geometry.polar import SemiPolarizer
+from ..geometry.remove_rigid_body import RigidRemover
 
 nonlinearities = {
     "selu": torchF.selu,
@@ -21,38 +23,50 @@ inits = {
 
 
 class MovingAverageNormalzier(nn.Module):
-    def __init__(self, alpha):
+    def __init__(self, alpha, dims):
         super(MovingAverageNormalzier, self).__init__()
         self.alpha = alpha
-        self.mean = 0.
-        self.var = 1.0
+        self.mean = nn.Parameter(torch.zeros(1, *dims),
+                                 requires_grad=False)
+        self.var = nn.Parameter(torch.ones(1, *dims),
+                                requires_grad=False)
 
     def forward(self, x):
         out = (x - self.mean) / torch.sqrt(self.var + 1e-7)
-
         if self.training:
             batch_mean = torch.mean(x,
                                     dim=[d for d in range(1, len(x.size()))],
                                     keepdims=True).data
-            self.mean = (1. - self.alpha) * batch_mean + self.alpha * self.mean
+            self.mean.data = ((1. - self.alpha) * batch_mean +
+                              self.alpha * self.mean.data)
             batch_var = torch.sum((x - self.mean)**2,
                                   dim=[d for d in range(1, len(x.size()))],
                                   keepdims=True).data
-            self.var = (1. - self.alpha) * batch_var + self.alpha * self.var
+            self.var.data = ((1. - self.alpha) * batch_var +
+                             self.alpha * self.var.data)
 
         return out
 
 
 class FeedForwardNet(nn.Module):
-    def __init__(self, input_dim, args, preproc=None):
+    def __init__(self, args, fsm):
         super(FeedForwardNet, self).__init__()
+
         self.args = args
+
+        self.preproc_fns = []
+        if args.remove_rigid:
+            self.preproc_fns.append(RigidRemover(fsm))
+        if args.semipolarize:
+            self.preproc_fns.append(SemiPolarizer(fsm))
+
         sizes = ast.literal_eval(args.ffn_layer_sizes)
         bias = args.use_bias
-        self.normalizer = MovingAverageNormalzier(args.normalizer_alpha)
+        self.normalizer = MovingAverageNormalzier(args.normalizer_alpha,
+                                                  (fsm.vector_dim,))
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
-        self.input_dim = input_dim
+        self.input_dim = fsm.vector_dim + 2
         self.sizes = [self.input_dim] + sizes + [1]
         self.layers = nn.ModuleList(
             [
@@ -60,10 +74,14 @@ class FeedForwardNet(nn.Module):
                 for i in range(len(self.sizes) - 1)
             ]
         )
-        self.output_scale = nn.Parameter(torch.Tensor([1.0]))
-        self.preproc = preproc
+        self.output_scale = nn.Parameter(torch.Tensor([[1.0]]))
         for l in self.layers:
             self.init(l.weight)
+
+    def preproc(self, x):
+        for fn in self.preproc_fns:
+            x = fn(x)
+        return x
 
     def forward(self, boundary_params, params=None):
         if self.preproc is not None:
@@ -85,9 +103,9 @@ class FeedForwardNet(nn.Module):
                 a = a + self.nonlinearity(x)
             else:
                 a = self.nonlinearity(x)
-        out = (x ** 2).view(-1)
+        out = (x ** 2).view(-1, 1)
         if self.args.quadratic_scale:
-            quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1)
+            quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1, 1)
             return out * quadratic_scale * self.output_scale
         else:
             return out * self.output_scale

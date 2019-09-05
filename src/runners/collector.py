@@ -6,6 +6,8 @@ from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..data.sample_params import make_p, make_bc, make_force
 from ..data.example import Example
+from ..nets.feed_forward_net import FeedForwardNet
+
 import random
 import numpy as np
 import ray
@@ -53,10 +55,14 @@ class Collector(CollectorBase):
 
 @ray.remote
 class PolicyCollector(CollectorBase):
-    def __init__(self, args, net):
+    def __init__(self, args, state_dict):
         super(PolicyCollector, self).__init__(args)
 
         force_data = make_force(args, self.fsm)
+
+        net = FeedForwardNet(args, self.fsm)
+        net.load_state_dict(state_dict)
+        net.eval()
 
         surrogate = SurrogateEnergyModel(args, net, self.fsm)
 

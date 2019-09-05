@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
+import pdb
 import ast
 import matplotlib.pyplot as plt
 
@@ -291,6 +292,7 @@ class Trainer(object):
         else:
             loss_scale = torch.Tensor([1.0])
         train_f_std = torch.std(f, dim=1, keepdims=True) + 1e-3
+
         f_loss = rmse(f / train_f_std, fhat / train_f_std, loss_scale)
 
         train_J_std = torch.std(J, dim=1, keepdims=True) + 1e-3

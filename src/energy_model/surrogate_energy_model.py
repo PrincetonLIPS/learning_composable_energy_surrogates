@@ -41,7 +41,6 @@ class SurrogateEnergyModel(object):
 
     def f_J(self, boundary_inputs, params):
         boundary_inputs = self.prep_inputs(boundary_inputs)
-        pdb.set_trace()
         if params is not None:
             params = self.fsm._cuda(params)
         energy = self.f(boundary_inputs, params)

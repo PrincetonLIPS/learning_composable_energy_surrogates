@@ -11,14 +11,6 @@ class FenicsEnergyModel(object):
         self.args = args
         self.pde = pde
         self.fsm = function_space_map
-        self.boundary_constraints = {}
-        self.external_forces = []
-
-    def external_work_fn(self, u):
-        work = fa.Constant(0.0) * fa.inner(u, u)
-        for wfunc in self.external_forces:
-            work = work + wfunc(u)
-        return work
 
     def f(self, boundary_fn, initial_guess=None, return_u=False, args=None):
         if args is None:
@@ -28,7 +20,6 @@ class FenicsEnergyModel(object):
         solution = self.pde.solve_problem(
             args=args,
             boundary_fn=boundary_fn,
-            external_work_fn=self.external_work_fn,
             initial_guess=initial_guess,
         )
         energy = self.pde.energy(solution)
@@ -75,14 +66,32 @@ class FenicsEnergyModel(object):
         else:
             return energy, jac, hvp
 
-    def solve(self, args=None, initial_guess=None):
+    def solve(self, args=None, initial_guess=None,
+              boundary_fn=None, constrained_sides=[True, True, True, True],
+              force_fn=None):
         if args is None:
             args = self.args
-        self.check_initial_guess(initial_guess)
+
+        keys = ['bottom', 'right', 'top', 'left']
+        boundary_fn_dic = {}
+        if boundary_fn is not None:
+            for i, s in enumerate(constrained_sides):
+                if s:
+                    boundary_fn_dic[keys[i]] = boundary_fn
+
+        external_work = None
+
+        if force_fn is not None:
+            force_fn = self.fsm.to_V(force_fn)
+
+            def external_work(u):
+                return fa.inner(u, force_fn)
+
+        self.check_initial_guess(initial_guess, boundary_fn)
         return self.pde.solve_problem(
             args=args,
-            boundary_fn_dic=self.boundary_constraints,
-            external_work_fn=self.external_work_fn,
+            boundary_fn_dic=boundary_fn_dic,
+            external_work_fn=external_work,
             initial_guess=initial_guess,
         )
 
@@ -100,36 +109,3 @@ class FenicsEnergyModel(object):
             raise Exception(
                 "Initial guess energy {} is too damn high".format(init_energy)
             )
-
-    def clear_boundary(self):
-        self.boundary_constraints = {}
-
-    def clear_external(self):
-        self.external_forces = []
-
-    def apply_boundary(self, side, bc):
-        assert side in ["left", "right", "bottom", "top"]
-        self.boundary_constraints[side] = bc
-
-    def apply_force(self, force_fn):
-        self.clear_external()
-        self.external_forces.append(force_fn)
-
-    def apply_linear(self, linear_fn):
-        self.apply_force(linear_fn)
-
-    def apply_quadratic(self, quad_fn):
-        self.apply_force(quad_fn)
-
-
-class SurrogateFenicsEnergyModel(FenicsEnergyModel):
-    """Hack to give FenicsEnergyModel the same f_J_Hvp syntax as the others."""
-
-    def f(self, boundary_fn, params):
-        return super(SurrogateFenicsEnergyModel, self).f(boundary_fn)
-
-    def f_J(self, boundary_fn, params):
-        return super(SurrogateFenicsEnergyModel, self).f_J(boundary_fn)
-
-    def f_J_Hvp(self, boundary_fn, params, vector):
-        return super(SurrogateFenicsEnergyModel, self).f_J_Hvp(boundary_fn, vector)
