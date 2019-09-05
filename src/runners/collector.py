@@ -15,9 +15,7 @@ class CollectorBase(object):
         self.args = args
         make_p(args)
         self.pde = Metamaterial(args)
-        self.fsm = FunctionSpaceMap(
-            self.pde.V, args.bV_dim
-        )
+        self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.bc, _, _, self.constraint_mask = make_bc(args, self.fsm)
         self.stepsize = 1.0 / args.anneal_steps
@@ -72,8 +70,7 @@ class PolicyCollector(CollectorBase):
             ]
 
         else:
-            deltas = np.array([1.0 / len(self.traj_u)
-                               for _ in range(len(self.traj_u))])
+            deltas = np.array([1.0 / len(self.traj_u) for _ in range(len(self.traj_u))])
 
         deltas = [0.0] + deltas
         buckets = np.cumsum(deltas)

@@ -2,7 +2,7 @@ import collections
 import torch
 
 
-'''
+"""
 def torch_namedtuple(NamedtupleClass):
     class TorchNamedTuple(NamedtupleClass):
         def __init__(self, *args, **kwargs):
@@ -18,15 +18,15 @@ def torch_namedtuple(NamedtupleClass):
 
     TorchNamedTuple.__name__ = NamedtupleClass.__name__
     return TorchNamedTuple
-'''
+"""
 
 Example = collections.namedtuple("Example", "u p f J")
 
-'''
+"""
 if __name__ == '__main__':
     example_namedtuple = collections.namedtuple("Example", "u p f J")
     print(example_namedtuple)
     print(type(example_namedtuple))
     Example = torch_namedtuple(example_namedtuple)
     print(Example)
-'''
+"""

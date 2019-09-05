@@ -131,9 +131,12 @@ class Trainer(object):
                 log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
 
         return (
-            f_loss.item(), f_pce.item(),
-            J_loss.item(), J_sim.item(),
-            total_loss.item())
+            f_loss.item(),
+            f_pce.item(),
+            J_loss.item(),
+            J_sim.item(),
+            total_loss.item(),
+        )
 
     def val_step(self, step):
         """Do a single validation step. Log stats to tensorboard."""
@@ -147,9 +150,9 @@ class Trainer(object):
             fhat_ = torch.cat([fhat_, fhat.data], dim=0) if i > 0 else fhat.data
             Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
 
-        return (r.item() for r in
-                self.stats(step, u_, f_, J_,
-                           fhat_, Jhat_, phase="val"))
+        return (
+            r.item() for r in self.stats(step, u_, f_, J_, fhat_, Jhat_, phase="val")
+        )
 
     def visualize(self, step, batch, dataset_name):
         u, p, f, J = batch[:4]
@@ -343,10 +346,7 @@ class Trainer(object):
                     "Jhat_std_mean_" + phase, Jhat.std(dim=1).mean().item(), step
                 )
 
-        return (
-            f_loss, f_pce,
-            J_loss, J_sim,
-            total_loss)
+        return (f_loss, f_pce, J_loss, J_sim, total_loss)
 
 
 def log(message, *args):

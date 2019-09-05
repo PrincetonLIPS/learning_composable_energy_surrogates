@@ -87,10 +87,7 @@ if __name__ == "__main__":
 
         # Collect initial data
         train_harvester = Harvester(
-            args,
-            train_data,
-            Collector,
-            int(args.max_collectors * (1.0 - val_frac)),
+            args, train_data, Collector, int(args.max_collectors * (1.0 - val_frac))
         )
         val_harvester = Harvester(
             args, val_data, Collector, int(args.max_collectors * val_frac)
@@ -110,13 +107,20 @@ if __name__ == "__main__":
                 val_harvester.step()
             if train_data.size() + val_data.size() > harvested:
                 harvested = train_data.size() + val_data.size()
-                print("Harvested {} of {}".format(
-                    harvested, len(train_data) + len(val_data)))
+                print(
+                    "Harvested {} of {}".format(
+                        harvested, len(train_data) + len(val_data)
+                    )
+                )
 
-        print("Initial harvest: tsuccess {}, tdeath {}, vsuccess {}, vdeath {}".format(
-            train_harvester.n_success, train_harvester.n_death,
-            val_harvester.n_success, val_harvester.n_death
-        ))
+        print(
+            "Initial harvest: tsuccess {}, tdeath {}, vsuccess {}, vdeath {}".format(
+                train_harvester.n_success,
+                train_harvester.n_death,
+                val_harvester.n_success,
+                val_harvester.n_death,
+            )
+        )
 
         dagger_harvester = Harvester(
             args, train_data, PolicyCollector, args.max_collectors

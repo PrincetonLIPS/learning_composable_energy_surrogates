@@ -15,23 +15,10 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
+parser.add_argument("--train_size", type=int, help="n train data", default=4)
+parser.add_argument("--val_size", type=int, help="n val data", default=4)
 parser.add_argument(
-    "--train_size",
-    type=int,
-    help="n train data",
-    default=4,
-)
-parser.add_argument(
-    "--val_size",
-    type=int,
-    help="n val data",
-    default=4,
-)
-parser.add_argument(
-    "--n_safe",
-    type=int,
-    help="n train data maintained from original dist",
-    default=2,
+    "--n_safe", type=int, help="n train data maintained from original dist", default=2
 )
 
 parser.add_argument(
@@ -42,8 +29,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--deploy_error_alpha", help="moving average alpha for deploy error",
-    type=float, default=0.9
+    "--deploy_error_alpha",
+    help="moving average alpha for deploy error",
+    type=float,
+    default=0.9,
 )
 
 parser.add_argument(
@@ -141,9 +130,7 @@ parser.add_argument(
     default="[512, 1024, 512, 256]",
     type=str,
 )
-parser.add_argument(
-    "--bV_dim", default=5, type=int, help="side length of surrogate"
-)
+parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
 parser.add_argument(
     "--quadratic_scale",
     help="Scale net output by average of squared inputs",
@@ -242,8 +229,8 @@ parser.add_argument(
 parser.add_argument(
     "--weight_space_trajectory",
     help="Interpolate along deploy trajectory with even-size steps in "
-         "weight space. Otherwise interpolate between the iterates, with equal "
-         "interpolation distance between each iterate.",
+    "weight space. Otherwise interpolate between the iterates, with equal "
+    "interpolation distance between each iterate.",
     type=s2b,
     default=False,
 )

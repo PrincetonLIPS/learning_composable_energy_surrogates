@@ -41,10 +41,12 @@ def make_boundary_expression(function):
 
 def interpolate(fn, fn_space, *args, **kwargs):
     if getattr(fn, "is_fa_gradient", False) or getattr(fn, "is_fa_hessian", False):
-        raise Exception("Don't do this! "
-                        "pyadjoint gives gradient w.r.t. params, "
-                        "not gradient field. Fenics interpolate will "
-                        "treat this input as a field.")
+        raise Exception(
+            "Don't do this! "
+            "pyadjoint gives gradient w.r.t. params, "
+            "not gradient field. Fenics interpolate will "
+            "treat this input as a field."
+        )
     else:
         result = _old_interpolate(fn, fn_space, *args, **kwargs)
     return result
