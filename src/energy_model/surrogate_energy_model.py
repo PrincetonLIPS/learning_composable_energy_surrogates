@@ -19,7 +19,8 @@ class SurrogateEnergyModel(object):
         self.fsm = function_space_map
 
     def prep_inputs(self, inputs):
-        return self.fsm.to_torch(inputs)
+        inputs = self.fsm.to_torch(inputs)
+        return self.fsm.make_requires_grad(inputs)
 
     def parameters(self):
         return self.net.parameters()
@@ -40,6 +41,7 @@ class SurrogateEnergyModel(object):
 
     def f_J(self, boundary_inputs, params):
         boundary_inputs = self.prep_inputs(boundary_inputs)
+        pdb.set_trace()
         if params is not None:
             params = self.fsm._cuda(params)
         energy = self.f(boundary_inputs, params)
@@ -48,26 +50,6 @@ class SurrogateEnergyModel(object):
         )[0]
         jac = jac.contiguous()
         return energy, jac
-
-    def f_J_Hvp(self, boundary_inputs, params, vectors):
-        raise Exception("Currently deprecated")
-        boundary_inputs = self.prep_inputs(boundary_inputs)
-        if params is not None:
-            params = self.fsm._cuda(params)
-        vectors = self.fsm._cuda(vectors)
-        energy, jac = self.f_J(boundary_inputs, params)
-        jac = jac.contiguous()
-        jac = self.fsm.to_torch(jac)
-        jvp = jac * vectors
-
-        hvp = torch.autograd.grad(
-            torch.sum(jvp), boundary_inputs, create_graph=True, retain_graph=True
-        )[0]
-
-        hvp = hvp.contiguous()
-        hvp = self.fsm.to_torch(hvp)
-
-        return energy, jac, hvp
 
     def f_J_H(self, single_boundary_input, single_param):
         single_boundary_input = self.prep_inputs(single_boundary_input)

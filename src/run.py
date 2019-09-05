@@ -98,13 +98,6 @@ if __name__ == "__main__":
             while train_data.size() < len(train_data) or val_data.size() < len(
                 val_data
             ):
-                # print("harvest_step {}: tsuccess {}, tdeath {}, "
-                #       "vsuccess {}, vdeath {}".format(
-                #         harvest_step, train_harvester.n_success, train_harvester.n_death,
-                #         val_harvester.n_success, val_harvester.n_death
-                #         ))
-                # print(train_harvester.last_error)
-                # print(val_harvester.last_error)
                 if train_data.size() < len(train_data):
                     train_harvester.step()
                 if val_data.size() < len(val_data):

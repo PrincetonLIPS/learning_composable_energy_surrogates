@@ -20,12 +20,36 @@ inits = {
 }
 
 
+class MovingAverageNormalzier(nn.Module):
+    def __init__(self, alpha):
+        super(MovingAverageNormalzier, self).__init__()
+        self.alpha = alpha
+        self.mean = 0.
+        self.var = 1.0
+
+    def forward(self, x):
+        out = (x - self.mean) / torch.sqrt(self.var + 1e-7)
+
+        if self.training:
+            batch_mean = torch.mean(x,
+                                    dim=[d for d in range(1, len(x.size()))],
+                                    keepdims=True).data
+            self.mean = (1. - self.alpha) * batch_mean + self.alpha * self.mean
+            batch_var = torch.sum((x - self.mean)**2,
+                                  dim=[d for d in range(1, len(x.size()))],
+                                  keepdims=True).data
+            self.var = (1. - self.alpha) * batch_var + self.alpha * self.var
+
+        return out
+
+
 class FeedForwardNet(nn.Module):
     def __init__(self, input_dim, args, preproc=None):
         super(FeedForwardNet, self).__init__()
         self.args = args
         sizes = ast.literal_eval(args.ffn_layer_sizes)
         bias = args.use_bias
+        self.normalizer = MovingAverageNormalzier(args.normalizer_alpha)
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
         self.input_dim = input_dim
@@ -44,11 +68,12 @@ class FeedForwardNet(nn.Module):
     def forward(self, boundary_params, params=None):
         if self.preproc is not None:
             boundary_params = self.preproc(boundary_params)
-        x = (boundary_params - self.x_mean) / self.x_std
+        if self.args.normalize:
+            boundary_params = self.normalizer(boundary_params)
         if params is not None:
-            x = torch.cat((x, params), dim=1)
+            x = torch.cat((boundary_params, params), dim=1)
         else:
-            x = x
+            x = boundary_params
         if next(self.parameters()).is_cuda:
             if not x.is_cuda:
                 x = x.cuda()

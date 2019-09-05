@@ -111,6 +111,10 @@ parser.add_argument(
     action="store_true",
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
+parser.add_argument("--normalize", help="whiten net inputs", default=False, type=s2b)
+parser.add_argument(
+    "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
+)
 parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int
 )
