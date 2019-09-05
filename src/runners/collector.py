@@ -7,8 +7,10 @@ from ..data.sample_params import make_p, make_bc, make_force
 from ..data.example import Example
 import random
 import numpy as np
+import ray
 
 
+@ray.remote
 class Collector(object):
     def __init__(self, args):
         self.args = args
@@ -48,6 +50,7 @@ class Collector(object):
         return Example(u, p, f, J)
 
 
+@ray.remote
 class PolicyCollector(Collector):
     def __init__(self, args, surrogate):
         super(PolicyCollector, self).__init__(args)

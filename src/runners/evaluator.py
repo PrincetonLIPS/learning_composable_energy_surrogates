@@ -7,8 +7,10 @@ from ..data.sample_params import make_p, make_bc, make_force
 from ..data.example import Example
 import random
 import numpy as np
+import ray
 
 
+@ray.remote
 def evaluate(args, surrogate):
     make_p(args)
     pde = Metamaterial(args)

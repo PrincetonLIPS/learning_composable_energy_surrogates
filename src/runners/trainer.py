@@ -1,106 +1,41 @@
 """Handles training surrogates given a data dir"""
 import numpy as np
 import torch
-from torch import nn, optim
-from torch.autograd import Variable
+from torch.util.data import DataLoader
 
 import ast
-import pdb
-from copy import deepcopy
-import glob
-import os
-import collections
 import matplotlib.pyplot as plt
 
 import io
-
-from .. import arguments
-from .. import fa_combined as fa
-# from ..runners.online_trainer import OnlineTrainer
-from ..logging.tensorboard_logger import Logger as TFLogger
-from ..maps.spline_function_space_map import SplineFunctionSpaceMap
-from ..energy_model.fenics_energy_model import FenicsEnergyModel
-from ..nets.feed_forward_net import FeedForwardNet
-from ..nets.ring_net import RingNet
-from ..geometry.polar import Polarizer, SemiPolarizer
 from ..geometry.remove_rigid_body import RigidRemover
 
 from ..util.timer import Timer
-from ..util.jacobian import compute_jacobian
-from ..util.rigid import apply_random_rotation, apply_random_translation
 from ..viz.plotting import plot_boundary, plot_vectors
-"""Example namedtuple to store data
-    x: vector of boundary displacements
-    p: vector of params (eg c1, c2 for metamaterial), might be None
-    v: vector used to find Hvp
-    f: Energy of PDE when solved with boundary condition x
-    J: Jacobian df/dx
-    Hvp: Hessian vector product (d2f/dx2)*v
-"""
-
-Example = collections.namedtuple('Example', 'x p v f J Hvp')
-
-
-def log(message, *args):
-    message = str(message)
-    for arg in args:
-        message = message + str(arg)
-    print(message)
-    with open('log.txt', 'w+') as logfile:
-        logfile.write(message)
-
-
-def rmse(y, y_, loss_scale=torch.Tensor([1.0])):
-    """Root mean squared error"""
-    y_ = y_.to(y.device)
-    assert y.size() == y_.size()
-    loss_scale = loss_scale.to(y.device)
-    if len(y.size()) > 1:
-        loss_scale = loss_scale.view(-1,
-                                     *[1 for _ in range(len(y.size()) - 1)])
-        loss_scale = loss_scale * torch.prod(
-            torch.Tensor([s for s in y.shape[1:]]).to(y.device))
-    return torch.sqrt(torch.mean((y - y_)**2 * loss_scale))
-
-
-def error_percent(y, y_):
-    """Mean of abs(err) / abs(true_val)"""
-    y_ = y_.view(y_.size(0), -1).cpu()
-    y = y.view(y_.size()).cpu()
-    return torch.mean(
-        torch.norm(y - y_, dim=1) / (torch.norm(y, dim=1) + 1e-7))
-
-
-def similarity(y, y_):
-    """Cosine similarity between vectors"""
-    y = y.view(y.size(0), -1).cpu()
-    y_ = y_.view(y_.size(0), -1).cpu()
-    assert y.size(0) == y_.size(0)
-    assert y.size(1) == y_.size(1)
-    return torch.mean(
-        torch.sum(y * y_, dim=1) /
-        (torch.norm(y, dim=1) * torch.norm(y_, dim=1)))
 
 
 class Trainer(object):
     def __init__(self,
                  args,
-                 data_dir,
                  surrogate,
+                 train_data,
+                 val_data,
                  tflogger=None,
-                 sobolev_J=True,
-                 sobolev_Hvp=True,
                  pde=None):
         self.args = args
         self.pde = pde
-        self.sobolev_J = sobolev_J
-        self.sobolev_Hvp = sobolev_Hvp
-        if self.sobolev_Hvp:
-            assert self.sobolev_J, "Should use J if using Hvp"
         self.surrogate = surrogate
         self.tflogger = tflogger
-        self.semipolarizer = SemiPolarizer(self.surrogate.fsm)
         self.init_optimizer()
+        self.train_data = train_data
+        self.val_data = val_data
+        self.train_loader = DataLoader(self.train_data,
+                                       batch_size=args.batch_size,
+                                       shuffle=True,
+                                       pin_memory=True)
+        self.val_loader = DataLoader(self.val_data,
+                                     batch_size=args.batch_size,
+                                     shuffle=False,
+                                     pin_memory=True)
 
     def init_optimizer(self, args):
         # Create optimizer if surrogate is trainable
@@ -161,35 +96,21 @@ class Trainer(object):
         else:
             self.optimizer = None
 
-    def forward(self, x, p, v):
-        if self.sobolev_Hvp:
-            raise Exception("Currently deprecated")
-        else:
-            f, J = self.surrogate.f_J(x, p)
-            return f, J, None
-
-    def train_step(self, step):
+    def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
         if self.optimizer is not None:
             self.optimizer.zero_grad()
-        x, p, v, f, J, Hvp = self.get_train_batch()
+        u, p, f, J = batch
         with Timer() as timer:
-            fhat, Jhat, Hvphat = self.forward(x, p, v)
+            fhat, Jhat = self.surrogate.f_J(u, p)
 
-        if self.evaluator is not None and self.args.deploy_loss_weight != 0.0:
-            deploy_loss = self.evaluator.differentiable_loss(self.surrogate)
-        else:
-            deploy_loss = None
         self.tflogger.log_scalar('batch_forward_time', timer.interval, step)
         total_loss = self.stats(step,
-                                x,
+                                u,
                                 f,
                                 J,
-                                Hvp,
                                 fhat,
-                                Jhat,
-                                Hvphat,
-                                deploy_loss=deploy_loss)
+                                Jhat)
 
         if self.optimizer:
             total_loss.backward()
@@ -212,39 +133,20 @@ class Trainer(object):
 
         return total_loss.item()
 
-    def val_step(self, step):
+    def val_step(self, step, batch):
         """Do a single validation step. Log stats to tensorboard."""
-        x, p, v, f, J, Hvp = self.get_val_batch()
-        fhat, Jhat, Hvphat = self.forward(x, p, v)
-        if (self.evaluator is not None and
-                (step - 1) % self.args.deploy_every == 0):
-            errors_V, zero_errors_V, initial_errors_V = self.evaluator.eval_n(
-                self.surrogate, step, self.args.deploy_n)
-        else:
-            errors_V = None
-            zero_errors_V = None
-            initial_errors_V = None
-        return self.stats(step,
-                          x,
-                          f,
-                          J,
-                          Hvp,
+        u, p, f, J = batch
+        fhat, Jhat = self.surrogate.f_J(u, p)
+        return self.stats(step, u, f, J,
                           fhat,
                           Jhat,
-                          Hvphat,
-                          phase='val',
-                          errors_V=errors_V,
-                          zero_errors_V=zero_errors_V,
-                          initial_errors_V=initial_errors_V).item()
+                          phase='val')
 
-    def visualize(self, step, dataset, dataset_name):
-        inds = np.random.randint(0, len(dataset), size=4)
-        data = [dataset[i] for i in inds]
-        examples = [d[0] for d in data]
-        x, p, v, f, J, Hvp = self.get_batch(examples=examples)
-        fhat, Jhat = self.surrogate.f_J(x, p)
+    def visualize(self, step, batch, dataset_name):
+        u, p, f, J = batch[:4]
+        fhat, Jhat = self.surrogate.f_J(u, p)
 
-        x, f, J, fhat, Jhat = x.cpu(), f.cpu(), J.cpu(), fhat.cpu(), Jhat.cpu()
+        u, f, J, fhat, Jhat = u.cpu(), f.cpu(), J.cpu(), fhat.cpu(), Jhat.cpu()
 
         cuda = self.surrogate.fsm.cuda
         self.surrogate.fsm.cuda = False
@@ -254,23 +156,21 @@ class Trainer(object):
         RCs = self.surrogate.fsm.ring_coords.cpu().detach().numpy()
         rigid_remover = RigidRemover(self.surrogate.fsm)
         for i, ax in enumerate(axes):
-            locs = RCs + self.surrogate.fsm.to_ring(x[i]).detach().numpy()
+            locs = RCs + self.surrogate.fsm.to_ring(u[i]).detach().numpy()
             plot_boundary(lambda x: (0, 0),
                           1000,
                           label='reference, f={:.3e}'.format(f[i].item()),
                           ax=ax,
                           color='k')
-            #plot_boundary(self.surrogate.fsm.get_query_fn(true_u[i]),
-            #              1000, ax=ax, label='true_u, f={:.3e}'.format(f[i].item()),
-            #              linestyle='--')
-            plot_boundary(self.surrogate.fsm.get_query_fn(x[i]),
+
+            plot_boundary(self.surrogate.fsm.get_query_fn(u[i]),
                           1000,
                           ax=ax,
                           label='ub, fhat={:.3e}'.format(fhat[i].item()),
                           linestyle='-',
                           color='darkorange')
             plot_boundary(self.surrogate.fsm.get_query_fn(
-                rigid_remover(x[i].unsqueeze(0)).squeeze(0)),
+                rigid_remover(u[i].unsqueeze(0)).squeeze(0)),
                           1000,
                           ax=ax,
                           label='rigid removed',
@@ -352,56 +252,31 @@ class Trainer(object):
 
     def stats(self,
               step,
-              x,
+              u,
               f,
               J,
-              Hvp,
               fhat,
               Jhat,
-              Hvphat,
-              errors_V=None,
-              zero_errors_V=None,
-              deploy_loss=None,
-              initial_errors_V=None,
               phase='train'):
         """Take ground truth and predictions. Log stats and return loss."""
 
         if self.args.quadratic_loss_scale:
-            loss_scale = 1. / torch.mean(x**2, dim=1)
+            loss_scale = 1. / torch.mean(u**2, dim=1)
         else:
             loss_scale = torch.Tensor([1.0])
+        train_f_std = torch.std(f, dim=1, keepdims=True) + 1e-3
         f_loss = rmse(f / train_f_std, fhat / train_f_std,
                       loss_scale)
+
+        train_J_std = torch.std(J, dim=1, keepdims=True) + 1e-3
         J_loss = rmse(J / train_J_std, Jhat / train_J_std, loss_scale)
-        H_loss = rmse(Hvp, Hvphat, loss_scale) if self.sobolev_Hvp else 0.
 
-        total_loss = (f_loss + self.args.J_weight * J_loss +
-                      self.args.H_weight * H_loss)
-
-        if deploy_loss is not None:
-            total_loss = ((1. - self.args.deploy_loss_weight) * total_loss +
-                          self.args.deploy_loss_weight * deploy_loss.cpu())
+        total_loss = (f_loss + self.args.J_weight * J_loss)
 
         f_pce = error_percent(f, fhat)
         J_pce = error_percent(J, Jhat)
-        H_pce = error_percent(Hvp, Hvphat) if self.sobolev_Hvp else 0.
 
         J_sim = similarity(J, Jhat)
-        H_sim = similarity(Hvp, Hvphat) if self.sobolev_Hvp else 0.
-
-        if self.args.verbose and phase == 'train':
-            log("\n")
-            log("{} step {}: total_loss {:.3e}, f_loss {:.3e}, J_loss {:.3e}, H_loss {:.3e}, "
-                "f_pce {:.3e}, J_pce {:.3e}, H_pce {:.3e}, J_sim {:.3e}, H_sim {:.3e}"
-                .format(phase, step, float(total_loss), float(f_loss),
-                        float(J_loss), float(H_loss),
-                        float(f_pce), float(J_pce), float(H_pce), float(J_sim),
-                        float(H_sim)))
-            log("f_mean: {}, fhat_mean: {}, J_mean: {}, Jhat_mean: {}".format(
-                torch.mean(f).item(),
-                torch.mean(fhat).item(),
-                torch.mean(J).item(),
-                torch.mean(Jhat).item()))
 
         if self.tflogger is not None:
             self.tflogger.log_scalar('train_set_size', len(self.train_data),
@@ -443,82 +318,45 @@ class Trainer(object):
                 self.tflogger.log_scalar('Jhat_std_mean_' + phase,
                                          Jhat.std(dim=1).mean().item(), step)
 
-            if self.sobolev_Hvp:
-                self.tflogger.log_scalar('Hvp_loss_' + phase, H_loss, step)
-                self.tflogger.log_scalar('Hvp_pce_' + phase, H_pce, step)
-                self.tflogger.log_scalar('H_sim_' + phase, H_sim, step)
-
-            if errors_V is not None:
-                self.tflogger.log_scalar('Errors_V_avg', np.mean(errors_V),
-                                         step)
-                self.tflogger.log_scalar('Errors_V_std', np.std(errors_V),
-                                         step)
-                self.tflogger.log_scalar('Solution_norms_avg',
-                                         np.mean(zero_errors_V), step)
-                self.tflogger.log_scalar('Solution_norms_std',
-                                         np.std(zero_errors_V), step)
-                self.tflogger.log_scalar('Errors_initial_V_avg',
-                                         np.mean(initial_errors_V), step)
-                self.tflogger.log_scalar('Errors_initial_V_std',
-                                         np.std(initial_errors_V), step)
-
         return total_loss
 
-    def get_train_batch(self):
-        return self.get_batch(self.train_data, self.args.batch_size)
 
-    def get_val_batch(self):
-        return self.get_batch(self.val_data, self.args.batch_size)
+def log(message, *args):
+    message = str(message)
+    for arg in args:
+        message = message + str(arg)
+    print(message)
+    with open('log.txt', 'w+') as logfile:
+        logfile.write(message)
 
-    def get_batch(self, dataset=None, batch_size=None, examples=None):
-        """Get a random batch of examples from dataset"""
-        # fsm_cuda = self.surrogate.fsm.cuda
-        # self.surrogate.fsm.cuda = False
-        if examples is None:
-            assert dataset is not None and batch_size is not None
-            if len(dataset) < batch_size:
-                raise Exception(
-                    "Dataset size {} too small for batch size {}".format(
-                        len(dataset), batch_size))
-            if self.args.fix_batch:  # Train on only one batch
-                inds = np.arange(batch_size)
-            else:
-                inds = np.random.choice(len(dataset),
-                                        batch_size,
-                                        replace=False)
-            examples = [dataset[i] for i in inds]
 
-        x = torch.stack([e.x for e in examples])
+def rmse(y, y_, loss_scale=torch.Tensor([1.0])):
+    """Root mean squared error"""
+    y_ = y_.to(y.device)
+    assert y.size() == y_.size()
+    loss_scale = loss_scale.to(y.device)
+    if len(y.size()) > 1:
+        loss_scale = loss_scale.view(-1,
+                                     *[1 for _ in range(len(y.size()) - 1)])
+        loss_scale = loss_scale * torch.prod(
+            torch.Tensor([s for s in y.shape[1:]]).to(y.device))
+    return torch.sqrt(torch.mean((y - y_)**2 * loss_scale))
 
-        if examples[0].p is None:
-            p = None
-        else:
-            p = Variable(self.surrogate.fsm._cuda(
-                torch.Tensor(np.stack([e.p for e in examples]))),
-                         requires_grad=True)
-        f = Variable(
-            self.surrogate.fsm._cuda(
-                torch.Tensor(np.stack([e.f for e in examples]))))
 
-        if all(e.J is not None for e in examples):
-            J = self.surrogate.fsm.to_ring(
-                torch.stack([e.J for e in examples]))
-        else:
-            J = None
-        if all(e.Hvp is not None and e.v is not None for e in examples):
-            raise Exception("Currently deprecated")
-        else:
-            Hvp = None
-            v = None
+def error_percent(y, y_):
+    """Mean of abs(err) / abs(true_val)"""
+    y_ = y_.view(y_.size(0), -1).cpu()
+    y = y.view(y_.size()).cpu()
+    return torch.mean(
+        torch.norm(y - y_, dim=1) / (torch.norm(y, dim=1) + 1e-7))
 
-        if not isinstance(self.surrogate.net, RingNet):
-            x = self.surrogate.fsm.to_torch(x)
-            J = self.surrogate.fsm.to_torch(J)
-        else:
-            x = self.surrogate.fsm.proc_torch(x)
-            J = self.surrogate.fsm.proc_torch(J)
 
-        x = Variable(x.data, requires_grad=True)
-        J = Variable(J.data, requires_grad=True)
-
-        return x, p, v, f, J, Hvp
+def similarity(y, y_):
+    """Cosine similarity between vectors"""
+    y = y.view(y.size(0), -1).cpu()
+    y_ = y_.view(y_.size(0), -1).cpu()
+    assert y.size(0) == y_.size(0)
+    assert y.size(1) == y_.size(1)
+    return torch.mean(
+        torch.sum(y * y_, dim=1) /
+        (torch.norm(y, dim=1) * torch.norm(y_, dim=1)))

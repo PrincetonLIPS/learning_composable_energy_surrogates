@@ -4,19 +4,14 @@ from example import Example
 
 
 class DataBuffer(Dataset):
-    def __init__(self, memory_size, batch_size,
-                 drop_prob=0, to_np=True, safe_idx=0):
+    def __init__(self, memory_size, safe_idx=0):
         self.memory_size = memory_size
-        self.batch_size = batch_size
         self.data = []
         self.pos = 0
-        self.drop_prob = drop_prob
         self.safe_idx = safe_idx
 
     def feed(self, example):
         assert isinstance(example, Example)
-        if np.random.rand() < self.drop_prob:
-            return
         if (self.pos + self.safe_idx) >= len(self.data):
             self.data.append((example.u, example.p, example.f, example.J))
         else:

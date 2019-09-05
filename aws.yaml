@@ -76,6 +76,9 @@ head_node:
           Ebs:
               VolumeSize: 100
 
+    SecurityGroupIDs:
+        - sg-6b16df08
+
     # Additional options in the boto docs.
 
 # Provider-specific config for worker nodes, e.g. instance type. By default
@@ -93,6 +96,8 @@ worker_nodes:
         #   SpotOptions:
         #       MaxPrice: MAX_HOURLY_PRICE
 
+    SecurityGroupIDs:
+        - sg-6b16df08
     # Additional options in the boto docs.
 
 # Files or directories to copy to the head and worker nodes. The format is a
@@ -126,7 +131,9 @@ setup_commands:
     # - sudo dpkg --configure -a
 
 # Custom commands that will be run on the head node after common setup.
-# head_setup_commands:
+head_setup_commands:
+    - sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-c7f3d3be.efs.us-east-2.amazonaws.com:/ /efs_nmor
+    - sudo chown ubuntu /efs_nmor
 #     - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.

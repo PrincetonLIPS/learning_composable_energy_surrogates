@@ -12,42 +12,29 @@ from ..util.jacobian import compute_jacobian
 
 
 class FunctionSpaceMap(object):
-    """Map between V, dV, bV, torch, numpy representations.
+    """Map between V, torch, numpy representations.
 
     Defines transforms for the chain:
-        V <-> dV <-> bV <-> numpy <-> torch
-
-    dV is the common data function space.
+        V <-> ring <-> torch <-> numpy
 
     Performs type checking, so user can just call ".to_torch(unknown_fn_or_vec)"
 
     Throw errors if things don't belong to the correct fn space / shape
     """
-    def __init__(self, V, dV_dim, bV_dim, cuda=False):
+    def __init__(self, V, bV_dim, cuda=False):
         self.V = V
         if V.mesh().geometric_dimension() == 2:
             self.mesh = fa.BoundaryMesh(
                 fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1), 'exterior')
-            self.dmesh = fa.UnitSquareMesh(dV_dim - 1, dV_dim - 1)
-            self.bV_to_dV_mesh = fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1)
         else:
             raise Exception("Invalid geometric dimension")
         if V.ufl_element().value_size() == 1:
             self.bV = fa.FunctionSpace(self.mesh, 'P', 1)
-            self.bV_to_dV_space = fa.FunctionSpace(self.bV_to_dV_mesh, 'P', 1)
-            self.dV = fa.FunctionSpace(self.dmesh, 'P', 2)
         else:
             self.bV = fa.VectorFunctionSpace(self.mesh,
                                              'P',
                                              1,
                                              dim=V.ufl_element().value_size())
-            self.bV_to_dV_space = fa.VectorFunctionSpace(
-                self.bV_to_dV_mesh, 'P', 1, dim=V.ufl_element().value_size())
-            self.dV = fa.VectorFunctionSpace(self.dmesh,
-                                             'P',
-                                             2,
-                                             dim=V.ufl_element().value_size())
-        self.dV_dim = dV_dim
         self.bV_dim = bV_dim
         self.elems_along_edge = self.bV_dim - 1
         self.vector_dim = len(fa.Function(self.bV).vector())
@@ -86,19 +73,13 @@ class FunctionSpaceMap(object):
 
     def init_spline(self, V):
         self.A_cpu = self.make_A(V)
-        self.dA_cpu = self.make_A(self.dV)
 
         if self.cuda:
             self.A_cuda = self.A_cpu.cuda()
-            self.dA_cuda = self.dA_cpu.cuda()
 
     @property
     def A(self):
         return self.A_cuda if self.cuda else self.A_cpu
-
-    @property
-    def dA(self):
-        return self.dA_cuda if self.cuda else self.dA_cpu
 
     @property
     def vec_to_ring_map(self):
@@ -224,7 +205,7 @@ class FunctionSpaceMap(object):
 
     def get_query_fn(self, fn_or_vec):
         # Caching for speed
-        fn_or_vec = self.to_dV(fn_or_vec)
+        fn_or_vec = self.to_V(fn_or_vec)
 
         def query_fn(x):
             return fn_or_vec(x)
@@ -232,13 +213,12 @@ class FunctionSpaceMap(object):
         return query_fn
 
     def maybe_interpolate(self, fn_or_vec):
-        assert not (self.is_dV(fn_or_vec) or self.is_bV(fn_or_vec))
         if self.is_in_spaces(fn_or_vec):
             return fn_or_vec
         elif (isinstance(fn_or_vec, fa.Expression)
               or isinstance(fn_or_vec, fa.UserExpression)
               or isinstance(fn_or_vec, fa.Constant)):
-            return fa.interpolate(fn_or_vec, self.dV)
+            return fa.interpolate(fn_or_vec, self.V)
         else:
             raise Exception(
                 "fn_or_vec is not in spaces, or Expression, or Constant. "
@@ -250,15 +230,6 @@ class FunctionSpaceMap(object):
             return fn_or_vec
         else:
             return self.ring_to_V(self.to_ring(fn_or_vec))
-
-    def to_dV(self, fn_or_vec):
-        fn_or_vec = self.maybe_interpolate(fn_or_vec)
-        if self.is_V(fn_or_vec):
-            return self.V_to_dV(fn_or_vec)
-        elif self.is_dV(fn_or_vec):
-            return fn_or_vec
-        else:
-            return self.ring_to_dV(self.to_ring(fn_or_vec))
 
     def to_ring(self, fn_or_vec, keep_grad=False):
         fn_or_vec = self.maybe_interpolate(fn_or_vec)
@@ -292,18 +263,6 @@ class FunctionSpaceMap(object):
             return False
         else:
             return fn_or_vec.function_space() == self.V
-
-    def is_dV(self, fn_or_vec):
-        if not isinstance(fn_or_vec, fa.Function):
-            return False
-        else:
-            return fn_or_vec.function_space() == self.dV
-
-    def is_bV(self, fn_or_vec):
-        if not isinstance(fn_or_vec, fa.Function):
-            return False
-        else:
-            return fn_or_vec.function_space() == self.bV
 
     def is_numpy(self, fn_or_vec):
         if not isinstance(fn_or_vec, np.ndarray):
@@ -388,60 +347,6 @@ class FunctionSpaceMap(object):
         fn_V.vector().set_local(uvec)
         return fn_V
 
-    def ring_to_dV(self, fn_ring):
-        '''fn_ring is |y| x D'''
-        assert self.is_ring(fn_ring)
-        if len(fn_ring.shape) == 3:
-            assert fn_ring.size(0) == 1
-            fn_ring = fn_ring.squeeze(0)
-        uvec = torch.matmul(self.dA, fn_ring)  # |Y| x D
-        uvec = interleave(uvec[:, 0], uvec[:, 1])  # (|Y|xD)
-        uvec = uvec.data.cpu().numpy()
-        fn_V = fa.Function(self.dV)
-        fn_V.vector().set_local(uvec)
-        return fn_V
-
-    def get_query_fn(self, fn_or_vec):
-        # Caching for speed
-        if not self.is_dV(fn_or_vec):
-            fn_or_vec = self.to_dV(fn_or_vec)
-
-        def query_fn(x):
-            return fn_or_vec(x)
-
-        return query_fn
-
-    def V_to_dV(self, fn_V):
-        assert self.is_V(fn_V)
-        fn_V.set_allow_extrapolation(True)
-        return fa.interpolate(fn_V, self.dV)
-
-    def dV_to_V(self, fn_dV):
-        assert self.is_dV(fn_dV)
-        fn_dV.set_allow_extrapolation(True)
-        return fa.interpolate(fn_dV, self.V)
-
-    def dV_to_bV(self, fn_dV):
-        assert self.is_dV(fn_dV)
-        fn_dV.set_allow_extrapolation(True)
-        return fa.interpolate(fn_dV, self.bV)
-
-    def bV_to_dV(self, fn_bV):
-        assert self.is_bV(fn_bV)
-        # fn_dV = fa.Function(self.dV)
-        if getattr(fn_bV, 'is_fa_gradient', False):
-            raise Exception('Bugged and deprecated')
-        else:
-            interpoland = fn_bV
-        hole_expression = fa.make_boundary_expression(interpoland)
-        intermediate = fa.interpolate(hole_expression, self.bV_to_dV_space)
-        result = fa.interpolate(intermediate, self.dV)
-        return result
-
-    def bV_to_numpy(self, fn_bV):
-        assert self.is_bV(fn_bV)
-        return np.array(fn_bV.vector())
-
     def numpy_to_torch(self, fn_numpy):
         assert self.is_numpy(fn_numpy)
         return Variable(self._cuda(torch.Tensor(fn_numpy)), requires_grad=True)
@@ -449,14 +354,6 @@ class FunctionSpaceMap(object):
     def torch_to_numpy(self, fn_torch):
         assert self.is_torch(fn_torch)
         return fn_torch.data.cpu().numpy()
-
-    def numpy_to_bV(self, fn_numpy):
-        assert self.is_numpy(fn_numpy)
-        assert len(
-            fn_numpy.shape) == 1, "Can only convert unbatched inputs to Fenics"
-        u_bV = fa.Function(self.bV)
-        u_bV.vector().set_local(fn_numpy)
-        return u_bV
 
     def torch_to_ring(self, fn_or_vec, keep_grad=False):
         assert self.is_torch(fn_or_vec)
@@ -501,8 +398,7 @@ class FunctionSpaceMap(object):
             return fn_torch
 
     def is_in_spaces(self, fn_or_vec):
-        return (self.is_V(fn_or_vec) or self.is_dV(fn_or_vec)
-                or self.is_bV(fn_or_vec) or self.is_torch(fn_or_vec)
+        return (self.is_V(fn_or_vec) or self.is_torch(fn_or_vec)
                 or self.is_numpy(fn_or_vec) or self.is_ring(fn_or_vec))
 
 
