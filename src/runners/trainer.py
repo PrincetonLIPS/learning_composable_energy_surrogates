@@ -124,10 +124,7 @@ class Trainer(object):
                     self.surrogate.net.parameters(), self.args.clip_grad_norm
                 )
             self.optimizer.step()
-            if self.args.fix_batch:
-                self.scheduler.step(total_loss)
-            else:
-                self.scheduler.step()
+            self.scheduler.step()
             if self.args.verbose:
                 log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
 
@@ -151,7 +148,7 @@ class Trainer(object):
             fhat_ = torch.cat([fhat_, fhat.data], dim=0) if i > 0 else fhat.data
             Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
 
-        return (
+        return list(
             r.item() for r in self.stats(step, u_, f_, J_, fhat_, Jhat_, phase="val")
         )
 
@@ -308,10 +305,7 @@ class Trainer(object):
         if self.tflogger is not None:
             self.tflogger.log_scalar("train_set_size", len(self.train_data), step)
             self.tflogger.log_scalar("val_set_size", len(self.val_data), step)
-            if self.evaluator is not None:
-                self.tflogger.log_scalar(
-                    "deploy_set_size", len(self.evaluator.val_data), step
-                )
+
             if hasattr(self.surrogate, "net") and hasattr(
                 self.surrogate.net, "parameters"
             ):
@@ -319,34 +313,33 @@ class Trainer(object):
                     "param_norm_sum",
                     sum(
                         [
-                            p.norm().data.cpu().numpy().sum()
+                            p.norm().sum().item()
                             for p in self.surrogate.net.parameters()
                         ]
                     ),
                     step,
                 )
-            self.tflogger.log_scalar("total_loss_" + phase, total_loss, step)
-            self.tflogger.log_scalar("f_loss_" + phase, f_loss, step)
-            self.tflogger.log_scalar("f_pce_" + phase, f_pce, step)
+            self.tflogger.log_scalar("total_loss_" + phase, total_loss.item(), step)
+            self.tflogger.log_scalar("f_loss_" + phase, f_loss.item(), step)
+            self.tflogger.log_scalar("f_pce_" + phase, f_pce.item(), step)
 
             self.tflogger.log_scalar("f_mean_" + phase, f.mean().item(), step)
             self.tflogger.log_scalar("f_std_" + phase, f.std().item(), step)
             self.tflogger.log_scalar("fhat_mean_" + phase, fhat.mean().item(), step)
             self.tflogger.log_scalar("fhat_std_" + phase, fhat.std().item(), step)
 
-            if self.sobolev_J:
-                self.tflogger.log_scalar("J_loss_" + phase, J_loss, step)
-                self.tflogger.log_scalar("J_pce_" + phase, J_pce, step)
-                self.tflogger.log_scalar("J_sim_" + phase, J_sim, step)
+            self.tflogger.log_scalar("J_loss_" + phase, J_loss.item(), step)
+            self.tflogger.log_scalar("J_pce_" + phase, J_pce.item(), step)
+            self.tflogger.log_scalar("J_sim_" + phase, J_sim.item(), step)
 
-                self.tflogger.log_scalar("J_mean_" + phase, J.mean().item(), step)
-                self.tflogger.log_scalar(
-                    "J_std_mean_" + phase, J.std(dim=1).mean().item(), step
-                )
-                self.tflogger.log_scalar("Jhat_mean_" + phase, Jhat.mean().item(), step)
-                self.tflogger.log_scalar(
-                    "Jhat_std_mean_" + phase, Jhat.std(dim=1).mean().item(), step
-                )
+            self.tflogger.log_scalar("J_mean_" + phase, J.mean().item(), step)
+            self.tflogger.log_scalar(
+                "J_std_mean_" + phase, J.std(dim=1).mean().item(), step
+            )
+            self.tflogger.log_scalar("Jhat_mean_" + phase, Jhat.mean().item(), step)
+            self.tflogger.log_scalar(
+                "Jhat_std_mean_" + phase, Jhat.std(dim=1).mean().item(), step
+            )
 
         return (f_loss, f_pce, J_loss, J_sim, total_loss)
 

@@ -138,8 +138,8 @@ if __name__ == "__main__":
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
                 if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
-                    trainer.visualize(step - 1, trainer.train_plot_data, "Training")
-                    trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
+                    trainer.visualize(step - 1, trainer.train_data, "Training")
+                    trainer.visualize(step - 1, trainer.val_data, "Validation")
 
                 dagger_harvester.step(init_args=(broadcast_net_state,))
                 deploy_harvester.step(step_args=(broadcast_net_state,))
@@ -155,8 +155,8 @@ if __name__ == "__main__":
                     "step {}, epoch {}: "
                     "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
                     "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, vL: {:.3e} "
-                    "dloss_mean: {}, dloss_std: {}, dloss_90: {}, "
-                    "dloss_50: {}, dloss_10: {}\n".format(
+                    "dloss_mean: {:.3e}, dloss_std: {:.3e}, dloss_90: {:.3e}, "
+                    "dloss_50: {:.3e}, dloss_10: {:.3e}\n".format(
                         step,
                         epoch,
                         t_losses[0],

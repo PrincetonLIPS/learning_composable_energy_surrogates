@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class EMSVector(object):
     def __init__(self, alpha, stat_names):
         self.stat_names = [str(sn) for sn in stat_names]
@@ -15,9 +18,9 @@ class ExponentialMovingStats(object):
         self.alpha = 0.0
         self._mean = 0.0
         self._std = 0.0
-        self.m90 = None
-        self.m50 = None
-        self.m10 = None
+        self.m90 = np.nan
+        self.m50 = np.nan
+        self.m10 = np.nan
 
     def feed(self, dpoint):
         self._mean = self.alpha * self._mean + (1.0 - self.alpha) * dpoint
@@ -32,16 +35,18 @@ class ExponentialMovingStats(object):
 
     @property
     def mean(self):
-        assert self.n > 0
+        if self.n <= 0:
+            return np.nan
         return self.mean / (1 - self.alpha ** self.n)
 
     @property
     def std(self):
-        assert self.n > 0
+        if self.n <= 0:
+            return np.nan
         return self.std / (1 - self.alpha ** self.n)
 
     def update_percentile(self, current, new, p):
-        if current is None:
+        if not np.isfinite(current):
             return new
         if new < current:
             return current - self.delta() / p
