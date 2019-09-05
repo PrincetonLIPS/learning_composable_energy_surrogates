@@ -165,7 +165,8 @@ class SurrogateEnergyModel(object):
             f_inputs = f_inputs + (1. - constraint_mask) * x_
             return self.f(f_inputs, params, force_data=force_data)
 
-        optimizer = torch.optim.LBFGS([x], lr=self.args.solve_lbfgs_stepsize,
+        optimizer = torch.optim.LBFGS([x],
+                                      lr=self.args.solve_lbfgs_stepsize,
                                       max_iter=opt_steps)
 
         traj_u = []

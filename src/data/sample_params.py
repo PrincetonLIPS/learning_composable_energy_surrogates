@@ -5,28 +5,27 @@ import torch
 
 
 def make_p(args):
-        if args.sample_c:
-            tries = 0
-            while (True and tries < 100):
-                args.c1 = np.random.uniform(args.c1_low, args.c1_high)
-                args.c2 = np.random.uniform(args.c2_low, args.c2_high)
-                try:
-                    pde = Metamaterial(args)
-                    break
-                except ValueError as e:
-                    pass
-            if tries >= 100:
-                raise Exception('Failed to sample parameters')
-        else:
-            args.c1 = (args.c1_low + args.c1_high) / 2.
-            args.c2 = (args.c2_low + args.c2_high) / 2.
+    if args.sample_c:
+        tries = 0
+        while (True and tries < 100):
+            args.c1 = np.random.uniform(args.c1_low, args.c1_high)
+            args.c2 = np.random.uniform(args.c2_low, args.c2_high)
+            try:
+                pde = Metamaterial(args)
+                break
+            except ValueError as e:
+                pass
+        if tries >= 100:
+            raise Exception('Failed to sample parameters')
+    else:
+        args.c1 = (args.c1_low + args.c1_high) / 2.
+        args.c2 = (args.c2_low + args.c2_high) / 2.
 
 
 def make_force(args, fsm):
     freq_scale = np.random.uniform(0.0, args.force_freq_scale)
     amp_scale = np.random.uniform(0.0, args.force_amp_scale)
-    force_expression = make_random_fourier_expression(2, 5000,
-                                                      amp_scale,
+    force_expression = make_random_fourier_expression(2, 5000, amp_scale,
                                                       freq_scale,
                                                       fsm.dV.ufl_element())
     force_data = fsm.to_dV(force_expression).vector()

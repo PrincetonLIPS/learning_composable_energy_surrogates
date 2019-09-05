@@ -105,12 +105,7 @@ class Trainer(object):
             fhat, Jhat = self.surrogate.f_J(u, p)
 
         self.tflogger.log_scalar('batch_forward_time', timer.interval, step)
-        total_loss = self.stats(step,
-                                u,
-                                f,
-                                J,
-                                fhat,
-                                Jhat)
+        total_loss = self.stats(step, u, f, J, fhat, Jhat)
 
         if self.optimizer:
             total_loss.backward()
@@ -137,10 +132,7 @@ class Trainer(object):
         """Do a single validation step. Log stats to tensorboard."""
         u, p, f, J = batch
         fhat, Jhat = self.surrogate.f_J(u, p)
-        return self.stats(step, u, f, J,
-                          fhat,
-                          Jhat,
-                          phase='val')
+        return self.stats(step, u, f, J, fhat, Jhat, phase='val')
 
     def visualize(self, step, batch, dataset_name):
         u, p, f, J = batch[:4]
@@ -250,14 +242,7 @@ class Trainer(object):
                                      [buf], step)
         self.surrogate.fsm.cuda = cuda
 
-    def stats(self,
-              step,
-              u,
-              f,
-              J,
-              fhat,
-              Jhat,
-              phase='train'):
+    def stats(self, step, u, f, J, fhat, Jhat, phase='train'):
         """Take ground truth and predictions. Log stats and return loss."""
 
         if self.args.quadratic_loss_scale:
@@ -265,8 +250,7 @@ class Trainer(object):
         else:
             loss_scale = torch.Tensor([1.0])
         train_f_std = torch.std(f, dim=1, keepdims=True) + 1e-3
-        f_loss = rmse(f / train_f_std, fhat / train_f_std,
-                      loss_scale)
+        f_loss = rmse(f / train_f_std, fhat / train_f_std, loss_scale)
 
         train_J_std = torch.std(J, dim=1, keepdims=True) + 1e-3
         J_loss = rmse(J / train_J_std, Jhat / train_J_std, loss_scale)

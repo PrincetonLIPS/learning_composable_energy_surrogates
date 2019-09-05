@@ -10,12 +10,12 @@ def torch_namedtuple(namedtuple_class):
                 assert isinstance(v, torch.Tensor)
 
         def cuda(self):
-            return TorchNamedTuple(
-                **{k: v.cuda() for k, v in self._asdict()})
+            return TorchNamedTuple(**{k: v.cuda() for k, v in self._asdict()})
 
         def to(self, device):
             return TorchNamedTuple(
-                **{k: v.to(device) for k, v in self._asdict()})
+                **{k: v.to(device)
+                   for k, v in self._asdict()})
 
 
 Example = torch_namedtuple(collections.namedtuple('Example', 'u p f J'))

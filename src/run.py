@@ -11,6 +11,7 @@ import pdb
 from copy import deepcopy
 import glob
 import os
+import ray
 
 import sys
 
@@ -28,9 +29,9 @@ from ..logging.tensorboard_logger import Logger as TFLogger
 from ..runners.trainer import Trainer
 from ..runners.collector import Collector, PolicyCollector
 from ..runners.evaluator import evaluate
-import ray
 from ..util.carefully_get import carefully_get
 from ..data.example import Example
+from ..data.buffer import DataBuffer
 from ..geometry.polar import SemiPolarizer
 from ..geometry.remove_rigid_body import RigidRemover
 
@@ -43,11 +44,11 @@ def collect_initial_data(args, train_data):
             for _ in range(args.max_collectors - len(ids_to_collectors))
         ]
         ids_to_collectors = ids_to_collectors + {
-            c.step.remote(): c for c in new_collectors
+            c.step.remote(): c
+            for c in new_collectors
         }
         ready_ids, remaining_ids = ray.wait(
-            [id for id in ids_to_collectors.keys()],
-            timeout=1)
+            [id for id in ids_to_collectors.keys()], timeout=1)
         results = {id: carefully_get(id) for id in ready_ids}
 
         # Restart or kill workers as necessary
@@ -112,6 +113,12 @@ if __name__ == '__main__':
         trainer = Trainer(args, sem, train_data, val_data, tflogger, pde)
 
         collect_initial_data(args, train_data)
+
+
+        ### --------------------------------------------
+        # I HAVE WRITTEN UP TO HERE
+        # AFTER THIS IS TO-MODIFY
+        ### --------------------------------------------
 
         for step in range(1, args.max_train_steps):
             train_loss = trainer.train_step(step)
