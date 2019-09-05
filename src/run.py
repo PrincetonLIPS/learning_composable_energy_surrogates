@@ -40,27 +40,51 @@ from ..geometry.remove_rigid_body import RigidRemover
 def collect_initial_data(args, train_data):
     ids_to_collectors = {}
     while train_data.size() < len(train_data):
-        new_collectors = [
-            Collector.remote(args)
-            for _ in range(args.max_collectors - len(ids_to_collectors))
-        ]
-        ids_to_collectors = ids_to_collectors + {
-            c.step.remote(): c for c in new_collectors
-        }
-        ready_ids, remaining_ids = ray.wait(
-            [id for id in ids_to_collectors.keys()], timeout=1
-        )
-        results = {id: carefully_get(id) for id in ready_ids}
 
-        # Restart or kill workers as necessary
-        for id, result in results.items:
-            if isinstance(result, Example):
-                collector = ids_to_collectors.pop(id)
-                ids_to_collectors[collector.step.remote()] = collector
-                train_data.feed(result)
-            else:
-                assert isinstance(result, Exception)
-                ids_to_collectors.pop(id)
+        while len(ids_to_collectors) < args.max_collectors:
+            new_collector = Collector.remote(args)
+            ids_to_collectors[new_collector.step.remote()] = new_collector
+
+        ids_to_collectors = harvest_collectors(train_data, ids_to_collectors)
+
+
+def policy_collector_step(args, train_data, ids_to_collectors, surrogate):
+    if len(ids_to_collectors) < args.max_collectors:
+        surrogate = ray.put(surrogate)
+    while len(ids_to_collectors) < args.max_collectors:
+        new_collector = PolicyCollector.remote(args, surrogate)
+        ids_to_collectors[new_collector.step.remote()] = new_collector
+
+    ids_to_collectors = harvest_collectors(train_data, ids_to_collectors)
+
+
+def harvest_deploy(args, deploy_ids, surrogate):
+    deploy_ids += [evaluate(args, surrogate)
+                   for _ in range(args.max_evaluators - len(deploy_ids))]
+
+    ready_ids, remaining_ids = ray.wait(deploy_ids, timeout=1)
+    results = [carefully_get(id) for id in ready_ids]
+    valid_results = [r for r in results if not isinstance(r, Exception)]
+    return valid_results, remaining_ids
+
+
+def harvest_collectors(train_data, ids_to_collectors):
+    ready_ids, remaining_ids = ray.wait(
+        [id for id in ids_to_collectors.keys()], timeout=1
+    )
+    results = {id: carefully_get(id) for id in ready_ids}
+
+    # Restart or kill workers as necessary
+    for id, result in results.items:
+        if isinstance(result, Example):
+            collector = ids_to_collectors.pop(id)
+            ids_to_collectors[collector.step.remote()] = collector
+            train_data.feed(result)
+        else:
+            assert isinstance(result, Exception)
+            ids_to_collectors.pop(id)
+
+    return ids_to_collectors
 
 
 if __name__ == "__main__":
