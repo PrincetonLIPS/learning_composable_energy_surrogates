@@ -30,7 +30,8 @@ class Evaluator(object):
         surrogate = SurrogateEnergyModel(self.args, self.net, self.fsm)
 
         bc, constrained_idxs, constrained_sides, constraint_mask = make_bc(
-            self.args, self.fsm)
+            self.args, self.fsm
+        )
 
         force_data = make_force(self.args, self.fsm)
 
@@ -38,9 +39,12 @@ class Evaluator(object):
 
         surr_soln = surrogate.solve(params, bc, constraint_mask, force_data)
 
-        true_soln = self.fem.solve(self.args, boundary_fn=bc,
-                                   constrained_sides=constrained_sides,
-                                   force_fn=force_data)
+        true_soln = self.fem.solve(
+            self.args,
+            boundary_fn=bc,
+            constrained_sides=constrained_sides,
+            force_fn=force_data,
+        )
 
         surr_soln_V = self.fsm.to_V(surr_soln)
 

@@ -18,9 +18,7 @@ class FenicsEnergyModel(object):
         boundary_fn = self.fsm.to_V(boundary_fn)
         self.check_initial_guess(initial_guess, boundary_fn)
         solution = self.pde.solve_problem(
-            args=args,
-            boundary_fn=boundary_fn,
-            initial_guess=initial_guess,
+            args=args, boundary_fn=boundary_fn, initial_guess=initial_guess
         )
         energy = self.pde.energy(solution)
         if return_u:
@@ -66,13 +64,18 @@ class FenicsEnergyModel(object):
         else:
             return energy, jac, hvp
 
-    def solve(self, args=None, initial_guess=None,
-              boundary_fn=None, constrained_sides=[True, True, True, True],
-              force_fn=None):
+    def solve(
+        self,
+        args=None,
+        initial_guess=None,
+        boundary_fn=None,
+        constrained_sides=[True, True, True, True],
+        force_fn=None,
+    ):
         if args is None:
             args = self.args
 
-        keys = ['bottom', 'right', 'top', 'left']
+        keys = ["bottom", "right", "top", "left"]
         boundary_fn_dic = {}
         if boundary_fn is not None:
             for i, s in enumerate(constrained_sides):
