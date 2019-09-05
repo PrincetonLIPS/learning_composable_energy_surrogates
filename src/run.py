@@ -151,7 +151,7 @@ if __name__ == "__main__":
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(5)
 
-            broadcast_surrogate = ray.put(deepcopy(surrogate).cpu().eval())
+            broadcast_net = ray.put(deepcopy(surrogate.net).cpu().eval())
 
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
@@ -159,8 +159,8 @@ if __name__ == "__main__":
                     trainer.visualize(step - 1, trainer.train_plot_data, "Training")
                     trainer.visualize(step - 1, trainer.val_plot_data, "Validation")
 
-                dagger_harvester.step(broadcast_surrogate)
-                deploy_harvester.step(broadcast_surrogate)
+                dagger_harvester.step(init_args=(broadcast_net))
+                deploy_harvester.step(step_args=(broadcast_net))
 
                 step += 1
             epoch += 1

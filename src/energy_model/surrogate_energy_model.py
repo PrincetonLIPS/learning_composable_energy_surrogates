@@ -27,24 +27,6 @@ class SurrogateEnergyModel(object):
     def external_work(self, boundary_inputs, force_data):
         return -torch.sum(boundary_inputs * force_data)
 
-    def cuda(self):
-        self.net = self.net.cuda()
-        self.fsm.cuda = True
-        return self
-
-    def cpu(self):
-        self.net = self.net.cpu()
-        self.fsm.cuda = False
-        return self
-
-    def train(self):
-        self.net = self.net.train()
-        return self
-
-    def eval(self):
-        self.net = self.net.eval()
-        return self
-
     def f(self, boundary_inputs, params, force_data=None):
         if params is not None:
             params = self.fsm._cuda(params)

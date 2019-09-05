@@ -12,18 +12,18 @@ class Harvester(object):
         self.ids_to_workers = {}
         self.last_error = None
 
-    def step(self, *step_args, **step_kwargs):
-        self.sow(*step_args, **step_kwargs)
-        self.reap(*step_args, **step_kwargs)
+    def step(self, init_args=(), step_args=()):
+        self.sow(init_args, step_args)
+        self.reap(step_args)
 
-    def sow(self, *step_args, **step_kwargs):
+    def sow(self, init_args, step_args):
         while len(self.ids_to_workers) < self.max_workers:
-            new_worker = self.WorkerClass.remote(self.args)
+            new_worker = self.WorkerClass.remote(self.args, *init_args)
             self.ids_to_workers[
-                new_worker.step.remote(*step_args, **step_kwargs)
+                new_worker.step.remote(*step_args)
             ] = new_worker
 
-    def reap(self, *step_args, **step_kwargs):
+    def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
             [id for id in self.ids_to_workers.keys()], timeout=0.01
         )
@@ -34,7 +34,7 @@ class Harvester(object):
             worker = self.ids_to_workers.pop(id)
             if not isinstance(result, Exception):
                 self.ids_to_workers[
-                    worker.step.remote(*step_args, **step_kwargs)
+                    worker.step.remote(*step_args)
                 ] = worker
                 valid_results.append(result)
                 self.n_success += 1

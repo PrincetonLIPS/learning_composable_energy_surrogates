@@ -3,6 +3,7 @@ from .. import fa_combined as fa
 from ..pde.metamaterial import Metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
+from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..data.sample_params import make_p, make_bc, make_force
 from ..data.example import Example
 import random
@@ -52,10 +53,12 @@ class Collector(CollectorBase):
 
 @ray.remote
 class PolicyCollector(CollectorBase):
-    def __init__(self, args, surrogate):
+    def __init__(self, args, net):
         super(PolicyCollector, self).__init__(args)
 
         force_data = make_force(args, self.fsm)
+
+        surrogate = SurrogateEnergyModel(args, net, self.fsm)
 
         params = torch.Tensor([args.c1, args.c2])
 

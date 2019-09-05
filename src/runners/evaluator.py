@@ -3,6 +3,7 @@ from .. import fa_combined as fa
 from ..pde.metamaterial import Metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
+from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..data.sample_params import make_p, make_bc, make_force
 import ray
 
@@ -12,12 +13,13 @@ class Evaluator(object):
     def __init__(self, args):
         self.args = args
 
-    def step(self, surrogate):
+    def step(self, net):
         make_p(self.args)
         pde = Metamaterial(self.args)
         fsm = FunctionSpaceMap(
             pde.V, self.args.data_V_dim, self.args.metamaterial_bV_dim
         )
+        surrogate = SurrogateEnergyModel(self.args, net, fsm)
 
         fem = FenicsEnergyModel(self.args, pde, fsm)
         bc, _, _, constraint_mask = make_bc(self.args, fsm)
