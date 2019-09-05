@@ -12,6 +12,7 @@ class Timer:
 
     print("Time taken: {}".format(t.interval))
     """
+
     def __enter__(self):
         self.start = time.clock()
         return self

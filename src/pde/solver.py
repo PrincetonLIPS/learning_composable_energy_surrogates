@@ -11,6 +11,7 @@ class Solver(object):
     Bugs may exsit, not sure whether it's worthwhile investigating this.
     Happy with current FEniCS solver for now.
     """
+
     def __init__(self, args):
         self.args = args
 
@@ -40,15 +41,17 @@ class Solver(object):
                 A, b = fa.assemble_system(jacE, -dE, bcs_du)
                 fa.solve(A, delta_u.vector(), b)  # Determine step direction
                 eps = np.linalg.norm(np.array(delta_u.vector()), ord=2)
-                fnorm = b.norm('l2')
+                fnorm = b.norm("l2")
                 lmbda = 0.1  # step size, initially 1
                 u.vector()[:] += lmbda * delta_u.vector()  # New u vector
-                print('{0:2d}  {1:3.2E}  {2:5e}'.format(nIter, eps, fnorm))
+                print("{0:2d}  {1:3.2E}  {2:5e}".format(nIter, eps, fnorm))
 
         else:
-            fa.solve(dE == 0,
-                     u,
-                     bcs,
-                     J=jacE,
-                     solver_parameters=solver_args,
-                     form_compiler_parameters=ffc_options)
+            fa.solve(
+                dE == 0,
+                u,
+                bcs,
+                J=jacE,
+                solver_parameters=solver_args,
+                form_compiler_parameters=ffc_options,
+            )

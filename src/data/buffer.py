@@ -15,7 +15,7 @@ class DataBuffer(Dataset):
         if (self.pos + self.safe_idx) >= len(self.data):
             self.data.append((example.u, example.p, example.f, example.J))
         else:
-            self.data[self.pos + self.safe_idx] = (example)
+            self.data[self.pos + self.safe_idx] = example
         self.pos = (self.pos + 1) % (self.memory_size - self.safe_idx)
 
     def feed_batch(self, examples):

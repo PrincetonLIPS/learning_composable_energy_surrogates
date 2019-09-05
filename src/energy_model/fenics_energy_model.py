@@ -29,7 +29,8 @@ class FenicsEnergyModel(object):
             args=args,
             boundary_fn=boundary_fn,
             external_work_fn=self.external_work_fn,
-            initial_guess=initial_guess)
+            initial_guess=initial_guess,
+        )
         energy = self.pde.energy(solution)
         if return_u:
             return energy, solution
@@ -37,14 +38,12 @@ class FenicsEnergyModel(object):
             return energy
 
     def f_J(self, boundary_fn, initial_guess=None, return_u=False, args=None):
-        if hasattr(boundary_fn, 'shape') and len(boundary_fn.shape) == 2:
+        if hasattr(boundary_fn, "shape") and len(boundary_fn.shape) == 2:
             raise Exception()
         boundary_fn = self.fsm.to_V(boundary_fn)
-        energy, solution = FenicsEnergyModel.f(self,
-                                               boundary_fn,
-                                               initial_guess,
-                                               return_u=True,
-                                               args=args)
+        energy, solution = FenicsEnergyModel.f(
+            self, boundary_fn, initial_guess, return_u=True, args=args
+        )
         jac = fa.compute_gradient(energy, fa.Control(boundary_fn))
         # pdb.set_trace()
         # jac = self.fsm.to_dV(jac)
@@ -54,20 +53,16 @@ class FenicsEnergyModel(object):
         else:
             return energy, jac
 
-    def f_J_Hvp(self,
-                boundary_fn,
-                vector,
-                initial_guess=None,
-                return_u=False,
-                args=None):
-        if hasattr(boundary_fn, 'shape') and len(boundary_fn.shape) == 2:
+    def f_J_Hvp(
+        self, boundary_fn, vector, initial_guess=None, return_u=False, args=None
+    ):
+        if hasattr(boundary_fn, "shape") and len(boundary_fn.shape) == 2:
             raise Exception()
 
         boundary_fn = self.fsm.to_V(boundary_fn)
-        energy, jac, solution = self.f_J(boundary_fn,
-                                         initial_guess,
-                                         return_u=True,
-                                         args=args)
+        energy, jac, solution = self.f_J(
+            boundary_fn, initial_guess, return_u=True, args=args
+        )
         direction = self.fsm.to_V(vector)
         hvp = fa.compute_hessian(energy, fa.Control(boundary_fn), direction)
         # pdb.set_trace()
@@ -88,7 +83,8 @@ class FenicsEnergyModel(object):
             args=args,
             boundary_fn_dic=self.boundary_constraints,
             external_work_fn=self.external_work_fn,
-            initial_guess=initial_guess)
+            initial_guess=initial_guess,
+        )
 
     def check_initial_guess(self, initial_guess=None, boundary_fn=None):
         init_guess_fn = fa.Function(self.fsm.V)
@@ -102,7 +98,8 @@ class FenicsEnergyModel(object):
             print("Init energy: {}".format(init_energy))
         if not init_energy < 1e2 or not np.isfinite(init_energy):
             raise Exception(
-                "Initial guess energy {} is too damn high".format(init_energy))
+                "Initial guess energy {} is too damn high".format(init_energy)
+            )
 
     def clear_boundary(self):
         self.boundary_constraints = {}
@@ -111,7 +108,7 @@ class FenicsEnergyModel(object):
         self.external_forces = []
 
     def apply_boundary(self, side, bc):
-        assert side in ['left', 'right', 'bottom', 'top']
+        assert side in ["left", "right", "bottom", "top"]
         self.boundary_constraints[side] = bc
 
     def apply_force(self, force_fn):
@@ -127,6 +124,7 @@ class FenicsEnergyModel(object):
 
 class SurrogateFenicsEnergyModel(FenicsEnergyModel):
     """Hack to give FenicsEnergyModel the same f_J_Hvp syntax as the others."""
+
     def f(self, boundary_fn, params):
         return super(SurrogateFenicsEnergyModel, self).f(boundary_fn)
 
@@ -134,5 +132,4 @@ class SurrogateFenicsEnergyModel(FenicsEnergyModel):
         return super(SurrogateFenicsEnergyModel, self).f_J(boundary_fn)
 
     def f_J_Hvp(self, boundary_fn, params, vector):
-        return super(SurrogateFenicsEnergyModel,
-                     self).f_J_Hvp(boundary_fn, vector)
+        return super(SurrogateFenicsEnergyModel, self).f_J_Hvp(boundary_fn, vector)

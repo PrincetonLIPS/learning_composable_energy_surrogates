@@ -12,7 +12,7 @@ def points_along_unit_square(n):
     N = int(n / 4)  # Points per side
     for i in range(n):
         if i < N:
-            points.append((0., float(i) / N))
+            points.append((0.0, float(i) / N))
 
         elif i < 2 * N:
             points.append((float(i - N) / N, 1.0))
@@ -40,9 +40,8 @@ def plot_boundary(displacement_fn, n, ax=None, normalizer=None, **kwargs):
 
     Xs.append(Xs[0])
 
-    if normalizer is not None and 'label' in kwargs:
-        kwargs['label'] = kwargs['label'] + ', mean_norm: {:.3e}'.format(
-            np.mean(norms))
+    if normalizer is not None and "label" in kwargs:
+        kwargs["label"] = kwargs["label"] + ", mean_norm: {:.3e}".format(np.mean(norms))
 
     if ax is None:
         plot = plt.plot
@@ -64,16 +63,11 @@ def plot_vectors(locs, vecs, ax=None, normalizer=None, **kwargs):
     if ax is None:
         ax = plt
 
-    if normalizer is not None and 'label' in kwargs:
-        kwargs['label'] = kwargs['label'] + ', mean_norm: {:.3e}'.format(
-            np.mean(norms))
+    if normalizer is not None and "label" in kwargs:
+        kwargs["label"] = kwargs["label"] + ", mean_norm: {:.3e}".format(np.mean(norms))
 
-    qplot = ax.quiver(X, Y, U, V, angles='xy', scale_units='xy', **kwargs)
-    qk = ax.quiverkey(qplot,
-                      0.9,
-                      0.9,
-                      2,
-                      r'\frac{dE}{du}',
-                      labelpos='E',
-                      coordinates='figure')
-    ax.scatter(X, Y, color='k')
+    qplot = ax.quiver(X, Y, U, V, angles="xy", scale_units="xy", **kwargs)
+    qk = ax.quiverkey(
+        qplot, 0.9, 0.9, 2, r"\frac{dE}{du}", labelpos="E", coordinates="figure"
+    )
+    ax.scatter(X, Y, color="k")

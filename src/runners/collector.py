@@ -16,17 +16,19 @@ class Collector(object):
         self.args = args
         make_p(args)
         self.pde = Metamaterial(args)
-        self.fsm = FunctionSpaceMap(self.pde.V, args.data_V_dim,
-                                    args.metamaterial_bV_dim)
+        self.fsm = FunctionSpaceMap(
+            self.pde.V, args.data_V_dim, args.metamaterial_bV_dim
+        )
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.bc, _, _, self.constraint_mask = make_bc(args, self.fsm)
-        self.stepsize = 1. / args.anneal_steps
-        self.factor = 0.
+        self.stepsize = 1.0 / args.anneal_steps
+        self.factor = 0.0
         self.guess = fa.Function(self.fsm.V).vector()
 
     def increment_factor(self):
         self.factor = np.min(
-            [1., self.factor + self.stepsize * (1 + random.random() - 0.5)])
+            [1.0, self.factor + self.stepsize * (1 + random.random() - 0.5)]
+        )
 
     def get_weighted_data(self, factor):
         return self.bc * factor
@@ -35,9 +37,9 @@ class Collector(object):
         self.increment_factor()
         weighted_data = self.get_weighted_data(self.factor)
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
-        f, JV, solution = self.fem.f_J(input_boundary_fn,
-                                       initial_guess=self.guess,
-                                       return_u=True)
+        f, JV, solution = self.fem.f_J(
+            input_boundary_fn, initial_guess=self.guess, return_u=True
+        )
 
         self.guess = solution.vector()
         u = torch.Tensor(weighted_data.data)
@@ -57,22 +59,19 @@ class PolicyCollector(Collector):
 
         params = torch.Tensor([args.c1, args.c2])
 
-        _, self.traj_u, _ = surrogate.solve(params,
-                                            self.bc,
-                                            self.constraint_mask,
-                                            force_data,
-                                            return_intermediate=True)
+        _, self.traj_u, _ = surrogate.solve(
+            params, self.bc, self.constraint_mask, force_data, return_intermediate=True
+        )
 
         if args.weight_space_trajectory:
             deltas = [
-                torch.norm(self.traj_u[i] -
-                           self.traj_u[i - 1]).data.cpu().numpy()
+                torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.cpu().numpy()
                 for i in range(1, len(self.traj_u))
             ]
-            deltas = [0.] + deltas
+            deltas = [0.0] + deltas
 
         else:
-            deltas = np.arange(0., 1., 1. / len(self.traj_u))
+            deltas = np.arange(0.0, 1.0, 1.0 / len(self.traj_u))
         buckets = np.cumsum(deltas)
         self.buckets = buckets / buckets[-1]
 
@@ -85,6 +84,6 @@ class PolicyCollector(Collector):
 
         alpha = residual / (self.buckets[idx + 1] - self.buckets[idx] + 1e-7)
 
-        u = alpha * u2 + (1. - alpha) * u1
+        u = alpha * u2 + (1.0 - alpha) * u1
 
         return torch.Tensor(u.data)

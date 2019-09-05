@@ -11,10 +11,8 @@ from .. import fa_combined as fa
 class PolarBase(object):
     def __init__(self, fsm):
         self.fsm = fsm
-        self.ref_cpu = (fsm.ring_coords.detach().clone() -
-                        torch.Tensor([[0.5, 0.5]]))
-        self.normal_cpu = torch.stack(
-            [self.ref_cpu[:, 1], -self.ref_cpu[:, 0]], dim=1)
+        self.ref_cpu = fsm.ring_coords.detach().clone() - torch.Tensor([[0.5, 0.5]])
+        self.normal_cpu = torch.stack([self.ref_cpu[:, 1], -self.ref_cpu[:, 0]], dim=1)
         if fsm.cuda:
             self.ref_cuda = self.ref_cpu.cuda()
             self.normal_cuda = self.normal_cpu.cuda()
@@ -29,10 +27,12 @@ class PolarBase(object):
 
     def decompose(self, x):
         rad_component = torch.sum(x * self.ref.unsqueeze(0), dim=2) / (
-            torch.norm(self.ref.unsqueeze(0), dim=2))
+            torch.norm(self.ref.unsqueeze(0), dim=2)
+        )
 
         tang_component = torch.sum(x * self.normal.unsqueeze(0), dim=2) / (
-            torch.norm(self.normal.unsqueeze(0), dim=2))
+            torch.norm(self.normal.unsqueeze(0), dim=2)
+        )
         return rad_component, tang_component
 
     def postprocess(self, ret, inputs):
@@ -64,8 +64,9 @@ class Polarizer(PolarBase):
         tang = self.normal.view(1, -1, 2)
         tang = tang / tang.norm(dim=2, keepdim=True)
 
-        ret = ((r * torch.cos(theta)).unsqueeze(2) * rad +
-               (r * torch.sin(theta)).unsqueeze(2) * tang)
+        ret = (r * torch.cos(theta)).unsqueeze(2) * rad + (
+            r * torch.sin(theta)
+        ).unsqueeze(2) * tang
 
         return self.postprocess(ret, inputs)
 
@@ -93,10 +94,10 @@ class SemiPolarizer(PolarBase):
         return self.postprocess(ret, inputs)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     x = torch.Tensor(np.random.randn(32, 16, 2))
     m = fa.UnitSquareMesh(10, 10)
-    V = fa.VectorFunctionSpace(m, 'P', 2)
+    V = fa.VectorFunctionSpace(m, "P", 2)
     fsm = SplineFunctionSpaceMap(V, 5, 5)
 
     polarizer = Polarizer(fsm)

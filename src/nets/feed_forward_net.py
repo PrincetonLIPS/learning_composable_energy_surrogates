@@ -5,19 +5,19 @@ import pdb
 import ast
 
 nonlinearities = {
-    'selu': torchF.selu,
-    'relu': torchF.relu,
-    'elu': torchF.elu,
-    'sin': torch.sin,
-    'tanh': torchF.tanh,
-    'swish': lambda x: x * torchF.sigmoid(x) / 1.1,
-    'sigmoid': lambda x: torchF.sigmoid(x)
+    "selu": torchF.selu,
+    "relu": torchF.relu,
+    "elu": torchF.elu,
+    "sin": torch.sin,
+    "tanh": torchF.tanh,
+    "swish": lambda x: x * torchF.sigmoid(x) / 1.1,
+    "sigmoid": lambda x: torchF.sigmoid(x),
 }
 
 inits = {
-    'kaiming': torch.nn.init.kaiming_uniform_,
-    'orthogonal': torch.nn.init.orthogonal,
-    'xavier': torch.nn.init.xavier_uniform
+    "kaiming": torch.nn.init.kaiming_uniform_,
+    "orthogonal": torch.nn.init.orthogonal,
+    "xavier": torch.nn.init.xavier_uniform,
 }
 
 
@@ -31,23 +31,23 @@ class FeedForwardNet(nn.Module):
         self.init = inits[args.init]
         self.input_dim = input_dim
         self.sizes = [self.input_dim] + sizes + [1]
-        self.layers = nn.ModuleList([
-            nn.Linear(self.sizes[i], self.sizes[i + 1], bias=bias)
-            for i in range(len(self.sizes) - 1)
-        ])
+        self.layers = nn.ModuleList(
+            [
+                nn.Linear(self.sizes[i], self.sizes[i + 1], bias=bias)
+                for i in range(len(self.sizes) - 1)
+            ]
+        )
         self.output_scale = nn.Parameter(torch.Tensor([1.0]))
         self.preproc = preproc
         for l in self.layers:
-            #torch.nn.init.orthogonal(l.weight)
-            self.init(l.weight)  #, gain=nn.init.calculate_gain('relu'))
+            # torch.nn.init.orthogonal(l.weight)
+            self.init(l.weight)  # , gain=nn.init.calculate_gain('relu'))
             l.weight.data = l.weight.data * args.init_gain
 
     def initialize_whitening(self, train_x_mean, train_x_std, train_f_mean):
-        self.x_mean = nn.Parameter(train_x_mean.view(1, -1),
-                                   requires_grad=False)
+        self.x_mean = nn.Parameter(train_x_mean.view(1, -1), requires_grad=False)
         self.x_std = nn.Parameter(train_x_std.view(1, -1), requires_grad=False)
-        self.output_scale = nn.Parameter(train_f_mean.view(1),
-                                         requires_grad=False)
+        self.output_scale = nn.Parameter(train_f_mean.view(1), requires_grad=False)
 
     def forward(self, boundary_params, params=None):
         if self.preproc is not None:
@@ -68,9 +68,9 @@ class FeedForwardNet(nn.Module):
                 a = a + self.nonlinearity(x)
             else:
                 a = self.nonlinearity(x)
-        out = (x**2).view(-1)
+        out = (x ** 2).view(-1)
         if self.args.quadratic_scale:
-            quadratic_scale = torch.mean(boundary_params**2, dim=1).view(-1)
+            quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1)
             return out * quadratic_scale * self.output_scale
         else:
             return out * self.output_scale

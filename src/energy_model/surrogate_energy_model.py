@@ -43,10 +43,9 @@ class SurrogateEnergyModel(object):
         if params is not None:
             params = self.fsm._cuda(params)
         energy = self.f(boundary_inputs, params)
-        jac = torch.autograd.grad(sum(energy),
-                                  boundary_inputs,
-                                  create_graph=True,
-                                  retain_graph=True)[0]
+        jac = torch.autograd.grad(
+            sum(energy), boundary_inputs, create_graph=True, retain_graph=True
+        )[0]
         jac = jac.contiguous()
         return energy, jac
 
@@ -61,10 +60,9 @@ class SurrogateEnergyModel(object):
         jac = self.fsm.to_torch(jac)
         jvp = jac * vectors
 
-        hvp = torch.autograd.grad(torch.sum(jvp),
-                                  boundary_inputs,
-                                  create_graph=True,
-                                  retain_graph=True)[0]
+        hvp = torch.autograd.grad(
+            torch.sum(jvp), boundary_inputs, create_graph=True, retain_graph=True
+        )[0]
 
         hvp = hvp.contiguous()
         hvp = self.fsm.to_torch(hvp)
@@ -79,22 +77,22 @@ class SurrogateEnergyModel(object):
             deepcopy(single_boundary_input) for _ in range(self.fsm.vector_dim)
         ]
         boundary_inputs = torch.stack(input_replicas, dim=0)
-        param_replicas = [
-            deepcopy(single_param) for _ in range(self.fsm.vector_dim)
-        ]
+        param_replicas = [deepcopy(single_param) for _ in range(self.fsm.vector_dim)]
         params = torch.stack(param_replicas, dim=0)
 
         energy, jac = self.f_J(boundary_inputs, params)
 
-        hess = torch.autograd.grad(torch.trace(jac),
-                                   boundary_inputs,
-                                   create_graph=True,
-                                   retain_graph=True)[0]
+        hess = torch.autograd.grad(
+            torch.trace(jac), boundary_inputs, create_graph=True, retain_graph=True
+        )[0]
 
         hess = hess.contiguous().view(self.fsm.vector_dim, self.fsm.vector_dim)
 
-        return energy[0].view(1, 1), jac[0].contiguous().view(
-            1, self.fsm.vector_dim), hess
+        return (
+            energy[0].view(1, 1),
+            jac[0].contiguous().view(1, self.fsm.vector_dim),
+            hess,
+        )
 
     def apply_boundary(self, ring_data, constrained_idxs):
         """
@@ -108,48 +106,53 @@ class SurrogateEnergyModel(object):
         self.boundary_ring_data = ring_data
         self.constrained_idxs = constrained_idxs
 
-    def solve(self, params, boundary_data, constraint_mask, force_data, *args,
-              **kwargs):
-        '''
+    def solve(
+        self, params, boundary_data, constraint_mask, force_data, *args, **kwargs
+    ):
+        """
         Inputs:
             params:           [batch_size, n_params] tensor
             boundary_data:    [batch_size, n_locs, geometric_dim] tensor
             constraint_mask:  [batch_size, n_locs] binary mask.
                               True where constrained.
             force_data:       [batch_size, n_locs, geometric_dim] tensor
-        '''
+        """
         # All inputs should have the same first dimension (batch_size)
         assert len(params) == len(boundary_data)
         assert len(params) == len(constraint_mask)
         assert len(params) == len(force_data)
 
         # Check boundary, init are all batched ring data
-        assert all(
-            [self.fsm.is_torch(x) for x in [boundary_data, boundary_data[0]]])
+        assert all([self.fsm.is_torch(x) for x in [boundary_data, boundary_data[0]]])
 
         # Check force
-        #assert all([self.fsm.is_force(force_data),
+        # assert all([self.fsm.is_force(force_data),
         #            self.fsm.is_force(force_data[0])])
 
         # Check params
-        #assert all([self.fsm.is_param(params), self.fsm.is_param(params[0])])
+        # assert all([self.fsm.is_param(params), self.fsm.is_param(params[0])])
 
         # Run either solve_adam or solve_lbfgs
-        if self.args is not None and (self.args.solve_optimizer == 'adam'
-                                      or self.args.solve_optimizer == 'sgd'):
-            return self.solve_adam(params, boundary_data, constraint_mask,
-                                   force_data, *args, **kwargs)
+        if self.args is not None and (
+            self.args.solve_optimizer == "adam" or self.args.solve_optimizer == "sgd"
+        ):
+            return self.solve_adam(
+                params, boundary_data, constraint_mask, force_data, *args, **kwargs
+            )
         else:
-            return self.solve_lbfgs(params, boundary_data, constraint_mask,
-                                    force_data, *args, **kwargs)
+            return self.solve_lbfgs(
+                params, boundary_data, constraint_mask, force_data, *args, **kwargs
+            )
 
-    def solve_lbfgs(self,
-                    params,
-                    boundary_data,
-                    constraint_mask,
-                    force_data,
-                    return_intermediate=False,
-                    opt_steps=None):
+    def solve_lbfgs(
+        self,
+        params,
+        boundary_data,
+        constraint_mask,
+        force_data,
+        return_intermediate=False,
+        opt_steps=None,
+    ):
         if opt_steps is None:
             opt_steps = self.args.solve_lbfgs_steps
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
@@ -162,18 +165,18 @@ class SurrogateEnergyModel(object):
             boundary = boundary_data.detach().clone()
             f_inputs = torch.zeros_like(constraint_mask)
             f_inputs = f_inputs + constraint_mask * boundary
-            f_inputs = f_inputs + (1. - constraint_mask) * x_
+            f_inputs = f_inputs + (1.0 - constraint_mask) * x_
             return self.f(f_inputs, params, force_data=force_data)
 
-        optimizer = torch.optim.LBFGS([x],
-                                      lr=self.args.solve_lbfgs_stepsize,
-                                      max_iter=opt_steps)
+        optimizer = torch.optim.LBFGS(
+            [x], lr=self.args.solve_lbfgs_stepsize, max_iter=opt_steps
+        )
 
         traj_u = []
         traj_f = []
 
         def closure():
-            #pdb.set_trace()
+            # pdb.set_trace()
             optimizer.zero_grad()
             f = obj_fn(x)
             if return_intermediate:
@@ -184,7 +187,7 @@ class SurrogateEnergyModel(object):
             return loss
 
         optimizer.step(closure)
-        #pdb.set_trace()
+        # pdb.set_trace()
 
         if return_intermediate:
             traj_u.append(x.detach().clone())
@@ -195,13 +198,15 @@ class SurrogateEnergyModel(object):
         else:
             return x
 
-    def solve_adam(self,
-                   params,
-                   boundary_data,
-                   constraint_mask,
-                   force_data,
-                   return_intermediate=False,
-                   opt_steps=None):
+    def solve_adam(
+        self,
+        params,
+        boundary_data,
+        constraint_mask,
+        force_data,
+        return_intermediate=False,
+        opt_steps=None,
+    ):
         if opt_steps is None:
             opt_steps = self.args.solve_steps
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
@@ -214,11 +219,11 @@ class SurrogateEnergyModel(object):
             boundary = boundary_data.detach().clone()
             f_inputs = torch.zeros_like(constraint_mask)
             f_inputs = f_inputs + constraint_mask * boundary
-            f_inputs = f_inputs + (1. - constraint_mask) * x_
+            f_inputs = f_inputs + (1.0 - constraint_mask) * x_
             # torch_inputs = self.fsm.to_torch(f_inputs)
             return self.f(f_inputs, params, force_data=force_data)
 
-        if self.args.solve_optimizer == 'adam':
+        if self.args.solve_optimizer == "adam":
             optimizer = torch.optim.Adam([x], lr=self.args.solve_adam_stepsize)
         else:
             optimizer = torch.optim.SGD([x], lr=self.args.solve_sgd_stepsize)
@@ -237,15 +242,15 @@ class SurrogateEnergyModel(object):
 
         if return_intermediate:
             if len(traj_u) > 20:
-                traj_u = [traj_u[0]] + traj_u[::int(len(traj_u) / 20)]
-                traj_f = [traj_f[0]] + traj_f[::int(len(traj_f) / 20)]
+                traj_u = [traj_u[0]] + traj_u[:: int(len(traj_u) / 20)]
+                traj_f = [traj_f[0]] + traj_f[:: int(len(traj_f) / 20)]
             traj_u.append(x.detach().clone())
             traj_f.append(obj_fn(x).detach().clone())
-        '''
+        """
         for idx in self.constrained_idxs:
             assert np.all(np.isclose(x.data[idx].cpu().numpy(),
                               self.boundary_ring_data.data[idx].cpu().numpy()))
-        '''
+        """
         if return_intermediate:
             return x, traj_u, traj_f
         else:

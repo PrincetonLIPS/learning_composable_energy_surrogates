@@ -1,6 +1,7 @@
 """Import fenics and fenics_adjoint to one place, configure for our purposes"""
 from fenics import *
 from fenics_adjoint import *
+
 set_log_level(30)
 
 from .primal_dual_map import dCoeff_to_dField, dField_to_dCoeff
@@ -22,25 +23,26 @@ def make_boundary_expression(function):
     class BoundaryExpression(backend.UserExpression):
         def eval(self, value, x):
             id2, _ = bbt.compute_closest_entity(backend.Point(x))
-            if (backend.near(x[0], 0.5)
-                    and backend.near(x[1], 0.5)) or id2 >= __MAX_UINT__:
-                value = [0. for _ in range(len(value))]
+            if (
+                backend.near(x[0], 0.5) and backend.near(x[1], 0.5)
+            ) or id2 >= __MAX_UINT__:
+                value = [0.0 for _ in range(len(value))]
             else:
                 v = function(x)
-                if hasattr(v, '__iter__'):
+                if hasattr(v, "__iter__"):
                     for i in range(len(v)):
                         value[i] = v[i]
                 else:
                     value[0] = v
 
         def value_shape(self):
-            return (function.function_space().ufl_element().value_size(), )
+            return (function.function_space().ufl_element().value_size(),)
 
     return BoundaryExpression(element=element)
 
 
 def interpolate(fn, fn_space, *args, **kwargs):
-    if getattr(fn, 'is_fa_gradient', False):
+    if getattr(fn, "is_fa_gradient", False):
         V0 = fn.function_space()
 
         # Handle the special cases where only one space is BoundaryMesh
@@ -49,8 +51,9 @@ def interpolate(fn, fn_space, *args, **kwargs):
         # (ii) use assembly identity to transform between different meshes
         # sometimes in the opposite order
 
-        if (isinstance(fn_space.mesh(), backend.BoundaryMesh)
-                and not isinstance(V0.mesh(), backend.BoundaryMesh)):
+        if isinstance(fn_space.mesh(), backend.BoundaryMesh) and not isinstance(
+            V0.mesh(), backend.BoundaryMesh
+        ):
             # fn is over area, fn_space is over boundary i.e line
             # first make fn live on BoundaryMesh (ie line)
             # using a boundary_fn of fn.function_space() to avoid any loss
@@ -62,8 +65,9 @@ def interpolate(fn, fn_space, *args, **kwargs):
             fn.set_allow_extrapolation(True)
             return interpolate(fn, fn_space)
 
-        elif (isinstance(V0.mesh(), backend.BoundaryMesh)
-              and not isinstance(fn_space.mesh(), backend.BoundaryMesh)):
+        elif isinstance(V0.mesh(), backend.BoundaryMesh) and not isinstance(
+            fn_space.mesh(), backend.BoundaryMesh
+        ):
             # fn is over line / boundary, fn_space is over area
             # first create V which is a boundaryfnspace of fn_space
             # then interpolate fn to V using assembly identity
@@ -91,16 +95,18 @@ def make_boundary_function_space(V0):
     assert isinstance(V0, backend.FunctionSpace)
     if isinstance(V0.mesh(), backend.BoundaryMesh):
         return V0
-    bmesh = backend.BoundaryMesh(V0.mesh(), 'exterior')
+    bmesh = backend.BoundaryMesh(V0.mesh(), "exterior")
     if V0.ufl_element().value_size() == 1:
-        V = backend.FunctionSpace(bmesh,
-                                  V0.ufl_element().family(),
-                                  V0.ufl_element().degree())
+        V = backend.FunctionSpace(
+            bmesh, V0.ufl_element().family(), V0.ufl_element().degree()
+        )
     else:
-        V = backend.VectorFunctionSpace(bmesh,
-                                        V0.ufl_element().family(),
-                                        V0.ufl_element().degree(),
-                                        dim=V0.ufl_element().value_size())
+        V = backend.VectorFunctionSpace(
+            bmesh,
+            V0.ufl_element().family(),
+            V0.ufl_element().degree(),
+            dim=V0.ufl_element().value_size(),
+        )
     return V
 
 

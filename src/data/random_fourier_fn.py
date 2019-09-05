@@ -44,6 +44,6 @@ def make_random_fourier_expression(dim, N, amp_scale, freq_scale, element):
                 value[i] = sum(u_fns[i]([[x[0]]], [[x[1]]]))
 
         def value_shape(self):
-            return (len(u_fns), )
+            return (len(u_fns),)
 
     return RandomFourierExpression(element=element)

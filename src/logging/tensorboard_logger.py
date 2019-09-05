@@ -11,6 +11,7 @@ import numpy as np
 
 class Logger(object):
     """Logging in tensorboard without tensorflow ops."""
+
     def __init__(self, log_dir):
         """Creates a summary writer logging to log_dir."""
         self.writer = tf.summary.FileWriter(log_dir)
@@ -25,8 +26,7 @@ class Logger(object):
         step : int
             training iteration
         """
-        summary = tf.Summary(
-            value=[tf.Summary.Value(tag=tag, simple_value=value)])
+        summary = tf.Summary(value=[tf.Summary.Value(tag=tag, simple_value=value)])
         self.writer.add_summary(summary, step)
 
     def log_images(self, tag, images, step):
@@ -41,11 +41,12 @@ class Logger(object):
 
             # Create an Image object
             img_sum = tf.Summary.Image(encoded_image_string=img.getvalue())
-            #height=img.shape[0],
-            #width=img.shape[1])
+            # height=img.shape[0],
+            # width=img.shape[1])
             # Create a Summary value
             im_summaries.append(
-                tf.Summary.Value(tag='%s/%d' % (tag, nr), image=img_sum))
+                tf.Summary.Value(tag="%s/%d" % (tag, nr), image=img_sum)
+            )
 
         # Create and write Summary
         summary = tf.Summary(value=im_summaries)
@@ -59,17 +60,18 @@ class Logger(object):
             # Write the image to a string
             s = BytesIO()
             plt.figure(fig.number)
-            plt.savefig(s, format='png')
+            plt.savefig(s, format="png")
             width, height = fig.get_size_inches() * fig.get_dpi()
             width = int(width)
             height = int(height)
             # Create an Image object
-            img_sum = tf.Summary.Image(encoded_image_string=s.getvalue(),
-                                       height=height,
-                                       width=width)
+            img_sum = tf.Summary.Image(
+                encoded_image_string=s.getvalue(), height=height, width=width
+            )
             # Create a Summary value
             im_summaries.append(
-                tf.Summary.Value(tag='%s/%d' % (tag, nr), image=img_sum))
+                tf.Summary.Value(tag="%s/%d" % (tag, nr), image=img_sum)
+            )
 
         # Create and write Summary
         summary = tf.Summary(value=im_summaries)
@@ -89,7 +91,7 @@ class Logger(object):
         hist.max = float(np.max(values))
         hist.num = int(np.prod(values.shape))
         hist.sum = float(np.sum(values))
-        hist.sum_squares = float(np.sum(values**2))
+        hist.sum_squares = float(np.sum(values ** 2))
 
         # Requires equal number as bins, where the first goes from -DBL_MAX to bin_edges[1]
         # See https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/framework/summary.proto#L30

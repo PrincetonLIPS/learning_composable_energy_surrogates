@@ -6,17 +6,22 @@ from .pde import PDE
 
 class Poisson(PDE):
     def _build_mesh(self):
-        '''Build UnitSquareMesh'''
+        """Build UnitSquareMesh"""
 
-        mesh = fa.UnitSquareMesh(self.args.poisson_mesh_size,
-                                 self.args.poisson_mesh_size)
+        mesh = fa.UnitSquareMesh(
+            self.args.poisson_mesh_size, self.args.poisson_mesh_size
+        )
         self.mesh = mesh
 
     def _build_function_space(self):
         class Exterior(fa.SubDomain):
             def inside(self, x, on_boundary):
-                return on_boundary and (fa.near(x[1], 1.0) or fa.near(
-                    x[0], 1.0) or fa.near(x[0], 0) or fa.near(x[1], 0))
+                return on_boundary and (
+                    fa.near(x[1], 1.0)
+                    or fa.near(x[0], 1.0)
+                    or fa.near(x[0], 0)
+                    or fa.near(x[1], 0)
+                )
 
         self.exterior = Exterior()
         # FunctionSpace is scalar for Poisson

@@ -21,6 +21,7 @@ class PDE(object):
     override default mesh construction so that there is no pore (e.g. to
     create a simple Fenics surrogate to use as baseline or compose with NN)
     """
+
     def __init__(self, args, mesh=None):
         # TODO (alex): make args non-optional
         self.args = args
@@ -32,8 +33,9 @@ class PDE(object):
         self._create_boundary_measure()
 
     def _create_boundary_measure(self):
-        exterior_domain = fa.MeshFunction("size_t", self.mesh,
-                                          self.mesh.topology().dim() - 1)
+        exterior_domain = fa.MeshFunction(
+            "size_t", self.mesh, self.mesh.topology().dim() - 1
+        )
         exterior_domain.set_all(0)
         self.exterior.mark(exterior_domain, 1)
         self.boundary_ds = fa.Measure("ds")(subdomain_data=exterior_domain)(1)
@@ -50,13 +52,15 @@ class PDE(object):
     def energy(self, u):
         return fa.assemble(self._energy_density(u) * fa.dx)
 
-    def solve_problem(self,
-                      args,
-                      boundary_fn=None,
-                      boundary_fn_dic=None,
-                      external_work_fn=None,
-                      external_work_fn_dic=None,
-                      initial_guess=None):
+    def solve_problem(
+        self,
+        args,
+        boundary_fn=None,
+        boundary_fn_dic=None,
+        external_work_fn=None,
+        external_work_fn_dic=None,
+        initial_guess=None,
+    ):
         u = fa.Function(self.V)
         delta_u = fa.Function(self.V)
         du = fa.TrialFunction(self.V)
@@ -82,8 +86,9 @@ class PDE(object):
         # If boundary functions are defined separately for four edges
         if boundary_fn_dic is not None:
             for key in boundary_fn_dic:
-                boundary_bc = fa.DirichletBC(self.V, boundary_fn_dic[key],
-                                             self.exteriors_dic[key])
+                boundary_bc = fa.DirichletBC(
+                    self.V, boundary_fn_dic[key], self.exteriors_dic[key]
+                )
                 bcs = bcs + [boundary_bc] if bcs else [boundary_bc]
 
         if external_work_fn is not None:
@@ -92,32 +97,35 @@ class PDE(object):
         if external_work_fn_dic is not None:
             for key in external_work_fn_dic:
                 E = E - external_work_fn_dic[key](u) * self.ds(
-                    self.boundaries_id_dic[key])
+                    self.boundaries_id_dic[key]
+                )
 
         dE = fa.derivative(E, u, v)
         jacE = fa.derivative(dE, u, du)
 
         snes_args = {
-            'method': args.snes_method,
-            'linear_solver': args.linear_solver,
-            'maximum_iterations': args.max_snes_iter
+            "method": args.snes_method,
+            "linear_solver": args.linear_solver,
+            "maximum_iterations": args.max_snes_iter,
         }
         newton_args = {
-            'relaxation_parameter': args.relaxation_parameter,
-            'linear_solver': args.linear_solver,
-            'maximum_iterations': args.max_newton_iter
+            "relaxation_parameter": args.relaxation_parameter,
+            "linear_solver": args.linear_solver,
+            "maximum_iterations": args.max_newton_iter,
         }
         solver_args = {
-            'nonlinear_solver': args.nonlinear_solver,
-            'snes_solver': snes_args,
-            'newton_solver': newton_args
+            "nonlinear_solver": args.nonlinear_solver,
+            "snes_solver": snes_args,
+            "newton_solver": newton_args,
         }
 
         fa.parameters["form_compiler"]["cpp_optimize"] = True
-        ffc_options = {"optimize": True, \
-                       "eliminate_zeros": True, \
-                       "precompute_basis_const": True, \
-                       "precompute_ip_const": True}
+        ffc_options = {
+            "optimize": True,
+            "eliminate_zeros": True,
+            "precompute_basis_const": True,
+            "precompute_ip_const": True,
+        }
 
         solver = Solver(args)
         solver.solve(dE, jacE, u, delta_u, bcs, solver_args, ffc_options)

@@ -12,11 +12,10 @@ class FourSidedSpline(object):
         self.nps = nps
         x = np.array([i for i in range(len(cpoints))])
 
-        self.s1 = CubicSpline(x[:nps + 1], cpoints[:nps + 1])
-        self.s2 = CubicSpline(x[nps:2 * nps + 1], cpoints[nps:2 * nps + 1])
-        self.s3 = CubicSpline(x[2 * nps:3 * nps + 1],
-                              cpoints[2 * nps:3 * nps + 1])
-        self.s4 = CubicSpline(x[3 * nps:], cpoints[3 * nps:])
+        self.s1 = CubicSpline(x[: nps + 1], cpoints[: nps + 1])
+        self.s2 = CubicSpline(x[nps : 2 * nps + 1], cpoints[nps : 2 * nps + 1])
+        self.s3 = CubicSpline(x[2 * nps : 3 * nps + 1], cpoints[2 * nps : 3 * nps + 1])
+        self.s4 = CubicSpline(x[3 * nps :], cpoints[3 * nps :])
 
     def __call__(self, X):
         m1 = np.logical_and(X >= 0, X < self.nps)
@@ -24,17 +23,16 @@ class FourSidedSpline(object):
         m3 = np.logical_and(X >= 2 * self.nps, X < 3 * self.nps)
         m4 = np.logical_and(X >= 3 * self.nps, X <= 4 * self.nps)
 
-        Y = (m1 * self.s1(X) + m2 * self.s2(X) + m3 * self.s3(X) +
-             m4 * self.s4(X))
+        Y = m1 * self.s1(X) + m2 * self.s2(X) + m3 * self.s3(X) + m4 * self.s4(X)
         return Y
 
 
 def make_piecewise_spline_map(t_eval, n_cpoints):
-    '''
+    """
     Input:
         t_eval: vector of N eval points in [0, n + 1]
         n_cpoints: number of control points
-    '''
+    """
     A = []
     for i in range(n_cpoints):
         cpoints = np.zeros(n_cpoints + 1)
@@ -52,16 +50,15 @@ def make_piecewise_spline_map(t_eval, n_cpoints):
     return A
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     n_cpoints = 16
-    t = np.linspace(0., float(n_cpoints) - 1e-7, 1000)
+    t = np.linspace(0.0, float(n_cpoints) - 1e-7, 1000)
     A = make_piecewise_spline_map(t, n_cpoints)
 
-    cpoints = np.array([
-        0.0, 0.1, 0.2, 0.5, 0.3, 1.1, 0.8, 0.6, 0.4, 0.3, 0.4, 0.8, 0.4, 0.2,
-        0.1, 0.1
-    ])
+    cpoints = np.array(
+        [0.0, 0.1, 0.2, 0.5, 0.3, 1.1, 0.8, 0.6, 0.4, 0.3, 0.4, 0.8, 0.4, 0.2, 0.1, 0.1]
+    )
 
     pdb.set_trace()
 
