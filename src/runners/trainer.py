@@ -1,7 +1,7 @@
 """Handles training surrogates given a data dir"""
 import numpy as np
 import torch
-from torch.util.data import DataLoader
+from torch.utils.data import DataLoader
 
 import ast
 import matplotlib.pyplot as plt
@@ -29,35 +29,35 @@ class Trainer(object):
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
 
-    def init_optimizer(self, args):
+    def init_optimizer(self):
         # Create optimizer if surrogate is trainable
         if hasattr(self.surrogate, "parameters"):
             if self.args.optimizer == "adam" or self.args.optimizer == "amsgrad":
                 self.optimizer = torch.optim.AdamW(
                     (p for p in self.surrogate.parameters() if p.requires_grad),
-                    args.lr,
-                    weight_decay=args.wd,
-                    betas=ast.literal_eval(args.adam_betas),
+                    self.args.lr,
+                    weight_decay=self.args.wd,
                     amsgrad=(self.args.optimizer == "amsgrad"),
                 )
             elif self.args.optimizer == "sgd":
                 self.optimizer = torch.optim.SGD(
                     (p for p in self.surrogate.parameters() if p.requires_grad),
-                    args.lr,
+                    self.args.lr,
                     momentum=0.9,
-                    weight_decay=args.wd,
+                    weight_decay=self.args.wd,
                 )
             elif self.args.optimizer == "radam":
                 from ..util.radam import RAdam
 
                 self.optimizer = RAdam(
                     (p for p in self.surrogate.parameters() if p.requires_grad),
-                    args.lr,
-                    weight_decay=args.wd,
-                    betas=ast.literal_eval(args.adam_betas),
+                    self.args.lr,
+                    weight_decay=self.args.wd,
+                    betas=ast.literal_eval(self.args.adam_betas),
                 )
             else:
                 raise Exception("Unknown optimizer")
+            '''
             if self.args.fix_batch:
                 self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
                     self.optimizer,
@@ -74,21 +74,22 @@ class Trainer(object):
                     gamma=0.1,
                     milestones=[1e2,5e2,2e3,1e4,1e5])
                 """
-                self.scheduler = torch.optim.lr_scheduler.CyclicLR(
-                    self.optimizer,
-                    base_lr=args.lr * 1e-3,
-                    max_lr=3 * args.lr,
-                    step_size_up=1000,
-                    step_size_down=None,
-                    mode="triangular",
-                    gamma=0.995,
-                    scale_fn=None,
-                    scale_mode="cycle",
-                    cycle_momentum=False,
-                    base_momentum=0.8,
-                    max_momentum=0.9,
-                    last_epoch=-1,
-                )
+            '''
+            self.scheduler = torch.optim.lr_scheduler.CyclicLR(
+                self.optimizer,
+                base_lr=self.args.lr * 1e-3,
+                max_lr=3 * self.args.lr,
+                step_size_up=1000,
+                step_size_down=None,
+                mode="triangular",
+                gamma=0.995,
+                scale_fn=None,
+                scale_mode="cycle",
+                cycle_momentum=False,
+                base_momentum=0.8,
+                max_momentum=0.9,
+                last_epoch=-1,
+            )
         else:
             self.optimizer = None
 
@@ -97,11 +98,12 @@ class Trainer(object):
         if self.optimizer is not None:
             self.optimizer.zero_grad()
         u, p, f, J = batch
+        u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
         with Timer() as timer:
             fhat, Jhat = self.surrogate.f_J(u, p)
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
-        total_loss = self.stats(step, u, f, J, fhat, Jhat)
+        f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(step, u, f, J, fhat, Jhat)
 
         if self.optimizer:
             total_loss.backward()
@@ -128,12 +130,16 @@ class Trainer(object):
             if self.args.verbose:
                 log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
 
-        return total_loss.item()
+        return (
+            f_loss.item(), f_pce.item(),
+            J_loss.item(), J_sim.item(),
+            total_loss.item())
 
     def val_step(self, step):
         """Do a single validation step. Log stats to tensorboard."""
         for i, batch in enumerate(self.val_loader):
             u, p, f, J = batch
+            u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
             fhat, Jhat = self.surrogate.f_J(u, p)
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
@@ -141,7 +147,9 @@ class Trainer(object):
             fhat_ = torch.cat([fhat_, fhat.data], dim=0) if i > 0 else fhat.data
             Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
 
-        return self.stats(step, u_, f_, J_, fhat_, Jhat_, phase="val")
+        return (r.item() for r in
+                self.stats(step, u_, f_, J_,
+                           fhat_, Jhat_, phase="val"))
 
     def visualize(self, step, batch, dataset_name):
         u, p, f, J = batch[:4]
@@ -335,7 +343,10 @@ class Trainer(object):
                     "Jhat_std_mean_" + phase, Jhat.std(dim=1).mean().item(), step
                 )
 
-        return total_loss
+        return (
+            f_loss, f_pce,
+            J_loss, J_sim,
+            total_loss)
 
 
 def log(message, *args):

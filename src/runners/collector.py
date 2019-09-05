@@ -10,14 +10,13 @@ import numpy as np
 import ray
 
 
-@ray.remote
-class Collector(object):
+class CollectorBase(object):
     def __init__(self, args):
         self.args = args
         make_p(args)
         self.pde = Metamaterial(args)
         self.fsm = FunctionSpaceMap(
-            self.pde.V, args.data_V_dim, args.metamaterial_bV_dim
+            self.pde.V, args.bV_dim
         )
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.bc, _, _, self.constraint_mask = make_bc(args, self.fsm)
@@ -29,9 +28,6 @@ class Collector(object):
         self.factor = np.min(
             [1.0, self.factor + self.stepsize * (1 + random.random() - 0.5)]
         )
-
-    def get_weighted_data(self, factor):
-        return self.bc * factor
 
     def step(self):
         self.increment_factor()
@@ -45,13 +41,19 @@ class Collector(object):
         u = torch.Tensor(weighted_data.data)
         p = torch.Tensor([self.args.c1, self.args.c2])
         f = torch.Tensor([f])
-        J = self.fem.to_torch(JV)
+        J = self.fsm.to_torch(JV)
 
         return Example(u, p, f, J)
 
 
 @ray.remote
-class PolicyCollector(Collector):
+class Collector(CollectorBase):
+    def get_weighted_data(self, factor):
+        return self.bc * factor
+
+
+@ray.remote
+class PolicyCollector(CollectorBase):
     def __init__(self, args, surrogate):
         super(PolicyCollector, self).__init__(args)
 
@@ -68,10 +70,12 @@ class PolicyCollector(Collector):
                 torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.cpu().numpy()
                 for i in range(1, len(self.traj_u))
             ]
-            deltas = [0.0] + deltas
 
         else:
-            deltas = np.arange(0.0, 1.0, 1.0 / len(self.traj_u))
+            deltas = np.array([1.0 / len(self.traj_u)
+                               for _ in range(len(self.traj_u))])
+
+        deltas = [0.0] + deltas
         buckets = np.cumsum(deltas)
         self.buckets = buckets / buckets[-1]
 

@@ -4,8 +4,6 @@ from fenics_adjoint import *
 
 set_log_level(30)
 
-from .primal_dual_map import dCoeff_to_dField, dField_to_dCoeff
-
 # Wrap compute_gradient and compute_hessian, so that the outputs have
 # an attribute which tells us they're a gradient or hessian.
 _old_compute_gradient = compute_gradient
@@ -42,50 +40,11 @@ def make_boundary_expression(function):
 
 
 def interpolate(fn, fn_space, *args, **kwargs):
-    if getattr(fn, "is_fa_gradient", False):
-        V0 = fn.function_space()
-
-        # Handle the special cases where only one space is BoundaryMesh
-        # In short, we need to separately
-        # (i) losselessly transform between boundary/line to domain/area
-        # (ii) use assembly identity to transform between different meshes
-        # sometimes in the opposite order
-
-        if isinstance(fn_space.mesh(), backend.BoundaryMesh) and not isinstance(
-            V0.mesh(), backend.BoundaryMesh
-        ):
-            # fn is over area, fn_space is over boundary i.e line
-            # first make fn live on BoundaryMesh (ie line)
-            # using a boundary_fn of fn.function_space() to avoid any loss
-            # then use interpolate with assembly identity
-            V = make_boundary_function_space(V0)
-            fn.set_allow_extrapolation(True)
-            fn = _old_interpolate(fn, V)
-            fn.is_fa_gradient = True
-            fn.set_allow_extrapolation(True)
-            return interpolate(fn, fn_space)
-
-        elif isinstance(V0.mesh(), backend.BoundaryMesh) and not isinstance(
-            fn_space.mesh(), backend.BoundaryMesh
-        ):
-            # fn is over line / boundary, fn_space is over area
-            # first create V which is a boundaryfnspace of fn_space
-            # then interpolate fn to V using assembly identity
-            # then _old_interpolate a boundaryexpression of this to fn_space
-            # (this last step avoids info los bc V is a boundaryfnspace of fn_space)
-            V = make_boundary_function_space(fn_space)
-            fn = interpolate(fn, V)
-            boundary_expression = make_boundary_expression(fn)
-            result = _old_interpolate(boundary_expression, fn_space)
-            result.is_fa_gradient(True)
-            return result
-
-        # If both spaces have same geometric dimension, can use the assembly identity
-        field = dCoeff_to_dField(fn)
-        field.set_allow_extrapolation(True)
-        new_field = _old_interpolate(field, fn_space, *args, **kwargs)
-        result = dField_to_dCoeff(new_field)
-        result.is_fa_gradient = True
+    if getattr(fn, "is_fa_gradient", False) or getattr(fn, "is_fa_hessian", False):
+        raise Exception("Don't do this! "
+                        "pyadjoint gives gradient w.r.t. params, "
+                        "not gradient field. Fenics interpolate will "
+                        "treat this input as a field.")
     else:
         result = _old_interpolate(fn, fn_space, *args, **kwargs)
     return result

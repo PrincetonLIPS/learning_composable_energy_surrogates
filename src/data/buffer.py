@@ -1,6 +1,6 @@
 import numpy as np
-from torch.util.data import Dataset
-from example import Example
+from torch.utils.data import Dataset
+from .example import Example
 
 
 class DataBuffer(Dataset):

@@ -1,7 +1,6 @@
 import torch
 from torch import nn
 from torch.nn import functional as torchF
-import pdb
 import ast
 
 nonlinearities = {
@@ -40,14 +39,7 @@ class FeedForwardNet(nn.Module):
         self.output_scale = nn.Parameter(torch.Tensor([1.0]))
         self.preproc = preproc
         for l in self.layers:
-            # torch.nn.init.orthogonal(l.weight)
-            self.init(l.weight)  # , gain=nn.init.calculate_gain('relu'))
-            l.weight.data = l.weight.data * args.init_gain
-
-    def initialize_whitening(self, train_x_mean, train_x_std, train_f_mean):
-        self.x_mean = nn.Parameter(train_x_mean.view(1, -1), requires_grad=False)
-        self.x_std = nn.Parameter(train_x_std.view(1, -1), requires_grad=False)
-        self.output_scale = nn.Parameter(train_f_mean.view(1), requires_grad=False)
+            self.init(l.weight)
 
     def forward(self, boundary_params, params=None):
         if self.preproc is not None:

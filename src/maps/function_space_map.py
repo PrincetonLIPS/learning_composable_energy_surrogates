@@ -2,13 +2,8 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 
-from ..util.timer import Timer
-
 from .. import fa_combined as fa
 from ..splines.piecewise_spline import make_piecewise_spline_map
-from ..pde.metamaterial import Metamaterial
-
-from ..util.jacobian import compute_jacobian
 
 
 class FunctionSpaceMap(object):
@@ -140,8 +135,6 @@ class FunctionSpaceMap(object):
         and wish to have arbitrary s"""
 
         # project to boundary
-        x1old = x1
-        x2old = x2
         d = np.array([x1, x2]) - 0.5
         if x1 == 0.5 and x2 == 0.5:
             # np.abs(d).max() == 0.
@@ -150,25 +143,18 @@ class FunctionSpaceMap(object):
         x1 = (x1 - 0.5) * scale + 0.5
         x2 = (x2 - 0.5) * scale + 0.5
 
-        try:
-            assert (
-                x1 <= fa.DOLFIN_EPS
-                or x1 >= 1.0 - fa.DOLFIN_EPS
-                or x2 <= fa.DOLFIN_EPS
-                or x2 >= 1.0 - fa.DOLFIN_EPS
-            )
-        except Exception as e:
-            pdb.set_trace()
-
-        try:
-            assert (
-                x1 >= -fa.DOLFIN_EPS
-                and x1 <= 1.0 + fa.DOLFIN_EPS
-                and x2 >= -fa.DOLFIN_EPS
-                and x2 <= 1.0 + fa.DOLFIN_EPS
-            )
-        except Exception as e:
-            pdb.set_trace()
+        assert (
+            x1 <= fa.DOLFIN_EPS
+            or x1 >= 1.0 - fa.DOLFIN_EPS
+            or x2 <= fa.DOLFIN_EPS
+            or x2 >= 1.0 - fa.DOLFIN_EPS
+        )
+        assert (
+            x1 >= -fa.DOLFIN_EPS
+            and x1 <= 1.0 + fa.DOLFIN_EPS
+            and x2 >= -fa.DOLFIN_EPS
+            and x2 <= 1.0 + fa.DOLFIN_EPS
+        )
         # Check which face
         # Bottom
         if x2 <= fa.DOLFIN_EPS:

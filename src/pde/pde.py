@@ -104,17 +104,17 @@ class PDE(object):
         jacE = fa.derivative(dE, u, du)
 
         snes_args = {
-            "method": args.snes_method,
-            "linear_solver": args.linear_solver,
-            "maximum_iterations": args.max_snes_iter,
+            "method": "qn",
+            "linear_solver": "petsc",
+            "maximum_iterations": 1000,
         }
         newton_args = {
             "relaxation_parameter": args.relaxation_parameter,
-            "linear_solver": args.linear_solver,
+            "linear_solver": "petsc",
             "maximum_iterations": args.max_newton_iter,
         }
         solver_args = {
-            "nonlinear_solver": args.nonlinear_solver,
+            "nonlinear_solver": "newton",
             "snes_solver": snes_args,
             "newton_solver": newton_args,
         }

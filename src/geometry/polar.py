@@ -1,10 +1,7 @@
 import torch
-from torch import nn
-from torch.nn import functional as torchF
 import numpy as np
 import pdb
-import ast
-from ..maps.sfsm2 import SplineFunctionSpaceMap
+from ..maps.function_space_map import FunctionSpaceMap
 from .. import fa_combined as fa
 
 
@@ -98,7 +95,7 @@ if __name__ == "__main__":
     x = torch.Tensor(np.random.randn(32, 16, 2))
     m = fa.UnitSquareMesh(10, 10)
     V = fa.VectorFunctionSpace(m, "P", 2)
-    fsm = SplineFunctionSpaceMap(V, 5, 5)
+    fsm = FunctionSpaceMap(V, 5, 5)
 
     polarizer = Polarizer(fsm)
     semipolarizer = SemiPolarizer(fsm)
