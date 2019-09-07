@@ -26,17 +26,23 @@ def make_force(args, fsm):
     freq_scale = np.random.uniform(0.0, args.force_freq_scale)
     amp_scale = np.random.uniform(0.0, args.force_amp_scale)
     force_expression = make_random_fourier_expression(
-        2, 5000, amp_scale, freq_scale, fsm.dV.ufl_element()
+        2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
-    force_data = fsm.to_dV(force_expression).vector()
-    return force_data
+    force_data = np.zeros([4 * fsm.elems_along_edge, 2])
+
+    for s in range(len(force_data)):
+        x1, x2 = fsm.s_to_x(s)
+        u1, u2 = force_expression([x1, x2])
+        force_data[s][0] = u1
+        force_data[s][1] = u2
+    return fsm.to_torch(torch.Tensor(force_data))
 
 
 def make_bc(args, fsm):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
     amp_scale = np.random.uniform(0.0, args.boundary_amp_scale)
     boundary_expression = make_random_fourier_expression(
-        2, 5000, amp_scale, freq_scale, fsm.bV.ufl_element()
+        2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
     boundary_data = np.zeros([4 * fsm.elems_along_edge, 2])
 

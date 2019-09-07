@@ -17,7 +17,7 @@ class Evaluator(object):
         self.p = make_p(self.args)
         self.pde = Metamaterial(self.args)
         self.fsm = FunctionSpaceMap(
-            self.pde.V, self.args.data_V_dim, self.args.metamaterial_bV_dim
+            self.pde.V, self.args.bV_dim
         )
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
@@ -35,7 +35,7 @@ class Evaluator(object):
 
         force_data = make_force(self.args, self.fsm)
 
-        params = torch.Tensor([self.args.c1, self.args.c2])
+        params = torch.Tensor([[self.args.c1, self.args.c2]])
 
         surr_soln = surrogate.solve(params, bc, constraint_mask, force_data)
 

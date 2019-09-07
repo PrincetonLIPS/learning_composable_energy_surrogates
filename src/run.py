@@ -137,15 +137,15 @@ if __name__ == "__main__":
             surrogate.net.train()
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
-                if args.visualize_every > 0 and (step - 1) % args.visualize_every == 0:
-                    trainer.visualize(step - 1, trainer.train_data, "Training")
-                    trainer.visualize(step - 1, trainer.val_data, "Validation")
 
                 dagger_harvester.step(init_args=(broadcast_net_state,))
                 deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
             epoch += 1
+
+            trainer.visualize(step - 1, next(iter(trainer.train_loader)), "Training")
+            trainer.visualize(step - 1, next(iter(trainer.val_loader)), "Validation")
 
             surrogate.net.eval()
             v_losses = trainer.val_step(step)

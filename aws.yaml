@@ -67,8 +67,8 @@ auth:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
-    InstanceType: p3.2xlarge
-    ImageId: ami-007aef09228d03e56 # Deep Learning AMI (Ubuntu) Version 21.0
+    InstanceType: p2.xlarge
+    ImageId: ami-04bef108b408de676 # NMOR ami
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -87,14 +87,14 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     InstanceType: m4.xlarge
-    ImageId: ami-007aef09228d03e56 # Deep Learning AMI (Ubuntu) Version 21.0
+    ImageId: ami-04bef108b408de676 # NMOR ami
 
     # Run workers on spot by default. Comment this out to use on-demand.
-    InstanceMarketOptions:
-        MarketType: spot
-        # Additional options can be found in the boto docs, e.g.
-        #   SpotOptions:
-        #       MaxPrice: MAX_HOURLY_PRICE
+    # InstanceMarketOptions:
+    #     MarketType: spot
+    #     # Additional options can be found in the boto docs, e.g.
+    #     #   SpotOptions:
+    #     #       MaxPrice: MAX_HOURLY_PRICE
 
     SecurityGroupIDs:
         - sg-6b16df08

@@ -211,25 +211,13 @@ parser.add_argument(
 parser.add_argument("--lr", help="Learning rate", type=float, default=3e-5)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument(
-    "--J_weight", help="Weight on Jacobian loss", type=float, default=0.0
+    "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
 )
 
 parser.add_argument(
     "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=None
 )
 
-parser.add_argument(
-    "--visualize_every",
-    help="how often to plot displacements etc. " "set zero for never",
-    default=10000,
-    type=int,
-)
-parser.add_argument(
-    "--deploy_visualize_every",
-    help="how often to plot deploy displacements etc. " "set zero for never",
-    default=1,
-    type=int,
-)
 parser.add_argument(
     "--weight_space_trajectory",
     help="Interpolate along deploy trajectory with even-size steps in "

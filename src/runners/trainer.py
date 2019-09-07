@@ -156,6 +156,12 @@ class Trainer(object):
         u, p, f, J = batch[:4]
         fhat, Jhat = self.surrogate.f_J(u, p)
 
+        assert len(u) == len(p)
+        assert len(u) == len(f)
+        assert len(u) == len(J)
+        assert len(u) == len(fhat)
+        assert len(u) == len(Jhat)
+
         u, f, J, fhat, Jhat = u.cpu(), f.cpu(), J.cpu(), fhat.cpu(), Jhat.cpu()
 
         cuda = self.surrogate.fsm.cuda
@@ -165,7 +171,8 @@ class Trainer(object):
         axes = [ax for axs in axes for ax in axs]
         RCs = self.surrogate.fsm.ring_coords.cpu().detach().numpy()
         rigid_remover = RigidRemover(self.surrogate.fsm)
-        for i, ax in enumerate(axes):
+        for i in range(len(u)):
+            ax = axes[i]
             locs = RCs + self.surrogate.fsm.to_ring(u[i]).detach().numpy()
             plot_boundary(
                 lambda x: (0, 0),
@@ -238,13 +245,13 @@ class Trainer(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-
         self.tflogger.log_images("{} displacements".format(dataset_name), [buf], step)
 
         if J is not None and Jhat is not None:
             fig, axes = plt.subplots(2, 2, figsize=(8, 8))
             axes = [ax for axs in axes for ax in axs]
-            for i, ax in enumerate(axes):
+            for i in range(len(J)):
+                ax = axes[i]
                 J_ = self.surrogate.fsm.to_ring(J[i])
                 Jhat_ = self.surrogate.fsm.to_ring(Jhat[i])
                 normalizer = 10 * np.mean(
@@ -288,11 +295,11 @@ class Trainer(object):
             loss_scale = 1.0 / torch.mean(u ** 2, dim=1)
         else:
             loss_scale = torch.Tensor([1.0])
-        train_f_std = torch.std(f, dim=1, keepdims=True) + 1e-3
+        train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
 
         f_loss = rmse(f / train_f_std, fhat / train_f_std, loss_scale)
 
-        train_J_std = torch.std(J, dim=1, keepdims=True) + 1e-3
+        train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
         J_loss = rmse(J / train_J_std, Jhat / train_J_std, loss_scale)
 
         total_loss = f_loss + self.args.J_weight * J_loss

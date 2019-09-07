@@ -56,7 +56,7 @@ class Collector(CollectorBase):
 @ray.remote
 class PolicyCollector(CollectorBase):
     def __init__(self, args, state_dict):
-        super(PolicyCollector, self).__init__(args)
+        CollectorBase.__init__(self, args)
 
         force_data = make_force(args, self.fsm)
 
@@ -66,7 +66,7 @@ class PolicyCollector(CollectorBase):
 
         surrogate = SurrogateEnergyModel(args, net, self.fsm)
 
-        params = torch.Tensor([args.c1, args.c2])
+        params = torch.Tensor([[self.args.c1, self.args.c2]])
 
         _, self.traj_u, _ = surrogate.solve(
             params, self.bc, self.constraint_mask, force_data, return_intermediate=True
