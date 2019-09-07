@@ -150,6 +150,17 @@ if __name__ == "__main__":
             surrogate.net.eval()
             v_losses = trainer.val_step(step)
 
+            torch.save({
+                'epoch': epoch,
+                'traindata': trainer.train_data,
+                'valdata': trainer.val_data,
+                'model_state_dict': surrogate.net.state_dict(),
+                'optimizer_state_dict': trainer.optimizer.state_dict,
+                'tloss': t_losses[4],
+                'vloss': v_losses[4]},
+                os.path.join(out_dir, "ckpt_epoch_{}.pt".format(epoch))
+                       )
+
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
                 lossfile.write(
                     "step {}, epoch {}: "

@@ -76,7 +76,7 @@ head_node:
           Ebs:
               VolumeSize: 100
 
-    SecurityGroupIDs:
+    SecurityGroupIds:
         - sg-6b16df08
 
     # Additional options in the boto docs.
@@ -96,7 +96,7 @@ worker_nodes:
     #     #   SpotOptions:
     #     #       MaxPrice: MAX_HOURLY_PRICE
 
-    SecurityGroupIDs:
+    SecurityGroupIds:
         - sg-6b16df08
     # Additional options in the boto docs.
 

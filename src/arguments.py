@@ -15,17 +15,18 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train_size", type=int, help="n train data", default=2)
-parser.add_argument("--val_size", type=int, help="n val data", default=2)
+parser.add_argument("--train_size", type=int, help="n train data", default=60000)
+parser.add_argument("--val_size", type=int, help="n val data", default=10000)
 parser.add_argument(
-    "--n_safe", type=int, help="n train data maintained from original dist", default=1
+    "--n_safe", type=int, help="n train data maintained from original dist",
+    default=30000
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=4
+    "--max_collectors", help="max Collector workers", type=int, default=900
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=1
+    "--max_evaluators", help="max Evaluator workers", type=int, default=50
 )
 
 parser.add_argument(
@@ -101,17 +102,17 @@ parser.add_argument(
 parser.add_argument(
     "--remove_rigid",
     help="remove rigid body transforms before energy calculation",
-    default=False,
+    default=True,
     action="store_true",
 )
 parser.add_argument(
     "--semipolarize",
     help="preproc inputs to semipolar coords. overrides polarize",
-    default=False,
+    default=True,
     action="store_true",
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
-parser.add_argument("--normalize", help="whiten net inputs", default=False, type=s2b)
+parser.add_argument("--normalize", help="whiten net inputs", default=True, type=s2b)
 parser.add_argument(
     "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
 )
@@ -131,7 +132,7 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[512, 1024, 512, 256]",
+    default="[1024, 1024, 1024, 1024]",
     type=str,
 )
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
@@ -144,7 +145,7 @@ parser.add_argument(
 parser.add_argument(
     "--quadratic_loss_scale",
     help="divide loss by mean of squared inputs",
-    default=False,
+    default=True,
     action="store_true",
 )
 parser.add_argument(
@@ -157,12 +158,12 @@ parser.add_argument(
     "--results_dir",
     help="Dir for tensorboard and other output",
     type=str,
-    default="results",
+    default="/efs_nmor/results",
 )
 parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
-parser.add_argument("--batch_size", help="Batch size", type=int, default=3)
+parser.add_argument("--batch_size", help="Batch size", type=int, default=128)
 
 parser.add_argument(
     "--nonlinearity",
