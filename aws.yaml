@@ -86,7 +86,7 @@ head_node:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
-    InstanceType: m4.xlarge
+    InstanceType: m5.2xlarge
     ImageId: ami-0e61479f7bebcc982 # NMOR ami
 
     # Run workers on spot by default. Comment this out to use on-demand.
