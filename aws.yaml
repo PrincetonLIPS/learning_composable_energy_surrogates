@@ -118,7 +118,7 @@ setup_commands:
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
     - source .bashrc
-    - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev2-cp36-cp36m-manylinux1_x86_64.whl
+    - pip install -U ray
     - conda activate nm
     - pip install boto3
     - pip install ray
