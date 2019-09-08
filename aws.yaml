@@ -117,6 +117,7 @@ setup_commands:
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
+    - sudo echo never > /sys/kernel/mm/transparent_hugepage/enabled
     - source .bashrc
     - pip install -U ray
     - conda activate nm
