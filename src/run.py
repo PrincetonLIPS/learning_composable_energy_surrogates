@@ -132,7 +132,10 @@ if __name__ == "__main__":
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(5)
 
-            broadcast_net_state = ray.put(deepcopy(surrogate.net).cpu().state_dict())
+            state_dict = surrogate.state_dict()
+            state_dict = {k: (deepcopy(v).cpu() if hasattr(v, 'cpu') else deepcopy(v))
+                          for k, v in state_dict.items()}
+            broadcast_net_state = ray.put(state_dict)
 
             surrogate.net.train()
             for bidx, batch in enumerate(trainer.train_loader):
