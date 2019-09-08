@@ -117,7 +117,6 @@ setup_commands:
     # Note: if you're developing Ray, you probably want to create an AMI that
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
-    - sudo echo never > /sys/kernel/mm/transparent_hugepage/enabled
     - source .bashrc
     - pip install -U ray
     - conda activate nm
@@ -137,6 +136,7 @@ setup_commands:
 head_setup_commands:
     - sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-c7f3d3be.efs.us-east-2.amazonaws.com:/ /efs_nmor
     - sudo chown ubuntu /efs_nmor
+    #   - sudo echo never > /sys/kernel/mm/transparent_hugepage/enabled
 #     - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.

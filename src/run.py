@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
         val_frac = float(args.val_size) / (args.train_size + args.val_size)
 
-        ray.init(address="localhost:6379")
+        ray.init(redis_address="localhost:6379")
 
         # Collect initial data
         train_harvester = Harvester(
