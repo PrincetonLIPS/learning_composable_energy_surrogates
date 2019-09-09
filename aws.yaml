@@ -118,10 +118,13 @@ setup_commands:
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
     - source .bashrc
-    - pip install -U ray
+    - yes | pip uninstall ray
     - conda activate nm
-    - pip install boto3
-    - pip install ray
+    # - yes | conda install psutil
+    # - pip install ray[debug]
+    - yes | pip install --upgrade ray==0.7.4
+    - yes | pip install boto3
+    - yes | pip install setproctitle
     - cd nmor-ray && git fetch && git checkout && git pull
     # - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev4-cp27-cp27mu-manylinux1_x86_64.whl
@@ -145,9 +148,10 @@ worker_setup_commands: []
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --head --resources='{"WorkerFlags":0}' --redis-port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
+    - ulimit -n 65536; conda activate nm && ray start --head --resources='{"WorkerFlags":0}' --redis-port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --resources='{"WorkerFlags":1}' --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076
+    - conda activate nm
+    - ulimit -n 65536; conda activate nm && ray start --resources='{"WorkerFlags":1}' --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076

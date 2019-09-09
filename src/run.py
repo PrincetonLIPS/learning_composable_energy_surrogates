@@ -33,6 +33,9 @@ from .util.timer import Timer
 
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
+    ray.init(redis_address="localhost:6379")
+    print("Client table: ", ray.global_state.client_table())
+
     args = parser.parse_args()
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -71,8 +74,6 @@ if __name__ == "__main__":
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 
         val_frac = float(args.val_size) / (args.train_size + args.val_size)
-
-        ray.init(redis_address="localhost:6379")
 
         # Collect initial data
         train_harvester = Harvester(
