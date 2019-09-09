@@ -34,7 +34,7 @@ from .util.timer import Timer
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     ray.init(redis_address="localhost:6379")
-    print("Client table: ", ray.global_state.client_table())
+    print("Nodes: ", ray.nodes())
 
     args = parser.parse_args()
     np.random.seed(args.seed)
