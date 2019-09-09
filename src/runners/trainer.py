@@ -153,9 +153,11 @@ class Trainer(object):
         )
 
     def visualize(self, step, batch, dataset_name):
-        u, p, f, J = batch[:4]
+        u, p, f, J = batch
+        u, p, f, J = u[:4], p[:4], f[:4], J[:4]
         fhat, Jhat = self.surrogate.f_J(u, p)
 
+        assert len(u) <= 4
         assert len(u) == len(p)
         assert len(u) == len(f)
         assert len(u) == len(J)
