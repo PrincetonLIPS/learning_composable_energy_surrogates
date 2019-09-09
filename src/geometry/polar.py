@@ -42,6 +42,9 @@ class PolarBase(object):
         else:
             raise Exception("Don't support (de)polarizing from other types")
 
+    def __call__(self, inputs):
+        return self.polarize(inputs)
+
 
 class Polarizer(PolarBase):
     def polarize(self, inputs):
