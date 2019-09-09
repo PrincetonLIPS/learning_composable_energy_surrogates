@@ -27,15 +27,15 @@ parser.add_argument(
     "--deploy", help="Deploy", action="store_true", default=True
 )
 
-parser.add_argument("--train_size", type=int, help="n train data", default=500)
-parser.add_argument("--val_size", type=int, help="n val data", default=100)
+parser.add_argument("--train_size", type=int, help="n train data", default=1000)
+parser.add_argument("--val_size", type=int, help="n val data", default=200)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist",
-    default=300
+    default=500
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=350
+    "--max_collectors", help="max Collector workers", type=int, default=250
 )
 parser.add_argument(
     "--max_evaluators", help="max Evaluator workers", type=int, default=40
@@ -108,7 +108,7 @@ parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=10,
+    default=12,
 )
 
 parser.add_argument(
@@ -195,7 +195,7 @@ parser.add_argument(
     "--relaxation_parameter", default=0.7, type=float, help="relaxation parameter"
 )
 parser.add_argument(
-    "--max_newton_iter", default=25, type=int, help="maximum Newton iters"
+    "--max_newton_iter", default=50, type=int, help="maximum Newton iters"
 )
 
 parser.add_argument(

@@ -143,6 +143,11 @@ if __name__ == "__main__":
 
         time.sleep(10)
 
+        torch.save({'traindata': trainer.train_data,
+                    'valdata': trainer.val_data},
+                   os.path.join(args.results_dir,
+                                'initial_datasets.pt'))
+
         # Init whitening module
         preprocd_u = surrogate.net.preproc(torch.stack(
             [u for u, _, _, _ in trainer.train_data.data]))
@@ -162,14 +167,14 @@ if __name__ == "__main__":
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
-        if not args.run_local and args.dagger:
-            dagger_harvester = Harvester(
-                args, train_data, PolicyCollector, args.max_collectors
-            )
+        dagger_harvester = Harvester(
+            args, train_data, PolicyCollector,
+            args.max_collectors if args.dagger else 0
+        )
 
-        if args.deploy:
-            deploy_harvester = Harvester(args, deploy_ems, Evaluator,
-                                         args.max_evaluators)
+        deploy_harvester = Harvester(
+            args, deploy_ems, Evaluator,
+            args.max_evaluators if args.deploy else 0)
 
         n_batches = len(trainer.train_loader)
         step = 0
@@ -198,7 +203,7 @@ if __name__ == "__main__":
                     deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
-            pdb.set_trace()
+            # pdb.set_trace()
             epoch += 1
 
             if not args.run_local:
@@ -246,11 +251,19 @@ if __name__ == "__main__":
                         deploy_ems.m50,
                         deploy_ems.m10,))
 
-            if args.verbose:
-                print(msg)
+            print(msg)
 
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
                 lossfile.write(msg)
+
+            print("Harvest stats: dagsuccess {}, dagdeath {}, "
+                  "depsuccess {}, depdeath {}".format(
+                    dagger_harvester.n_success,
+                    dagger_harvester.n_death,
+                    deploy_harvester.n_success,
+                    deploy_harvester.n_death,
+                        )
+                  )
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
