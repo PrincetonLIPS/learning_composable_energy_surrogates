@@ -34,7 +34,7 @@ import time
 
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
-    ray.init(redis_address="localhost:6379", num_gpus=1)
+    ray.init(redis_address="localhost:6379")
     time.sleep(10)
     print("Nodes: ", ray.nodes())
     print("Resources: ", ray.cluster_resources())
