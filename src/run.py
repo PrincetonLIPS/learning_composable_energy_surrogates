@@ -93,6 +93,7 @@ if __name__ == "__main__":
                     val_harvester.step()
                 if train_data.size() + val_data.size() > harvested:
                     harvested = train_data.size() + val_data.size()
+                    print("{} nodes".format(len(ray.nodes())))
                     print(
                         "Harvested {} of {} at time={}s".format(
                             harvested, len(train_data) + len(val_data), htimer.interval
