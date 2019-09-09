@@ -29,12 +29,15 @@ from .data.buffer import DataBuffer
 from .util.exponential_moving_stats import ExponentialMovingStats
 
 from .util.timer import Timer
+import time
 
 
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     ray.init(redis_address="localhost:6379")
+    time.wait(10)
     print("Nodes: ", ray.nodes())
+    print("{} nodes".format(len(ray.nodes())))
 
     args = parser.parse_args()
     np.random.seed(args.seed)
@@ -93,6 +96,7 @@ if __name__ == "__main__":
                     val_harvester.step()
                 if train_data.size() + val_data.size() > harvested:
                     harvested = train_data.size() + val_data.size()
+                    print("Nodes: ", ray.nodes())
                     print("{} nodes".format(len(ray.nodes())))
                     print(
                         "Harvested {} of {} at time={}s".format(
