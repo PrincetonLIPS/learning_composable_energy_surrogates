@@ -15,15 +15,15 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train_size", type=int, help="n train data", default=600)
-parser.add_argument("--val_size", type=int, help="n val data", default=200)
+parser.add_argument("--train_size", type=int, help="n train data", default=400)
+parser.add_argument("--val_size", type=int, help="n val data", default=100)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist",
     default=300
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=80
+    "--max_collectors", help="max Collector workers", type=int, default=160
 )
 parser.add_argument(
     "--max_evaluators", help="max Evaluator workers", type=int, default=10

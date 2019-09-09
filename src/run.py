@@ -36,7 +36,7 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     ray.init(redis_address="localhost:6379")
     time.sleep(10)
-    print("Nodes: ", ray.nodes())
+    # print("Nodes: ", ray.nodes())
     print("Resources: ", ray.cluster_resources())
     print("Available resources: ", ray.available_resources())
     print("{} nodes".format(len(ray.nodes())))
@@ -98,7 +98,7 @@ if __name__ == "__main__":
                     val_harvester.step()
                 if train_data.size() + val_data.size() > harvested:
                     harvested = train_data.size() + val_data.size()
-                    print("Nodes: ", ray.nodes())
+                    # print("Nodes: ", ray.nodes())
                     print("Resources: ", ray.cluster_resources())
                     print("Available resources: ", ray.available_resources())
                     print("{} nodes".format(len(ray.nodes())))
@@ -142,7 +142,7 @@ if __name__ == "__main__":
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(5)
 
-            state_dict = surrogate.state_dict()
+            state_dict = surrogate.net.state_dict()
             state_dict = {k: (deepcopy(v).cpu() if hasattr(v, 'cpu') else deepcopy(v))
                           for k, v in state_dict.items()}
             broadcast_net_state = ray.put(state_dict)

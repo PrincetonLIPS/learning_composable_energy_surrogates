@@ -10,7 +10,7 @@ from ..nets.feed_forward_net import FeedForwardNet
 import ray
 
 
-@ray.remote(resources={"WorkerFlags": 0.5})
+@ray.remote(resources={"WorkerFlags": 0.2})
 class Evaluator(object):
     def __init__(self, args):
         self.args = args
