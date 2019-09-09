@@ -77,4 +77,6 @@ def make_bc(args, fsm):
     constraint_mask[constrained_idxs, 0] = 1
     constraint_mask[constrained_idxs, 1] = 1
 
+    constraint_mask = fsm.to_torch(constraint_mask)
+
     return boundary_data, constrained_idxs, constrained_sides, constraint_mask

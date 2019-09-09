@@ -15,6 +15,8 @@ import traceback
 
 import math
 
+import pdb
+
 from .arguments import parser
 
 # from ..runners.online_trainer import OnlineTrainer
@@ -39,12 +41,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.run_local:
         ray.init(resources={'WorkerFlags': 10})
-        args.batch_size = 2
-        args.train_size = 2
+        args.batch_size = 1
+        args.train_size = 1
         args.val_size = 0
-        args.n_safe = 1
+        args.n_safe = 0
         args.max_collectors = 1
-        args.max_evaluators = 0
+        args.max_evaluators = 1
         args.ffn_layer_sizes = '[128,128]'
         args.results_dir = 'results'
         args.verbose = True
@@ -139,14 +141,35 @@ if __name__ == "__main__":
         del train_harvester
         del val_harvester
 
+        time.sleep(10)
+
+        # Init whitening module
+        preprocd_u = surrogate.net.preproc(torch.stack(
+            [u for u, _, _, _ in trainer.train_data.data]))
+
+        surrogate.net.normalizer.mean.data = torch.mean(
+            preprocd_u,
+            dim=0, keepdims=True
+        ).data
+        if args.run_local:
+            surrogate.net.normalizer.var.data = torch.ones_like(
+                surrogate.net.normalizer.mean.data
+            )
+        else:
+            surrogate.net.normalizer.var.data = (torch.std(
+                preprocd_u, dim=0, keepdims=True
+            )**2).data
+
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
-        if not args.run_local:
+        if not args.run_local and args.dagger:
             dagger_harvester = Harvester(
                 args, train_data, PolicyCollector, args.max_collectors
             )
 
-            deploy_harvester = Harvester(args, deploy_ems, Evaluator, args.max_evaluators)
+        if args.deploy:
+            deploy_harvester = Harvester(args, deploy_ems, Evaluator,
+                                         args.max_evaluators)
 
         n_batches = len(trainer.train_loader)
         step = 0
@@ -169,11 +192,13 @@ if __name__ == "__main__":
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
 
-                if not args.run_local:
+                if not args.run_local and args.dagger:
                     dagger_harvester.step(init_args=(broadcast_net_state,))
+                if args.deploy:
                     deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
+            pdb.set_trace()
             epoch += 1
 
             if not args.run_local:

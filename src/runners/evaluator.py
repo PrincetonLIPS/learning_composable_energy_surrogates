@@ -7,17 +7,19 @@ from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..data.sample_params import make_p, make_bc, make_force
 from ..nets.feed_forward_net import FeedForwardNet
 
+import numpy as np
+
 import ray
 
 
-@ray.remote(resources={"WorkerFlags": 0.2})
+@ray.remote(resources={"WorkerFlags": 0.25})
 class Evaluator(object):
     def __init__(self, args):
         self.args = args
         self.p = make_p(self.args)
         self.pde = Metamaterial(self.args)
         self.fsm = FunctionSpaceMap(
-            self.pde.V, self.args.bV_dim
+            self.pde.V, self.args.bV_dim, cuda=False
         )
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
@@ -33,18 +35,33 @@ class Evaluator(object):
             self.args, self.fsm
         )
 
-        force_data = make_force(self.args, self.fsm)
+        bc = bc.view(1, -1)
+        bc_V = self.fsm.to_V(bc)
+
+        n_anneal = 1 + np.random.randint(self.args.anneal_steps)
+
+        constraint_mask = constraint_mask.unsqueeze(0)
+
+        force_data = make_force(self.args, self.fsm).unsqueeze(0)
 
         params = torch.Tensor([[self.args.c1, self.args.c2]])
 
-        surr_soln = surrogate.solve(params, bc, constraint_mask, force_data)
+        factor = float(n_anneal)/self.args.anneal_steps
+        surr_soln = surrogate.solve(params,
+                                    bc*factor,
+                                    constraint_mask,
+                                    force_data*factor)
 
-        true_soln = self.fem.solve(
-            self.args,
-            boundary_fn=bc,
-            constrained_sides=constrained_sides,
-            force_fn=force_data,
-        )
+        initial_guess = np.zeros_like(bc_V.vector())
+        for i in range(n_anneal):
+            true_soln = self.fem.solve(
+                self.args,
+                boundary_fn=bc*float(i+1)/self.args.anneal_steps,
+                constrained_sides=constrained_sides,
+                force_fn=force_data*float(i+1)/self.args.anneal_steps,
+                initial_guess=initial_guess
+            )
+            initial_guess = true_soln.vector()[:]
 
         surr_soln_V = self.fsm.to_V(surr_soln)
 

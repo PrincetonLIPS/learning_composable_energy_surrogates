@@ -78,6 +78,7 @@ head_node:
 
     SecurityGroupIds:
         - sg-6b16df08
+        - sg-01aefea2102d6bbb2
 
     # Additional options in the boto docs.
 
@@ -86,12 +87,12 @@ head_node:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
-    InstanceType: m5.2xlarge
+    InstanceType: m4.xlarge
     ImageId: ami-0e61479f7bebcc982 # NMOR ami
 
     # Run workers on spot by default. Comment this out to use on-demand.
-    # InstanceMarketOptions:
-    #     MarketType: spot
+    InstanceMarketOptions:
+        MarketType: spot
     #     # Additional options can be found in the boto docs, e.g.
     #     #   SpotOptions:
     #     #       MaxPrice: MAX_HOURLY_PRICE

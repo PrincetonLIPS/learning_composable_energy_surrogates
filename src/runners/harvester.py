@@ -15,6 +15,7 @@ class Harvester(object):
     def step(self, init_args=(), step_args=()):
         self.sow(init_args, step_args)
         self.reap(step_args)
+        self.sow(init_args, step_args)
 
     def sow(self, init_args, step_args):
         for _ in range(self.max_workers - len(self.ids_to_workers)):

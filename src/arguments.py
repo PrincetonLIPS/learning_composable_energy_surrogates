@@ -19,6 +19,14 @@ parser.add_argument(
     "--run_local", help="Run locally", action="store_true", default=False
 )
 
+parser.add_argument(
+    "--dagger", help="Do dagger", action="store_true", default=False
+)
+
+parser.add_argument(
+    "--deploy", help="Deploy", action="store_true", default=True
+)
+
 parser.add_argument("--train_size", type=int, help="n train data", default=500)
 parser.add_argument("--val_size", type=int, help="n val data", default=100)
 parser.add_argument(
@@ -76,31 +84,31 @@ parser.add_argument(
     "--boundary_freq_scale",
     type=float,
     help="maximum frequency scale for boundary random fourier fn",
-    default=1.0,
+    default=10.0,
 )
 parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=1.0,
+    default=0.3,
 )
 parser.add_argument(
     "--force_freq_scale",
     type=float,
     help="maximum frequency scale for force random fourier fn",
-    default=4.0,
+    default=0.0,
 )
 parser.add_argument(
     "--force_amp_scale",
     type=float,
     help="maximum amplitude scale for force random fourier fn,",
-    default=1.0,
+    default=0.0,
 )
 parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=100,
+    default=10,
 )
 
 parser.add_argument(
@@ -116,9 +124,13 @@ parser.add_argument(
     action="store_true",
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
-parser.add_argument("--normalize", help="whiten net inputs", default=False, type=s2b)
+parser.add_argument("--fix_normalizer", help="adapt whitening of net inputs",
+                    default=True, type=s2b)
 parser.add_argument(
     "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
+)
+parser.add_argument(
+    "--solve_optimizer", help="adam or lbfgs", type=str, default="lbfgs"
 )
 parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int

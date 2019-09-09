@@ -297,11 +297,16 @@ class Trainer(object):
             loss_scale = 1.0 / torch.mean(u ** 2, dim=1)
         else:
             loss_scale = torch.Tensor([1.0])
-        train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
+
+        if len(u) > 1:
+            train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
+            train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
+        else:
+            train_f_std = torch.ones_like(f)
+            train_J_std = torch.ones_like(J)
 
         f_loss = rmse(f / train_f_std, fhat / train_f_std, loss_scale)
 
-        train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
         J_loss = rmse(J / train_J_std, Jhat / train_J_std, loss_scale)
 
         total_loss = f_loss + self.args.J_weight * J_loss
