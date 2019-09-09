@@ -35,8 +35,10 @@ import time
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     ray.init(redis_address="localhost:6379")
-    time.wait(10)
+    time.sleep(10)
     print("Nodes: ", ray.nodes())
+    print("Resources: ", ray.cluster_resources())
+    print("Available resources: ", ray.available_resources())
     print("{} nodes".format(len(ray.nodes())))
 
     args = parser.parse_args()
@@ -97,6 +99,8 @@ if __name__ == "__main__":
                 if train_data.size() + val_data.size() > harvested:
                     harvested = train_data.size() + val_data.size()
                     print("Nodes: ", ray.nodes())
+                    print("Resources: ", ray.cluster_resources())
+                    print("Available resources: ", ray.available_resources())
                     print("{} nodes".format(len(ray.nodes())))
                     print(
                         "Harvested {} of {} at time={}s".format(
