@@ -47,13 +47,13 @@ class CollectorBase(object):
         return Example(u, p, f, J)
 
 
-@ray.remote(resources={"WorkerFlags": 1})
+@ray.remote(resources={"WorkerFlags": 0.5})
 class Collector(CollectorBase):
     def get_weighted_data(self, factor):
         return self.bc * factor
 
 
-@ray.remote(resources={"WorkerFlags": 1})
+@ray.remote(resources={"WorkerFlags": 0.5})
 class PolicyCollector(CollectorBase):
     def __init__(self, args, state_dict):
         CollectorBase.__init__(self, args)
