@@ -15,7 +15,11 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train_size", type=int, help="n train data", default=400)
+parser.add_argument(
+    "--run_local", help="Run locally", action="store_true", default=False
+)
+
+parser.add_argument("--train_size", type=int, help="n train data", default=500)
 parser.add_argument("--val_size", type=int, help="n val data", default=100)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist",
@@ -23,7 +27,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=160
+    "--max_collectors", help="max Collector workers", type=int, default=200
 )
 parser.add_argument(
     "--max_evaluators", help="max Evaluator workers", type=int, default=10
@@ -112,7 +116,7 @@ parser.add_argument(
     action="store_true",
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
-parser.add_argument("--normalize", help="whiten net inputs", default=True, type=s2b)
+parser.add_argument("--normalize", help="whiten net inputs", default=False, type=s2b)
 parser.add_argument(
     "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
 )

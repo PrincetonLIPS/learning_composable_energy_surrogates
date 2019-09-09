@@ -17,7 +17,7 @@ class Harvester(object):
         self.reap(step_args)
 
     def sow(self, init_args, step_args):
-        while len(self.ids_to_workers) < self.max_workers:
+        for _ in range(self.max_workers - len(self.ids_to_workers)):
             new_worker = self.WorkerClass.remote(self.args, *init_args)
             self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
 

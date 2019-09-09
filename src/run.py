@@ -13,6 +13,8 @@ import sys
 
 import traceback
 
+import math
+
 from .arguments import parser
 
 # from ..runners.online_trainer import OnlineTrainer
@@ -34,14 +36,26 @@ import time
 
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
-    ray.init(redis_address="localhost:6379")
+    args = parser.parse_args()
+    if args.run_local:
+        ray.init(resources={'WorkerFlags': 10})
+        args.batch_size = 2
+        args.train_size = 2
+        args.val_size = 0
+        args.n_safe = 1
+        args.max_collectors = 1
+        args.max_evaluators = 0
+        args.ffn_layer_sizes = '[128,128]'
+        args.results_dir = 'results'
+        args.verbose = True
+    else:
+        ray.init(redis_address="localhost:6379")
     time.sleep(10)
     # print("Nodes: ", ray.nodes())
     print("Resources: ", ray.cluster_resources())
     print("Available resources: ", ray.available_resources())
     print("{} nodes".format(len(ray.nodes())))
 
-    args = parser.parse_args()
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -84,9 +98,11 @@ if __name__ == "__main__":
         train_harvester = Harvester(
             args, train_data, Collector, int(args.max_collectors * (1.0 - val_frac))
         )
+        print("Train harvester size ", train_harvester.max_workers)
         val_harvester = Harvester(
             args, val_data, Collector, int(args.max_collectors * val_frac)
         )
+        print("Val harvester size ", val_harvester.max_workers)
         harvested = 0
         with Timer() as htimer:
             while train_data.size() < len(train_data) or val_data.size() < len(
@@ -123,12 +139,14 @@ if __name__ == "__main__":
         del train_harvester
         del val_harvester
 
-        dagger_harvester = Harvester(
-            args, train_data, PolicyCollector, args.max_collectors
-        )
-
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
-        deploy_harvester = Harvester(args, deploy_ems, Evaluator, args.max_evaluators)
+
+        if not args.run_local:
+            dagger_harvester = Harvester(
+                args, train_data, PolicyCollector, args.max_collectors
+            )
+
+            deploy_harvester = Harvester(args, deploy_ems, Evaluator, args.max_evaluators)
 
         n_batches = len(trainer.train_loader)
         step = 0
@@ -151,17 +169,23 @@ if __name__ == "__main__":
             for bidx, batch in enumerate(trainer.train_loader):
                 t_losses += np.array(trainer.train_step(step, batch)) / n_batches
 
-                dagger_harvester.step(init_args=(broadcast_net_state,))
-                deploy_harvester.step(step_args=(broadcast_net_state,))
+                if not args.run_local:
+                    dagger_harvester.step(init_args=(broadcast_net_state,))
+                    deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
             epoch += 1
 
-            trainer.visualize(step - 1, next(iter(trainer.train_loader)), "Training")
-            trainer.visualize(step - 1, next(iter(trainer.val_loader)), "Validation")
+            if not args.run_local:
+                trainer.visualize(step - 1, next(iter(trainer.train_loader)), "Training")
+                trainer.visualize(step - 1, next(iter(trainer.val_loader)), "Validation")
 
             surrogate.net.eval()
-            v_losses = trainer.val_step(step)
+
+            if not args.run_local:
+                v_losses = trainer.val_step(step)
+            else:
+                v_losses = [0.0, 0.0, 0.0, 0.0, 0.0]
 
             torch.save({
                 'epoch': epoch,
@@ -174,13 +198,11 @@ if __name__ == "__main__":
                 os.path.join(out_dir, "ckpt_epoch_{}.pt".format(epoch))
                        )
 
-            with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
-                lossfile.write(
-                    "step {}, epoch {}: "
-                    "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
-                    "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, vL: {:.3e} "
-                    "dloss_mean: {:.3e}, dloss_std: {:.3e}, dloss_90: {:.3e}, "
-                    "dloss_50: {:.3e}, dloss_10: {:.3e}\n".format(
+            msg = ("step {}, epoch {}: "
+                   "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
+                   "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, vL: {:.3e} "
+                   "dloss_mean: {:.3e}, dloss_std: {:.3e}, dloss_90: {:.3e}, "
+                   "dloss_50: {:.3e}, dloss_10: {:.3e}\n".format(
                         step,
                         epoch,
                         t_losses[0],
@@ -197,9 +219,13 @@ if __name__ == "__main__":
                         deploy_ems.std,
                         deploy_ems.m90,
                         deploy_ems.m50,
-                        deploy_ems.m10,
-                    )
-                )
+                        deploy_ems.m10,))
+
+            if args.verbose:
+                print(msg)
+
+            with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
+                lossfile.write(msg)
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
