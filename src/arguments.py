@@ -21,14 +21,14 @@ parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
 parser.add_argument("--deploy", help="Deploy", type=s2b, default=True)
 
-parser.add_argument("--train_size", type=int, help="n train data", default=1000)
-parser.add_argument("--val_size", type=int, help="n val data", default=500)
+parser.add_argument("--train_size", type=int, help="n train data", default=55000)
+parser.add_argument("--val_size", type=int, help="n val data", default=5000)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist", default=500
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=39
+    "--max_collectors", help="max Collector workers", type=int, default=380
 )
 parser.add_argument(
     "--max_evaluators", help="max Evaluator workers", type=int, default=5
