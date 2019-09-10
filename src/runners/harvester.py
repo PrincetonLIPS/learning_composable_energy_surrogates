@@ -1,5 +1,8 @@
 import ray
 import time
+import numpy as np
+
+MAX_SEED = 2**32
 
 
 class Harvester(object):
@@ -21,7 +24,9 @@ class Harvester(object):
 
     def sow(self, init_args, step_args):
         for _ in range(self.max_workers - len(self.ids_to_workers)):
-            new_worker = self.WorkerClass.remote(self.args, *init_args)
+            new_worker = self.WorkerClass.remote(self.args,
+                                                 np.random.randint(MAX_SEED),
+                                                 *init_args)
             self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
 
     def reap(self, step_args):

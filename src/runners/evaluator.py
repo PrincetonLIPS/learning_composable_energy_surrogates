@@ -14,8 +14,9 @@ import ray
 
 @ray.remote(resources={"WorkerFlags": 0.3})
 class Evaluator(object):
-    def __init__(self, args):
+    def __init__(self, args, seed):
         self.args = args
+        np.random.seed(seed)
         self.p = make_p(self.args)
         self.pde = Metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False)

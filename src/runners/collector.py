@@ -14,8 +14,9 @@ import ray
 
 
 class CollectorBase(object):
-    def __init__(self, args):
+    def __init__(self, args, seed):
         self.args = args
+        np.random.seed(seed)
         make_p(args)
         self.pde = Metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim)
@@ -33,7 +34,8 @@ class CollectorBase(object):
         self.increment_factor()
         # if self.steps > self.args.anneal_steps:
         #     raise Exception("Self-destructing; have completed annealing")
-        factor = (self.steps + np.random.random() - 0.5) / self.args.anneal_steps
+        factor = max(1.0,
+                     (self.steps + np.random.random() - 0.5)) / self.args.anneal_steps
         weighted_data = self.get_weighted_data(factor)
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
         f, JV, solution = self.fem.f_J(
@@ -57,8 +59,8 @@ class Collector(CollectorBase):
 
 @ray.remote(resources={"WorkerFlags": 0.3})
 class PolicyCollector(CollectorBase):
-    def __init__(self, args, state_dict):
-        CollectorBase.__init__(self, args)
+    def __init__(self, args, seed, state_dict):
+        CollectorBase.__init__(self, args, seed)
 
         force_data = make_force(args, self.fsm)
 

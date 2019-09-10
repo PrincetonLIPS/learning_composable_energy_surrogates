@@ -40,7 +40,9 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10})
+        ray.init(resources={"WorkerFlags": 10},
+                 memory=3e9,
+                 object_store_memory=1e9)
         args.batch_size = 1
         args.train_size = 1
         args.val_size = 0
@@ -194,6 +196,8 @@ if __name__ == "__main__":
             surrogate.net.normalizer.var.data = torch.ones_like(
                 surrogate.net.normalizer.mean.data
             )
+            # User prompt in case want to check anything
+            pdb.set_trace()
         else:
             surrogate.net.normalizer.var.data = (
                 torch.std(preprocd_u, dim=0, keepdims=True) ** 2
@@ -241,7 +245,10 @@ if __name__ == "__main__":
             # pdb.set_trace()
             epoch += 1
 
-            if not args.run_local:
+            # User prompt in case want to check anything
+            if args.run_local:
+                pdb.set_trace()
+            else:
                 trainer.visualize(
                     step - 1, next(iter(trainer.train_loader)), "Training"
                 )
