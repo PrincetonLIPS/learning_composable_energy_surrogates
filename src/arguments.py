@@ -78,7 +78,7 @@ parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=0.5,
+    default=0.4,
 )
 parser.add_argument(
     "--force_freq_scale",

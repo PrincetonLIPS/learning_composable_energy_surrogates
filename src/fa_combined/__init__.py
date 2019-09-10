@@ -2,7 +2,7 @@
 from fenics import *
 from fenics_adjoint import *
 
-# set_log_level(30)
+set_log_level(30)
 
 # Wrap compute_gradient and compute_hessian, so that the outputs have
 # an attribute which tells us they're a gradient or hessian.
