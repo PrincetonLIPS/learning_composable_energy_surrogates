@@ -186,7 +186,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--relaxation_parameter", default=0.7, type=float, help="relaxation parameter"
+    "--relaxation_parameter", default=0.5, type=float, help="relaxation parameter"
 )
 parser.add_argument(
     "--max_newton_iter", default=50, type=int, help="maximum Newton iters"
