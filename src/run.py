@@ -112,7 +112,7 @@ if __name__ == "__main__":
             train_data = DataBuffer(args.train_size, args.n_safe)
             val_data = DataBuffer(args.val_size)
 
-        if (train_data.size() < args.train_size) or val_data.size() < args.val_size:
+        if train_data.size() < args.train_size or val_data.size() < args.val_size:
             print("Gathering data to fill train and val buffers")
             val_frac = float(args.val_size) / (args.train_size + args.val_size)
 
