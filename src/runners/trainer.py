@@ -183,7 +183,6 @@ class Trainer(object):
                 ax=ax,
                 color="k",
             )
-
             plot_boundary(
                 self.surrogate.fsm.get_query_fn(u[i]),
                 1000,
