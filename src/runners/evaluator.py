@@ -18,9 +18,7 @@ class Evaluator(object):
         self.args = args
         self.p = make_p(self.args)
         self.pde = Metamaterial(self.args)
-        self.fsm = FunctionSpaceMap(
-            self.pde.V, self.args.bV_dim, cuda=False
-        )
+        self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
         self.net = FeedForwardNet(args, self.fsm)
@@ -46,20 +44,19 @@ class Evaluator(object):
 
         params = torch.Tensor([[self.args.c1, self.args.c2]])
 
-        factor = float(n_anneal)/self.args.anneal_steps
-        surr_soln = surrogate.solve(params,
-                                    bc*factor,
-                                    constraint_mask,
-                                    force_data*factor)
+        factor = float(n_anneal) / self.args.anneal_steps
+        surr_soln = surrogate.solve(
+            params, bc * factor, constraint_mask, force_data * factor
+        )
 
         initial_guess = np.zeros_like(bc_V.vector())
         for i in range(n_anneal):
             true_soln = self.fem.solve(
                 self.args,
-                boundary_fn=bc*float(i+1)/self.args.anneal_steps,
+                boundary_fn=bc * float(i + 1) / self.args.anneal_steps,
                 constrained_sides=constrained_sides,
-                force_fn=force_data*float(i+1)/self.args.anneal_steps,
-                initial_guess=initial_guess
+                force_fn=force_data * float(i + 1) / self.args.anneal_steps,
+                initial_guess=initial_guess,
             )
             initial_guess = true_soln.vector()[:]
 

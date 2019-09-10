@@ -192,8 +192,7 @@ class SurrogateEnergyModel(object):
         if opt_steps is None:
             opt_steps = self.args.solve_steps
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
-        constraint_mask = self.fsm.to_torch(
-            constraint_mask).data.detach().clone()
+        constraint_mask = self.fsm.to_torch(constraint_mask).data.detach().clone()
         if self.fsm.cuda:
             x = x.cuda()
         x = Variable(x, requires_grad=True)

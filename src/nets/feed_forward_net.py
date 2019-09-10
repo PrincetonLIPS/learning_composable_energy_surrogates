@@ -33,17 +33,11 @@ class MovingAverageNormalzier(nn.Module):
     def forward(self, x):
         out = (x - self.mean) / torch.sqrt(self.var + 1e-7)
         if self.training and not self.fixed:
-            batch_mean = torch.mean(
-                x, dim=0, keepdims=True
-            ).data
+            batch_mean = torch.mean(x, dim=0, keepdims=True).data
             self.mean.data = (
                 1.0 - self.alpha
             ) * batch_mean + self.alpha * self.mean.data
-            batch_var = torch.sum(
-                (x - self.mean) ** 2,
-                dim=0,
-                keepdims=True,
-            ).data
+            batch_var = torch.sum((x - self.mean) ** 2, dim=0, keepdims=True).data
             self.var.data = (1.0 - self.alpha) * batch_var + self.alpha * self.var.data
 
         return out

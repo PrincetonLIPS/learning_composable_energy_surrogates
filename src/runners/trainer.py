@@ -326,10 +326,7 @@ class Trainer(object):
                 self.tflogger.log_scalar(
                     "param_norm_sum",
                     sum(
-                        [
-                            p.norm().sum().item()
-                            for p in self.surrogate.net.parameters()
-                        ]
+                        [p.norm().sum().item() for p in self.surrogate.net.parameters()]
                     ),
                     step,
                 )

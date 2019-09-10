@@ -15,23 +15,16 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument(
-    "--run_local", help="Run locally", type=s2b, default=False
-)
+parser.add_argument("--run_local", help="Run locally", type=s2b, default=False)
 
-parser.add_argument(
-    "--dagger", help="Do dagger", type=s2b, default=False
-)
+parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
-parser.add_argument(
-    "--deploy", help="Deploy", type=s2b, default=True
-)
+parser.add_argument("--deploy", help="Deploy", type=s2b, default=True)
 
 parser.add_argument("--train_size", type=int, help="n train data", default=55000)
 parser.add_argument("--val_size", type=int, help="n val data", default=5000)
 parser.add_argument(
-    "--n_safe", type=int, help="n train data maintained from original dist",
-    default=500
+    "--n_safe", type=int, help="n train data maintained from original dist", default=500
 )
 
 parser.add_argument(
@@ -48,17 +41,12 @@ parser.add_argument(
     default=0.9,
 )
 
-parser.add_argument(
-    "--verbose", help="Verbose for debug", type=s2b, default=False
-)
+parser.add_argument("--verbose", help="Verbose for debug", type=s2b, default=False)
 parser.add_argument("--seed", help="Random seed", type=int, default=0)
 
 
 parser.add_argument(
-    "--sample_c",
-    help="sample c1, c2. else take mean",
-    type=s2b,
-    default=False,
+    "--sample_c", help="sample c1, c2. else take mean", type=s2b, default=False
 )
 parser.add_argument(
     "--c1_low", help="minimum low-freq param for pore shape", type=float, default=-0.1
@@ -124,8 +112,9 @@ parser.add_argument(
     type=s2b,
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
-parser.add_argument("--fix_normalizer", help="adapt whitening of net inputs",
-                    default=True, type=s2b)
+parser.add_argument(
+    "--fix_normalizer", help="adapt whitening of net inputs", default=True, type=s2b
+)
 parser.add_argument(
     "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
 )
@@ -176,17 +165,12 @@ parser.add_argument(
     type=str,
     default="/efs_nmor/results",
 )
-parser.add_argument(
-    "--data_name", help="Name of data run", type=str, default="bV5"
-)
+parser.add_argument("--data_name", help="Name of data run", type=str, default="bV5")
 parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
 parser.add_argument(
-    "--reload_data",
-    help="Reload data if found",
-    default=True,
-    type=s2b,
+    "--reload_data", help="Reload data if found", default=True, type=s2b
 )
 
 parser.add_argument("--batch_size", help="Batch size", type=int, default=128)
