@@ -37,13 +37,13 @@ class ExponentialMovingStats(object):
     def mean(self):
         if self.n <= 0:
             return np.nan
-        return self.mean / (1 - self.alpha ** self.n)
+        return self._mean / (1 - self.alpha ** self.n)
 
     @property
     def std(self):
         if self.n <= 0:
             return np.nan
-        return self.std / (1 - self.alpha ** self.n)
+        return self._std / (1 - self.alpha ** self.n)
 
     def update_percentile(self, current, new, p):
         if not np.isfinite(current):

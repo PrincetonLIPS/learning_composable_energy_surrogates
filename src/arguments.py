@@ -16,26 +16,26 @@ def s2b(v):
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "--run_local", help="Run locally", action="store_true", default=False
+    "--run_local", help="Run locally", type=s2b, default=False
 )
 
 parser.add_argument(
-    "--dagger", help="Do dagger", action="store_true", default=False
+    "--dagger", help="Do dagger", type=s2b, default=False
 )
 
 parser.add_argument(
-    "--deploy", help="Deploy", action="store_true", default=True
+    "--deploy", help="Deploy", type=s2b, default=True
 )
 
-parser.add_argument("--train_size", type=int, help="n train data", default=1000)
-parser.add_argument("--val_size", type=int, help="n val data", default=200)
+parser.add_argument("--train_size", type=int, help="n train data", default=55000)
+parser.add_argument("--val_size", type=int, help="n val data", default=5000)
 parser.add_argument(
     "--n_safe", type=int, help="n train data maintained from original dist",
     default=500
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=250
+    "--max_collectors", help="max Collector workers", type=int, default=850
 )
 parser.add_argument(
     "--max_evaluators", help="max Evaluator workers", type=int, default=40
@@ -49,7 +49,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--verbose", help="Verbose for debug", action="store_true", default=False
+    "--verbose", help="Verbose for debug", type=s2b, default=False
 )
 parser.add_argument("--seed", help="Random seed", type=int, default=0)
 
@@ -57,7 +57,7 @@ parser.add_argument("--seed", help="Random seed", type=int, default=0)
 parser.add_argument(
     "--sample_c",
     help="sample c1, c2. else take mean",
-    action="store_true",
+    type=s2b,
     default=False,
 )
 parser.add_argument(
@@ -115,13 +115,13 @@ parser.add_argument(
     "--remove_rigid",
     help="remove rigid body transforms before energy calculation",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument(
     "--semipolarize",
     help="preproc inputs to semipolar coords. overrides polarize",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
 parser.add_argument("--fix_normalizer", help="adapt whitening of net inputs",
@@ -155,14 +155,14 @@ parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrog
 parser.add_argument(
     "--quadratic_scale",
     help="Scale net output by average of squared inputs",
-    default=False,
-    action="store_true",
+    default=True,
+    type=s2b,
 )
 parser.add_argument(
     "--quadratic_loss_scale",
     help="divide loss by mean of squared inputs",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument(
     "--max_train_steps", help="Maximum training steps", type=int, default=int(1e7)
@@ -177,8 +177,18 @@ parser.add_argument(
     default="/efs_nmor/results",
 )
 parser.add_argument(
+    "--data_name", help="Name of data run", type=str, default="bV5"
+)
+parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
+parser.add_argument(
+    "--reload_data",
+    help="Reload data if found",
+    default=True,
+    type=s2b,
+)
+
 parser.add_argument("--batch_size", help="Batch size", type=int, default=128)
 
 parser.add_argument(

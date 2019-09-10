@@ -67,19 +67,24 @@ if __name__ == "__main__":
     if not os.path.exists(args.results_dir):
         os.mkdir(args.results_dir)
 
-    out_dir = os.path.join(args.results_dir, args.experiment_name)
+    data_dir = os.path.join(args.results_dir, args.data_name)
 
-    i = 0
-    while os.path.exists(out_dir + "_" + str(i)):
-        i += 1
-    out_dir = out_dir + "_" + str(i)
-    print("Making {}".format(out_dir))
+    if not os.path.exists(data_dir):
+        print("Making {}".format(data_dir))
+        os.mkdir(data_dir)
+
+    run_number = 0
+    while os.path.exists(os.path.join(data_dir, '{}_{}'.format(
+            args.experiment_name, run_number))):
+        run_number = run_number + 1
+    out_dir = os.path.join(data_dir, '{}_{}'.format(
+            args.experiment_name, run_number))
     os.mkdir(out_dir)
+    with open(os.path.join(out_dir, "args.txt"), "w+") as argfile:
+        for arg in vars(args):
+            argfile.write(arg + ": " + str(getattr(args, arg)) + "\n")
 
     try:
-        with open(os.path.join(out_dir, "args.txt"), "w+") as argfile:
-            for arg in vars(args):
-                argfile.write(arg + ": " + str(getattr(args, arg)) + "\n")
         fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=True)
 
         net = FeedForwardNet(args, fsm)
@@ -89,64 +94,78 @@ if __name__ == "__main__":
 
         tflogger = TFLogger(out_dir)
 
-        train_data = DataBuffer(args.train_size, args.n_safe)
-        val_data = DataBuffer(args.val_size)
+        if args.reload_data and os.path.exists(
+                os.path.join(data_dir, 'initial_datasets.pt')):
+            print("Reloading initial data")
+            datasets = torch.load(os.path.join(
+                data_dir, 'initial_datasets.pt'))
+
+            train_data = datasets['train_data']
+            val_data = datasets['val_data']
+
+        else:
+            print("Gathering initial data")
+            # ---------- Start data collection
+            train_data = DataBuffer(args.train_size, args.n_safe)
+            val_data = DataBuffer(args.val_size)
+
+            val_frac = float(args.val_size) / (args.train_size + args.val_size)
+
+            # Collect initial data
+            train_harvester = Harvester(
+                args, train_data, Collector, int(args.max_collectors * (1.0 - val_frac))
+            )
+            print("Train harvester size ", train_harvester.max_workers)
+            val_harvester = Harvester(
+                args, val_data, Collector, int(args.max_collectors * val_frac)
+            )
+            print("Val harvester size ", val_harvester.max_workers)
+            harvested = 0
+            with Timer() as htimer:
+                while train_data.size() < len(train_data) or val_data.size() < len(
+                    val_data
+                ):
+                    if train_data.size() < len(train_data):
+                        train_harvester.step()
+                    if val_data.size() < len(val_data):
+                        val_harvester.step()
+                    if train_data.size() + val_data.size() > harvested:
+                        harvested = train_data.size() + val_data.size()
+                        # print("Nodes: ", ray.nodes())
+                        print("Resources: ", ray.cluster_resources())
+                        print("Available resources: ", ray.available_resources())
+                        print("{} nodes".format(len(ray.nodes())))
+                        print(
+                            "Harvested {} of {} at time={}s".format(
+                                harvested, len(train_data) + len(val_data), htimer.interval
+                            )
+                        )
+
+            print(
+                "Initial harvest took {}s: tsuccess {}, tdeath {}, "
+                "vsuccess {}, vdeath {}".format(
+                    htimer.interval,
+                    train_harvester.n_success,
+                    train_harvester.n_death,
+                    val_harvester.n_success,
+                    val_harvester.n_death,
+                )
+            )
+
+            # Garbage collect these harvesters and their workers
+            del train_harvester
+            del val_harvester
+
+            torch.save({'train_data': train_data,
+                        'val_data': val_data},
+                       os.path.join(data_dir,
+                                    'initial_datasets.pt'))
+
+            time.sleep(10)
+
+        # ---------- Finish data collection
 
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
-
-        val_frac = float(args.val_size) / (args.train_size + args.val_size)
-
-        # Collect initial data
-        train_harvester = Harvester(
-            args, train_data, Collector, int(args.max_collectors * (1.0 - val_frac))
-        )
-        print("Train harvester size ", train_harvester.max_workers)
-        val_harvester = Harvester(
-            args, val_data, Collector, int(args.max_collectors * val_frac)
-        )
-        print("Val harvester size ", val_harvester.max_workers)
-        harvested = 0
-        with Timer() as htimer:
-            while train_data.size() < len(train_data) or val_data.size() < len(
-                val_data
-            ):
-                if train_data.size() < len(train_data):
-                    train_harvester.step()
-                if val_data.size() < len(val_data):
-                    val_harvester.step()
-                if train_data.size() + val_data.size() > harvested:
-                    harvested = train_data.size() + val_data.size()
-                    # print("Nodes: ", ray.nodes())
-                    print("Resources: ", ray.cluster_resources())
-                    print("Available resources: ", ray.available_resources())
-                    print("{} nodes".format(len(ray.nodes())))
-                    print(
-                        "Harvested {} of {} at time={}s".format(
-                            harvested, len(train_data) + len(val_data), htimer.interval
-                        )
-                    )
-
-        print(
-            "Initial harvest took {}s: tsuccess {}, tdeath {}, "
-            "vsuccess {}, vdeath {}".format(
-                htimer.interval,
-                train_harvester.n_success,
-                train_harvester.n_death,
-                val_harvester.n_success,
-                val_harvester.n_death,
-            )
-        )
-
-        # Garbage collect these harvesters and their workers
-        del train_harvester
-        del val_harvester
-
-        time.sleep(10)
-
-        torch.save({'traindata': trainer.train_data,
-                    'valdata': trainer.val_data},
-                   os.path.join(args.results_dir,
-                                'initial_datasets.pt'))
 
         # Init whitening module
         preprocd_u = surrogate.net.preproc(torch.stack(
@@ -225,8 +244,7 @@ if __name__ == "__main__":
                 'optimizer_state_dict': trainer.optimizer.state_dict,
                 'tloss': t_losses[4],
                 'vloss': v_losses[4]},
-                os.path.join(out_dir, "ckpt_epoch_{}.pt".format(epoch))
-                       )
+                os.path.join(out_dir, "ckpt.pt"))
 
             msg = ("step {}, epoch {}: "
                    "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
