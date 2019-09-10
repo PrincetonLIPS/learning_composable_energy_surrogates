@@ -26,12 +26,12 @@ class CollectorBase(object):
         self.guess = fa.Function(self.fsm.V).vector()
 
     def increment_factor(self):
-        self.factor = np.max(
-            [1.0, self.factor + self.stepsize * (1 + random.random() - 0.5)]
-        )
+        self.factor = self.factor + self.stepsize * (1 + random.random() - 0.5)
 
     def step(self):
         self.increment_factor()
+        if self.factor > 1.0:
+            raise Exception("Self-destructing; have completed annealing")
         weighted_data = self.get_weighted_data(self.factor)
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
         f, JV, solution = self.fem.f_J(
