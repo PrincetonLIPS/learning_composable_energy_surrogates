@@ -155,4 +155,4 @@ head_start_ray_commands:
 worker_start_ray_commands:
     - ray stop
     - conda activate nm
-    - ulimit -n 65536; conda activate nm && ray start --resources='{"WorkerFlags":1}' --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076
+    - ulimit -n 65536; rm -rf /home/ubuntu/anaconda2/envs/nm/.cache/* && conda activate nm && dijitso clean && ray start --resources='{"WorkerFlags":1}' --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076

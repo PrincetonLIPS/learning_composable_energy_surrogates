@@ -1,4 +1,5 @@
 import ray
+import time
 
 
 class Harvester(object):
@@ -11,6 +12,7 @@ class Harvester(object):
         self.n_death = 0
         self.ids_to_workers = {}
         self.last_error = None
+        self.last_error_time = 0
 
     def step(self, init_args=(), step_args=()):
         self.sow(init_args, step_args)
@@ -38,6 +40,7 @@ class Harvester(object):
             else:
                 self.n_death += 1
                 self.last_error = result
+                self.last_error_time = time.time()
 
         for res in valid_results:
             self.accumulator.feed(res)

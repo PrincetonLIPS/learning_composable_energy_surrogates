@@ -152,7 +152,9 @@ if __name__ == "__main__":
                                 htimer.interval,
                             )
                         )
-                        print("Last error: {}".format(train_harvester.last_error))
+                        print("Last error {}s ago: {}".format(
+                            time.time() - train_harvester.last_error_time,
+                            train_harvester.last_error))
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
@@ -307,6 +309,14 @@ if __name__ == "__main__":
                     deploy_harvester.n_death,
                 )
             )
+            print("Deploy harvester last error {}s ago: {}".format(
+                time.time() - deploy_harvester.last_error_time,
+                deploy_harvester.last_error
+            ))
+            print("Dagger harvester last error {}s ago: {}".format(
+                time.time() - dagger_harvester.last_error_time,
+                dagger_harvester.last_error
+            ))
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
