@@ -137,13 +137,14 @@ class SurrogateEnergyModel(object):
         if opt_steps is None:
             opt_steps = self.args.solve_lbfgs_steps
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
-        constraint_mask = self.fsm.to_torch(constraint_mask)
+        constraint_mask = self.fsm.to_torch(constraint_mask).data
         if self.fsm.cuda:
             x = x.cuda()
         x = Variable(x, requires_grad=True)
+        boundary = x.detach().clone().data
+        force_data = force_data.data.detach().clone()
 
         def obj_fn(x_):
-            boundary = boundary_data.detach().clone()
             f_inputs = torch.zeros_like(constraint_mask)
             f_inputs = f_inputs + constraint_mask * boundary
             f_inputs = f_inputs + (1.0 - constraint_mask) * x_
@@ -157,12 +158,12 @@ class SurrogateEnergyModel(object):
         traj_f = []
 
         def closure():
-            # pdb.set_trace()
+            # print("closure")
             optimizer.zero_grad()
             f = obj_fn(x)
             if return_intermediate:
-                traj_u.append(x.detach().clone())
-                traj_f.append(f.detach().clone())
+                traj_u.append(x.data.detach().clone())
+                traj_f.append(f.data.detach().clone())
             loss = torch.sum(f)
             loss.backward()
             return loss
@@ -171,8 +172,8 @@ class SurrogateEnergyModel(object):
         # pdb.set_trace()
 
         if return_intermediate:
-            traj_u.append(x.detach().clone())
-            traj_f.append(obj_fn(x).detach().clone())
+            traj_u.append(x.data.detach().clone())
+            traj_f.append(obj_fn(x).data.detach().clone())
 
         if return_intermediate:
             return x, traj_u, traj_f
@@ -191,13 +192,15 @@ class SurrogateEnergyModel(object):
         if opt_steps is None:
             opt_steps = self.args.solve_steps
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
-        constraint_mask = self.fsm.to_torch(constraint_mask)
+        constraint_mask = self.fsm.to_torch(constraint_mask).data.detach().clone()
         if self.fsm.cuda:
             x = x.cuda()
         x = Variable(x, requires_grad=True)
+        boundary = x.data.detach().clone()
+        force_data = force_data.data.detach().clone()
 
         def obj_fn(x_):
-            boundary = boundary_data.detach().clone()
+            # print("obj_fn")
             f_inputs = torch.zeros_like(constraint_mask)
             f_inputs = f_inputs + constraint_mask * boundary
             f_inputs = f_inputs + (1.0 - constraint_mask) * x_
@@ -215,10 +218,10 @@ class SurrogateEnergyModel(object):
         for i in range(opt_steps):
             optimizer.zero_grad()
             objective = obj_fn(x)
-            if return_intermediate:
-                traj_u.append(x.detach().clone())
-                traj_f.append(objective.detach().clone())
             torch.sum(objective).backward()
+            if return_intermediate:
+                traj_u.append(x.data.detach().clone())
+                traj_f.append(objective.data.detach().clone())
             optimizer.step()
 
         if return_intermediate:

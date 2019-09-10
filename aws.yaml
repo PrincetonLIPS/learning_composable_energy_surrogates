@@ -3,16 +3,16 @@ cluster_name: nmor-ray-cluster
 
 # The minimum number of workers nodes to launch in addition to the head
 # node. This number should be >= 0.
-min_workers: 1
+min_workers: 39
 
 # The maximum number of workers nodes to launch in addition to the head
 # node. This takes precedence over min_workers.
-max_workers: 100
+max_workers: 39
 
 # The initial number of worker nodes to launch in addition to the head
 # node. When the cluster is first brought up (or when it is refreshed with a
 # subsequent `ray up`) this number of nodes will be started.
-initial_workers: 10
+initial_workers: 39
 
 # Whether or not to autoscale aggressively. If this is enabled, if at any point
 #   we would start more workers, we start at least enough to bring us to
@@ -68,7 +68,7 @@ auth:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
     InstanceType: p2.xlarge
-    ImageId: ami-04bef108b408de676 # NMOR ami
+    ImageId: ami-0e61479f7bebcc982 # NMOR ami
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -78,6 +78,7 @@ head_node:
 
     SecurityGroupIds:
         - sg-6b16df08
+        - sg-01aefea2102d6bbb2
 
     # Additional options in the boto docs.
 
@@ -87,11 +88,11 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     InstanceType: m4.xlarge
-    ImageId: ami-04bef108b408de676 # NMOR ami
+    ImageId: ami-0e61479f7bebcc982 # NMOR ami
 
     # Run workers on spot by default. Comment this out to use on-demand.
-    # InstanceMarketOptions:
-    #     MarketType: spot
+    InstanceMarketOptions:
+        MarketType: spot
     #     # Additional options can be found in the boto docs, e.g.
     #     #   SpotOptions:
     #     #       MaxPrice: MAX_HOURLY_PRICE
@@ -118,9 +119,14 @@ setup_commands:
     # has your Ray repo pre-cloned. Then, you can replace the pip installs
     # below with a git checkout <your_sha> (and possibly a recompile).
     - source .bashrc
+    - yes | pip uninstall ray
     - conda activate nm
-    - pip install ray
-    - cd nmor-ray && git fetch && git checkout
+    # - yes | conda install psutil
+    # - pip install ray[debug]
+    - yes | pip install --upgrade ray==0.7.4
+    - yes | pip install boto3
+    - yes | pip install setproctitle
+    - cd nmor-ray && git fetch && git checkout && git pull
     # - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev4-cp27-cp27mu-manylinux1_x86_64.whl
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev4-cp35-cp35m-manylinux1_x86_64.whl
@@ -134,6 +140,7 @@ setup_commands:
 head_setup_commands:
     - sudo mount -t nfs4 -o nfsvers=4.1,rsize=1048576,wsize=1048576,hard,timeo=600,retrans=2,noresvport fs-c7f3d3be.efs.us-east-2.amazonaws.com:/ /efs_nmor
     - sudo chown ubuntu /efs_nmor
+    #   - sudo echo never > /sys/kernel/mm/transparent_hugepage/enabled
 #     - pip install boto3==1.4.8  # 1.4.8 adds InstanceMarketOptions
 
 # Custom commands that will be run on worker nodes after common setup.
@@ -142,9 +149,10 @@ worker_setup_commands: []
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --head --redis-port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
+    - ulimit -n 65536; conda activate nm && ray start --head --num-gpus=1 --resources='{"WorkerFlags":0}' --redis-port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076
+    - conda activate nm
+    - ulimit -n 65536; conda activate nm && dijitso clean && conda clean && ray start --resources='{"WorkerFlags":1}' --redis-address=$RAY_HEAD_IP:6379 --object-manager-port=8076

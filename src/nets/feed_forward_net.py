@@ -23,26 +23,21 @@ inits = {
 
 
 class MovingAverageNormalzier(nn.Module):
-    def __init__(self, alpha, dims):
+    def __init__(self, alpha, dims, fixed=True):
         super(MovingAverageNormalzier, self).__init__()
         self.alpha = alpha
         self.mean = nn.Parameter(torch.zeros(1, *dims), requires_grad=False)
         self.var = nn.Parameter(torch.ones(1, *dims), requires_grad=False)
+        self.fixed = fixed
 
     def forward(self, x):
         out = (x - self.mean) / torch.sqrt(self.var + 1e-7)
-        if self.training:
-            batch_mean = torch.mean(
-                x, dim=[d for d in range(1, len(x.size()))], keepdims=True
-            ).data
+        if self.training and not self.fixed:
+            batch_mean = torch.mean(x, dim=0, keepdims=True).data
             self.mean.data = (
                 1.0 - self.alpha
             ) * batch_mean + self.alpha * self.mean.data
-            batch_var = torch.sum(
-                (x - self.mean) ** 2,
-                dim=[d for d in range(1, len(x.size()))],
-                keepdims=True,
-            ).data
+            batch_var = torch.sum((x - self.mean) ** 2, dim=0, keepdims=True).data
             self.var.data = (1.0 - self.alpha) * batch_var + self.alpha * self.var.data
 
         return out
@@ -63,7 +58,7 @@ class FeedForwardNet(nn.Module):
         sizes = ast.literal_eval(args.ffn_layer_sizes)
         bias = args.use_bias
         self.normalizer = MovingAverageNormalzier(
-            args.normalizer_alpha, (fsm.vector_dim,)
+            args.normalizer_alpha, (fsm.vector_dim,), self.args.fix_normalizer
         )
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
@@ -87,8 +82,7 @@ class FeedForwardNet(nn.Module):
     def forward(self, boundary_params, params=None):
         if self.preproc is not None:
             boundary_params = self.preproc(boundary_params)
-        if self.args.normalize:
-            boundary_params = self.normalizer(boundary_params)
+        boundary_params = self.normalizer(boundary_params)
         if params is not None:
             x = torch.cat((boundary_params, params), dim=1)
         else:

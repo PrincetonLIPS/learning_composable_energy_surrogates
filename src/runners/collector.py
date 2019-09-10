@@ -14,8 +14,9 @@ import ray
 
 
 class CollectorBase(object):
-    def __init__(self, args):
+    def __init__(self, args, seed):
         self.args = args
+        np.random.seed(seed)
         make_p(args)
         self.pde = Metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim)
@@ -24,15 +25,18 @@ class CollectorBase(object):
         self.stepsize = 1.0 / args.anneal_steps
         self.factor = 0.0
         self.guess = fa.Function(self.fsm.V).vector()
+        self.steps = 0
 
     def increment_factor(self):
-        self.factor = np.min(
-            [1.0, self.factor + self.stepsize * (1 + random.random() - 0.5)]
-        )
+        self.steps += 1
 
     def step(self):
         self.increment_factor()
-        weighted_data = self.get_weighted_data(self.factor)
+        # if self.steps > self.args.anneal_steps:
+        #     raise Exception("Self-destructing; have completed annealing")
+        factor = max(1.0,
+                     (self.steps + np.random.random() - 0.5)) / self.args.anneal_steps
+        weighted_data = self.get_weighted_data(factor)
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
         f, JV, solution = self.fem.f_J(
             input_boundary_fn, initial_guess=self.guess, return_u=True
@@ -47,16 +51,16 @@ class CollectorBase(object):
         return Example(u, p, f, J)
 
 
-@ray.remote
+@ray.remote(resources={"WorkerFlags": 0.5})
 class Collector(CollectorBase):
     def get_weighted_data(self, factor):
         return self.bc * factor
 
 
-@ray.remote
+@ray.remote(resources={"WorkerFlags": 0.5})
 class PolicyCollector(CollectorBase):
-    def __init__(self, args, state_dict):
-        CollectorBase.__init__(self, args)
+    def __init__(self, args, seed, state_dict):
+        CollectorBase.__init__(self, args, seed)
 
         force_data = make_force(args, self.fsm)
 

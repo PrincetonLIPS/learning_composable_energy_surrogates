@@ -15,18 +15,23 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--train_size", type=int, help="n train data", default=60000)
-parser.add_argument("--val_size", type=int, help="n val data", default=10000)
+parser.add_argument("--run_local", help="Run locally", type=s2b, default=False)
+
+parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
+
+parser.add_argument("--deploy", help="Deploy", type=s2b, default=True)
+
+parser.add_argument("--train_size", type=int, help="n train data", default=1000)
+parser.add_argument("--val_size", type=int, help="n val data", default=500)
 parser.add_argument(
-    "--n_safe", type=int, help="n train data maintained from original dist",
-    default=30000
+    "--n_safe", type=int, help="n train data maintained from original dist", default=500
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=900
+    "--max_collectors", help="max Collector workers", type=int, default=39
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=50
+    "--max_evaluators", help="max Evaluator workers", type=int, default=5
 )
 
 parser.add_argument(
@@ -36,17 +41,12 @@ parser.add_argument(
     default=0.9,
 )
 
-parser.add_argument(
-    "--verbose", help="Verbose for debug", action="store_true", default=False
-)
+parser.add_argument("--verbose", help="Verbose for debug", type=s2b, default=False)
 parser.add_argument("--seed", help="Random seed", type=int, default=0)
 
 
 parser.add_argument(
-    "--sample_c",
-    help="sample c1, c2. else take mean",
-    action="store_true",
-    default=False,
+    "--sample_c", help="sample c1, c2. else take mean", type=s2b, default=False
 )
 parser.add_argument(
     "--c1_low", help="minimum low-freq param for pore shape", type=float, default=-0.1
@@ -72,49 +72,54 @@ parser.add_argument(
     "--boundary_freq_scale",
     type=float,
     help="maximum frequency scale for boundary random fourier fn",
-    default=1.0,
+    default=10.0,
 )
 parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=1.0,
+    default=0.3,
 )
 parser.add_argument(
     "--force_freq_scale",
     type=float,
     help="maximum frequency scale for force random fourier fn",
-    default=4.0,
+    default=0.0,
 )
 parser.add_argument(
     "--force_amp_scale",
     type=float,
     help="maximum amplitude scale for force random fourier fn,",
-    default=1.0,
+    default=0.0,
 )
 parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=100,
+    default=12,
 )
 
 parser.add_argument(
     "--remove_rigid",
     help="remove rigid body transforms before energy calculation",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument(
     "--semipolarize",
     help="preproc inputs to semipolar coords. overrides polarize",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
-parser.add_argument("--normalize", help="whiten net inputs", default=True, type=s2b)
+parser.add_argument(
+    "--fix_normalizer", help="adapt whitening of net inputs", default=True, type=s2b
+)
 parser.add_argument(
     "--normalizer_alpha", help="alpha for normalizer EMA", default=0.999, type=float
+)
+parser.add_argument(
+    "--solve_optimizer", help="adam or lbfgs", type=str, default="lbfgs"
 )
 parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int
@@ -132,21 +137,21 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[1024, 1024, 1024, 1024]",
+    default="[1024,1024,1024,1024]",
     type=str,
 )
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
 parser.add_argument(
     "--quadratic_scale",
     help="Scale net output by average of squared inputs",
-    default=False,
-    action="store_true",
+    default=True,
+    type=s2b,
 )
 parser.add_argument(
     "--quadratic_loss_scale",
     help="divide loss by mean of squared inputs",
     default=True,
-    action="store_true",
+    type=s2b,
 )
 parser.add_argument(
     "--max_train_steps", help="Maximum training steps", type=int, default=int(1e7)
@@ -160,9 +165,14 @@ parser.add_argument(
     type=str,
     default="/efs_nmor/results",
 )
+parser.add_argument("--data_name", help="Name of data run", type=str, default="bV5")
 parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
+parser.add_argument(
+    "--reload_data", help="Reload data if found", default=True, type=s2b
+)
+
 parser.add_argument("--batch_size", help="Batch size", type=int, default=128)
 
 parser.add_argument(
@@ -179,7 +189,7 @@ parser.add_argument(
     "--relaxation_parameter", default=0.7, type=float, help="relaxation parameter"
 )
 parser.add_argument(
-    "--max_newton_iter", default=25, type=int, help="maximum Newton iters"
+    "--max_newton_iter", default=50, type=int, help="maximum Newton iters"
 )
 
 parser.add_argument(
@@ -209,10 +219,10 @@ parser.add_argument(
     "--poisson_ratio", help="poisson's ratio of base material", type=float, default=0.49
 )
 
-parser.add_argument("--lr", help="Learning rate", type=float, default=3e-5)
+parser.add_argument("--lr", help="Learning rate", type=float, default=3e-6)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument(
-    "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
+    "--J_weight", help="Weight on Jacobian loss", type=float, default=10.0
 )
 
 parser.add_argument(

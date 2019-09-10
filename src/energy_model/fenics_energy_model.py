@@ -78,6 +78,7 @@ class FenicsEnergyModel(object):
         keys = ["bottom", "right", "top", "left"]
         boundary_fn_dic = {}
         if boundary_fn is not None:
+            boundary_fn = self.fsm.to_V(boundary_fn)
             for i, s in enumerate(constrained_sides):
                 if s:
                     boundary_fn_dic[keys[i]] = boundary_fn

@@ -1,4 +1,8 @@
 import ray
+import time
+import numpy as np
+
+MAX_SEED = 2**32
 
 
 class Harvester(object):
@@ -11,19 +15,23 @@ class Harvester(object):
         self.n_death = 0
         self.ids_to_workers = {}
         self.last_error = None
+        self.last_error_time = 0
 
     def step(self, init_args=(), step_args=()):
         self.sow(init_args, step_args)
         self.reap(step_args)
+        self.sow(init_args, step_args)
 
     def sow(self, init_args, step_args):
-        while len(self.ids_to_workers) < self.max_workers:
-            new_worker = self.WorkerClass.remote(self.args, *init_args)
+        for _ in range(self.max_workers - len(self.ids_to_workers)):
+            new_worker = self.WorkerClass.remote(self.args,
+                                                 np.random.randint(MAX_SEED),
+                                                 *init_args)
             self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
-            [id for id in self.ids_to_workers.keys()], timeout=0.01
+            [id for id in self.ids_to_workers.keys()], timeout=0.0001
         )
         results = {id: carefully_get(id) for id in ready_ids}
         valid_results = []
@@ -37,6 +45,7 @@ class Harvester(object):
             else:
                 self.n_death += 1
                 self.last_error = result
+                self.last_error_time = time.time()
 
         for res in valid_results:
             self.accumulator.feed(res)
