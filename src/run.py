@@ -108,6 +108,14 @@ if __name__ == "__main__":
             val_data = datasets["val_data"]
             val_data.memory_size = args.val_size
 
+            print("Require initial data with sizes: train {}, val {}".format(
+                args.train_size, args.val_size
+            ))
+
+            print("Found initial data with sizes: train {}, val {}".format(
+                train_data.size(), val_data.size()
+            ))
+
         else:
             print("Gathering initial data from scratch")
             # ---------- Start data collection
@@ -144,7 +152,9 @@ if __name__ == "__main__":
                         failed = train_harvester.n_death + val_harvester.n_death
                         # print("Nodes: ", ray.nodes())
                         print("Resources: ", ray.cluster_resources())
-                        print("Available resources: ", ray.available_resources())
+                        if args.verbose:
+                            time.sleep(0.1)
+                            print("Available resources: ", ray.available_resources())
                         print("{} nodes".format(len(ray.nodes())))
                         print(
                             "Harvested {} of {} with {} deaths at time={}s".format(
