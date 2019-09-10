@@ -152,6 +152,7 @@ if __name__ == "__main__":
                                 htimer.interval,
                             )
                         )
+                        print("Last error: {}".format(train_harvester.last_error))
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
