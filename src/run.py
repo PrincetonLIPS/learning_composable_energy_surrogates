@@ -121,6 +121,7 @@ if __name__ == "__main__":
             )
             print("Val harvester size ", val_harvester.max_workers)
             harvested = 0
+            failed = 0
             with Timer() as htimer:
                 while train_data.size() < len(train_data) or val_data.size() < len(
                     val_data
@@ -129,15 +130,19 @@ if __name__ == "__main__":
                         train_harvester.step()
                     if val_data.size() < len(val_data):
                         val_harvester.step()
-                    if train_data.size() + val_data.size() > harvested:
+                    if ((train_data.size() + val_data.size() > harvested)
+                        or (train_harvester.n_death + val_harvester.n_death >
+                            failed)):
                         harvested = train_data.size() + val_data.size()
+                        failed = train_harvester.n_death + val_harvester.n_death
                         # print("Nodes: ", ray.nodes())
                         print("Resources: ", ray.cluster_resources())
                         print("Available resources: ", ray.available_resources())
                         print("{} nodes".format(len(ray.nodes())))
                         print(
-                            "Harvested {} of {} at time={}s".format(
-                                harvested, len(train_data) + len(val_data), htimer.interval
+                            "Harvested {} of {} with {} deaths at time={}s".format(
+                                harvested, len(train_data) + len(val_data),
+                                failed, htimer.interval
                             )
                         )
 
