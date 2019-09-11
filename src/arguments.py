@@ -112,7 +112,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--semipolarize",
-    help="preproc inputs to semipolar coords. overrides polarize",
+    help="preproc inputs to semipolar coords",
     default=True,
     type=s2b,
 )

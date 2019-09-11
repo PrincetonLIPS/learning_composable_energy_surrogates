@@ -29,6 +29,8 @@ class Trainer(object):
         self.val_loader = DataLoader(
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
+        self.train_f_std = torch.Tensor([[1.0]])
+        self.train_J_std = torch.Tensor([[1.0]])
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
@@ -297,16 +299,19 @@ class Trainer(object):
         else:
             loss_scale = torch.Tensor([[1.0]])
 
+        # FLAG - this is different to other one. change.
+        '''
         if len(u) > 1 and self.args.batch_normalize_loss:
             train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
             train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
         else:
             train_f_std = torch.ones_like(f)
             train_J_std = torch.ones_like(J)
+        '''
 
-        f_loss = rmse(f / train_f_std, fhat / train_f_std, loss_scale)
+        f_loss = rmse(f / self.train_f_std, fhat / self.train_f_std, loss_scale)
 
-        J_loss = rmse(J / train_J_std, Jhat / train_J_std, loss_scale)
+        J_loss = rmse(J / self.train_J_std, Jhat / self.train_J_std, loss_scale)
 
         total_loss = f_loss + self.args.J_weight * J_loss
 
