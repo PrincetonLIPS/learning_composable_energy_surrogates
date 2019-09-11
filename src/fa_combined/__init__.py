@@ -3,8 +3,12 @@ from fenics import *
 from fenics_adjoint import *
 
 import logging
+import dijitso
+
 logging.getLogger('UFL').setLevel(logging.WARNING)
 logging.getLogger('FFC').setLevel(logging.WARNING)
+
+dijitso.set_log_level(40)
 
 set_log_level(30)
 

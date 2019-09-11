@@ -148,28 +148,25 @@ if __name__ == "__main__":
                         val_harvester.step()
                     if time.time() > last_msg_time + 5:
                         last_msg_time = time.time()
-                        if (train_data.size() + val_data.size() > harvested) or (
-                            train_harvester.n_death + val_harvester.n_death > failed
-                        ):
-                            harvested = train_data.size() + val_data.size()
-                            failed = train_harvester.n_death + val_harvester.n_death
-                            # print("Nodes: ", ray.nodes())
-                            print("Resources: ", ray.cluster_resources())
-                            if args.verbose:
-                                time.sleep(0.1)
-                                print("Available resources: ", ray.available_resources())
-                            print("{} nodes".format(len(ray.nodes())))
-                            print(
-                                "Harvested {} of {} with {} deaths at time={}s".format(
-                                    harvested,
-                                    len(train_data) + len(val_data),
-                                    failed,
-                                    htimer.interval,
-                                )
+                        harvested = train_data.size() + val_data.size()
+                        failed = train_harvester.n_death + val_harvester.n_death
+                        # print("Nodes: ", ray.nodes())
+                        print("Resources: ", ray.cluster_resources())
+                        if args.verbose:
+                            time.sleep(0.1)
+                            print("Available resources: ", ray.available_resources())
+                        print("{} nodes".format(len(ray.nodes())))
+                        print(
+                            "Harvested {} of {} with {} deaths at time={}s".format(
+                                harvested,
+                                len(train_data) + len(val_data),
+                                failed,
+                                htimer.interval,
                             )
-                            print("Last error {}s ago: {}".format(
-                                time.time() - train_harvester.last_error_time,
-                                train_harvester.last_error))
+                        )
+                        print("Last error {}s ago: {}".format(
+                            time.time() - train_harvester.last_error_time,
+                            train_harvester.last_error))
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
