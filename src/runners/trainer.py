@@ -293,9 +293,9 @@ class Trainer(object):
         """Take ground truth and predictions. Log stats and return loss."""
 
         if self.args.quadratic_loss_scale:
-            loss_scale = 1.0 / torch.mean(u ** 2, dim=1)
+            loss_scale = 1.0 / torch.mean(u ** 2, dim=1, keepdims=True)
         else:
-            loss_scale = torch.Tensor([1.0])
+            loss_scale = torch.Tensor([[1.0]])
 
         if len(u) > 1 and self.args.batch_normalize_loss:
             train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
