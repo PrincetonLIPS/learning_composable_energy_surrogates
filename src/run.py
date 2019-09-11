@@ -40,9 +40,7 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10},
-                 memory=3e9,
-                 object_store_memory=1e9)
+        ray.init(resources={"WorkerFlags": 10}, memory=3e9, object_store_memory=1e9)
         args.batch_size = 1
         args.train_size = 1
         args.val_size = 0
@@ -108,13 +106,17 @@ if __name__ == "__main__":
             val_data = datasets["val_data"]
             val_data.memory_size = args.val_size
 
-            print("Require initial data with sizes: train {}, val {}".format(
-                args.train_size, args.val_size
-            ))
+            print(
+                "Require initial data with sizes: train {}, val {}".format(
+                    args.train_size, args.val_size
+                )
+            )
 
-            print("Found initial data with sizes: train {}, val {}".format(
-                train_data.size(), val_data.size()
-            ))
+            print(
+                "Found initial data with sizes: train {}, val {}".format(
+                    train_data.size(), val_data.size()
+                )
+            )
 
         else:
             print("Gathering initial data from scratch")
@@ -165,9 +167,12 @@ if __name__ == "__main__":
                                 htimer.interval,
                             )
                         )
-                        print("Last error {}s ago: {}".format(
-                            time.time() - train_harvester.last_error_time,
-                            train_harvester.last_error))
+                        print(
+                            "Last error {}s ago: {}".format(
+                                time.time() - train_harvester.last_error_time,
+                                train_harvester.last_error,
+                            )
+                        )
                         if time.time() > last_save_time + 300:  # Save every 5min
                             print("Saving intermediate data...")
                             last_save_time = time.time()
@@ -334,14 +339,18 @@ if __name__ == "__main__":
                     deploy_harvester.n_death,
                 )
             )
-            print("Deploy harvester last error {}s ago: {}".format(
-                time.time() - deploy_harvester.last_error_time,
-                deploy_harvester.last_error
-            ))
-            print("Dagger harvester last error {}s ago: {}".format(
-                time.time() - dagger_harvester.last_error_time,
-                dagger_harvester.last_error
-            ))
+            print(
+                "Deploy harvester last error {}s ago: {}".format(
+                    time.time() - deploy_harvester.last_error_time,
+                    deploy_harvester.last_error,
+                )
+            )
+            print(
+                "Dagger harvester last error {}s ago: {}".format(
+                    time.time() - dagger_harvester.last_error_time,
+                    dagger_harvester.last_error,
+                )
+            )
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
