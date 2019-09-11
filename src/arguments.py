@@ -142,7 +142,7 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[1024,1024,1024,1024]",
+    default="[1024,1024,1024]",
     type=str,
 )
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
@@ -224,7 +224,7 @@ parser.add_argument(
     "--poisson_ratio", help="poisson's ratio of base material", type=float, default=0.49
 )
 
-parser.add_argument("--lr", help="Learning rate", type=float, default=3e-6)
+parser.add_argument("--lr", help="Learning rate", type=float, default=3e-5)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=10.0

@@ -239,6 +239,11 @@ if __name__ == "__main__":
                           dim=0,
                           keepdims=True).cuda()
             )
+            surrogate.net.output_scale.data = torch.mean(
+                torch.stack([f for _, _, f, _ in trainer.train_data.data],
+                            dim=0),
+                dim=0,
+                keepdims=True).cuda()
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
