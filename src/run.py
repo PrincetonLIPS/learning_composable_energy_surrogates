@@ -138,6 +138,7 @@ if __name__ == "__main__":
             harvested = train_data.size() + val_data.size()
             failed = 0
             with Timer() as htimer:
+                last_save_time = time.time()
                 last_msg_time = time.time()
                 while train_data.size() < len(train_data) or val_data.size() < len(
                     val_data
@@ -167,6 +168,12 @@ if __name__ == "__main__":
                         print("Last error {}s ago: {}".format(
                             time.time() - train_harvester.last_error_time,
                             train_harvester.last_error))
+                        if time.time() > last_save_time + 300:  # Save every 5min
+                            print("Saving intermediate data...")
+                            torch.save(
+                                {"train_data": train_data, "val_data": val_data},
+                                os.path.join(data_dir, "initial_datasets.pt"),
+                            )
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
