@@ -2,6 +2,10 @@
 from fenics import *
 from fenics_adjoint import *
 
+import logging
+logging.getLogger('UFL').setLevel(logging.WARNING)
+logging.getLogger('FFC').setLevel(logging.WARNING)
+
 set_log_level(30)
 
 # Wrap compute_gradient and compute_hessian, so that the outputs have

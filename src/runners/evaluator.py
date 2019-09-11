@@ -12,7 +12,7 @@ import numpy as np
 import ray
 
 
-@ray.remote(resources={"WorkerFlags": 0.3})
+@ray.remote(resources={"WorkerFlags": 0.5})
 class Evaluator(object):
     def __init__(self, args, seed):
         self.args = args

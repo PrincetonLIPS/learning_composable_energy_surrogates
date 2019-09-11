@@ -135,38 +135,41 @@ if __name__ == "__main__":
                 args, val_data, Collector, int(args.max_collectors * val_frac)
             )
             print("Val harvester size ", val_harvester.max_workers)
-            harvested = 0
+            harvested = train_data.size() + val_data.size()
             failed = 0
             with Timer() as htimer:
                 while train_data.size() < len(train_data) or val_data.size() < len(
                     val_data
                 ):
+                    last_msg_time = time.time()
                     if train_data.size() < len(train_data):
                         train_harvester.step()
                     if val_data.size() < len(val_data):
                         val_harvester.step()
-                    if (train_data.size() + val_data.size() > harvested) or (
-                        train_harvester.n_death + val_harvester.n_death > failed
-                    ):
-                        harvested = train_data.size() + val_data.size()
-                        failed = train_harvester.n_death + val_harvester.n_death
-                        # print("Nodes: ", ray.nodes())
-                        print("Resources: ", ray.cluster_resources())
-                        if args.verbose:
-                            time.sleep(0.1)
-                            print("Available resources: ", ray.available_resources())
-                        print("{} nodes".format(len(ray.nodes())))
-                        print(
-                            "Harvested {} of {} with {} deaths at time={}s".format(
-                                harvested,
-                                len(train_data) + len(val_data),
-                                failed,
-                                htimer.interval,
+                    if time.time() > last_msg_time + 5:
+                        last_msg_time = time.time()
+                        if (train_data.size() + val_data.size() > harvested) or (
+                            train_harvester.n_death + val_harvester.n_death > failed
+                        ):
+                            harvested = train_data.size() + val_data.size()
+                            failed = train_harvester.n_death + val_harvester.n_death
+                            # print("Nodes: ", ray.nodes())
+                            print("Resources: ", ray.cluster_resources())
+                            if args.verbose:
+                                time.sleep(0.1)
+                                print("Available resources: ", ray.available_resources())
+                            print("{} nodes".format(len(ray.nodes())))
+                            print(
+                                "Harvested {} of {} with {} deaths at time={}s".format(
+                                    harvested,
+                                    len(train_data) + len(val_data),
+                                    failed,
+                                    htimer.interval,
+                                )
                             )
-                        )
-                        print("Last error {}s ago: {}".format(
-                            time.time() - train_harvester.last_error_time,
-                            train_harvester.last_error))
+                            print("Last error {}s ago: {}".format(
+                                time.time() - train_harvester.last_error_time,
+                                train_harvester.last_error))
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
