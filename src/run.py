@@ -227,11 +227,16 @@ if __name__ == "__main__":
                 torch.std(preprocd_u, dim=0, keepdims=True) ** 2
             ).data
             trainer.train_f_std = (
-                torch.std([f for _, _, f, _ in trainer.train_data.data], dim=0,
+                torch.std(torch.stack(
+                    [f for _, _, f, _ in trainer.train_data.data], dim=0),
+                          dim=0,
                           keepdims=True)
             )
             trainer.train_J_std = (
-                torch.std([J for _, _, _, J in trainer.train_data.data], dim=0,
+                torch.std(torch.stack(
+                    [J for _, _, _, J in trainer.train_data.data],
+                    dim=0),
+                          dim=0,
                           keepdims=True)
             )
 
