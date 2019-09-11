@@ -7,16 +7,20 @@ class DataBuffer(Dataset):
     def __init__(self, memory_size, safe_idx=0):
         self.memory_size = memory_size
         self.data = []
-        self.pos = 0
+        self.pos = self.safe_idx
         self.safe_idx = safe_idx
+        assert self.safe_idx >= 0
+        assert self.safe_idx < self.memory_size
 
     def feed(self, example):
         assert isinstance(example, Example)
-        if (self.pos) >= len(self.data):
+        if len(self.data) <= self.memory_size:
             self.data.append((example.u, example.p, example.f, example.J))
         else:
             self.data[self.pos] = example
-        self.pos = self.safe_idx + (self.pos + 1) % (self.memory_size - self.safe_idx)
+            self.pos += 1
+            if self.pos >= self.memory_size:
+                self.pos = self.safe_idx
 
     def feed_batch(self, examples):
         for ex in examples:
