@@ -7,8 +7,8 @@ class DataBuffer(Dataset):
     def __init__(self, memory_size, safe_idx=0):
         self.memory_size = memory_size
         self.data = []
-        self.pos = self.safe_idx
         self.safe_idx = safe_idx
+        self.pos = self.safe_idx
         assert self.safe_idx >= 0
         assert self.safe_idx < self.memory_size
 
