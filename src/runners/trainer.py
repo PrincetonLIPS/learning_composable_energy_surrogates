@@ -29,8 +29,8 @@ class Trainer(object):
         self.val_loader = DataLoader(
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
-        self.train_f_std = torch.Tensor([[1.0]])
-        self.train_J_std = torch.Tensor([[1.0]])
+        self.train_f_std = torch.Tensor([[1.0]]).cuda()
+        self.train_J_std = torch.Tensor([[1.0]]).cuda()
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
