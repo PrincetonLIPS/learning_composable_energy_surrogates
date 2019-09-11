@@ -170,6 +170,7 @@ if __name__ == "__main__":
                             train_harvester.last_error))
                         if time.time() > last_save_time + 300:  # Save every 5min
                             print("Saving intermediate data...")
+                            last_save_time = time.time()
                             torch.save(
                                 {"train_data": train_data, "val_data": val_data},
                                 os.path.join(data_dir, "initial_datasets.pt"),
