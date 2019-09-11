@@ -297,7 +297,7 @@ class Trainer(object):
         else:
             loss_scale = torch.Tensor([1.0])
 
-        if len(u) > 1:
+        if len(u) > 1 and args.batch_normalize_loss:
             train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
             train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
         else:
