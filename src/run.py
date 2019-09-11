@@ -138,10 +138,10 @@ if __name__ == "__main__":
             harvested = train_data.size() + val_data.size()
             failed = 0
             with Timer() as htimer:
+                last_msg_time = time.time()
                 while train_data.size() < len(train_data) or val_data.size() < len(
                     val_data
                 ):
-                    last_msg_time = time.time()
                     if train_data.size() < len(train_data):
                         train_harvester.step()
                     if val_data.size() < len(val_data):
