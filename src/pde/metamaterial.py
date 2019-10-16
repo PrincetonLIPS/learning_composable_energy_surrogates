@@ -31,6 +31,8 @@ class Metamaterial(PDE):
             args.min_feature_size,
             args.pore_radial_resolution,
         )
+        if L0 is None:
+            L0 = 1.0 / self.args.n_cells
 
         r0 = L0 * math.sqrt(2 * porosity) / math.sqrt(math.pi * (2 + c1 ** 2 + c2 ** 2))
 
@@ -71,6 +73,8 @@ class Metamaterial(PDE):
     def _build_function_space(self):
         """Create 2d VectorFunctionSpace and an exterior domain"""
         L0 = self.args.L0
+        if L0 is None:
+            L0 = 1.0 / self.args.n_cells
         n_cells = self.args.n_cells
 
         class Exterior(fa.SubDomain):

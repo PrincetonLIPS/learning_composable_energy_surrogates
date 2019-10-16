@@ -33,10 +33,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=395
+    "--max_collectors", help="max Collector workers", type=int, default=390
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=0
+    "--max_evaluators", help="max Evaluator workers", type=int, default=5
 )
 
 parser.add_argument(
@@ -191,7 +191,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--relaxation_parameter", default=0.5, type=float, help="relaxation parameter"
+    "--relaxation_parameter", default=0.7, type=float, help="relaxation parameter"
 )
 parser.add_argument(
     "--max_newton_iter", default=50, type=int, help="maximum Newton iters"
@@ -215,7 +215,7 @@ parser.add_argument(
 )
 parser.add_argument("--c1", default=0.0, type=float, help="c1")
 parser.add_argument("--c2", default=0.0, type=float, help="c2")
-parser.add_argument("--L0", default=1.0, type=float, help="metamaterial L0")
+parser.add_argument("--L0", default=None, type=float, help="metamaterial L0")
 parser.add_argument("--porosity", default=0.5, type=float, help="metamaterial porosity")
 parser.add_argument(
     "--young_modulus", help="young's modulus of base material", type=float, default=1.0
