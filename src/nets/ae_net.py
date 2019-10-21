@@ -6,7 +6,7 @@ from ..geometry.polar import SemiPolarizer
 from ..geometry.remove_rigid_body import RigidRemover
 from ..util.moving_avg_normalizer import MovingAverageNormalzier
 import numpy as np
-import pdb
+
 
 
 nonlinearities = {
@@ -26,9 +26,9 @@ inits = {
 }
 
 
-class FeedForwardNet(nn.Module):
+class AutoencoderNet(nn.Module):
     def __init__(self, args, fsm):
-        super(FeedForwardNet, self).__init__()
+        super(AutoencoderNet, self).__init__()
 
         self.args = args
 
@@ -46,7 +46,7 @@ class FeedForwardNet(nn.Module):
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
         self.input_dim = fsm.vector_dim + 2
-        self.sizes = [self.input_dim] + sizes + [fsm.vector_dim]
+        self.sizes = [self.input_dim] + sizes + sizes[::-1] + [1+fsm.vector_dim*2]
         self.layers = nn.ModuleList(
             [
                 nn.Linear(self.sizes[i], self.sizes[i + 1], bias=bias)
@@ -55,8 +55,6 @@ class FeedForwardNet(nn.Module):
         )
         self.output_scale = nn.Parameter(torch.Tensor([[1.0]]),
                                          requires_grad=False)
-        if self.args.quad_base:
-            self.Q = nn.Parameter(torch.Tensor(np.load('/home/upbeat/projects/nmor-ray/src/nets/Q.npy')), requires_grad=False)
         for l in self.layers:
             self.init(l.weight)
 
@@ -66,10 +64,9 @@ class FeedForwardNet(nn.Module):
         return x
 
     def forward(self, boundary_params, params=None):
-        # pdb.set_trace()
         if self.preproc is not None:
             boundary_params = self.preproc(boundary_params)
-        # boundary_params = self.normalizer(boundary_params)
+        boundary_params = self.normalizer(boundary_params)
         if params is not None:
             x = torch.cat((boundary_params, params), dim=1)
         else:
@@ -81,20 +78,11 @@ class FeedForwardNet(nn.Module):
         a = x
         for l in self.layers:
             x = l(a)
-            if False: #a.size() == x.size():  # Use residual connection if sizes allow
+            if a.size() == x.size():  # Use residual connection if sizes allow
                 a = a + self.nonlinearity(x)
             else:
                 a = self.nonlinearity(x)
-        return torch.sum(x * boundary_params, dim=1, keepdims=True)
-        if self.args.quad_base:
-            base_E = torch.matmul(torch.matmul(boundary_params, self.Q), boundary_params.t())
-            base_E = torch.diag(base_E).view(-1, 1)
-            return torch.exp(x) * base_E
-        else:
-            out = (x ** 2).view(-1, 1)
-
-            if self.args.quadratic_scale:
-                quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1, 1)
-                return out * quadratic_scale * self.output_scale
-            else:
-                return out * self.output_scale
+        A = torchF.softplus(x[:, 1+(x.size(1)-1)//2:])
+        x = x[:, 1:1+(x.size(1)-1)//2]
+        offset = x[:, 0].view(-1, 1)**2
+        return offset + torch.sum((boundary_params*A - x*A)**2, dim=1, keepdims=True) * self.output_scale

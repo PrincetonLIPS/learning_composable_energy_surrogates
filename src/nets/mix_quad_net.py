@@ -6,6 +6,7 @@ from ..geometry.polar import SemiPolarizer
 from ..geometry.remove_rigid_body import RigidRemover
 from ..util.moving_avg_normalizer import MovingAverageNormalzier
 import numpy as np
+
 import pdb
 
 
@@ -26,9 +27,16 @@ inits = {
 }
 
 
-class FeedForwardNet(nn.Module):
+def safe_softmax(x):
+    assert len(x.size()) == 2
+    max_x, _ = torch.max(x, dim=1, keepdim=True)
+    ex = torch.exp(x - max_x)
+    return ex / torch.sum(ex, dim=1, keepdim=True)
+
+
+class MixQuadNet(nn.Module):
     def __init__(self, args, fsm):
-        super(FeedForwardNet, self).__init__()
+        super(MixQuadNet, self).__init__()
 
         self.args = args
 
@@ -46,7 +54,10 @@ class FeedForwardNet(nn.Module):
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
         self.input_dim = fsm.vector_dim + 2
-        self.sizes = [self.input_dim] + sizes + [fsm.vector_dim]
+        self.sizes = [self.input_dim] + sizes + [args.n_quad]
+        self.quads = nn.Parameter(torch.randn(args.n_quad, fsm.vector_dim)/fsm.vector_dim)
+        self.lins = nn.Parameter(torch.zeros_like(self.quads), requires_grad=False) # nn.Parameter(torch.randn(args.n_quad, fsm.vector_dim)/fsm.vector_dim)
+        self.offsets = nn.Parameter(torch.randn(args.n_quad, 1))
         self.layers = nn.ModuleList(
             [
                 nn.Linear(self.sizes[i], self.sizes[i + 1], bias=bias)
@@ -66,10 +77,9 @@ class FeedForwardNet(nn.Module):
         return x
 
     def forward(self, boundary_params, params=None):
-        # pdb.set_trace()
         if self.preproc is not None:
             boundary_params = self.preproc(boundary_params)
-        # boundary_params = self.normalizer(boundary_params)
+        boundary_params = self.normalizer(boundary_params)
         if params is not None:
             x = torch.cat((boundary_params, params), dim=1)
         else:
@@ -81,20 +91,20 @@ class FeedForwardNet(nn.Module):
         a = x
         for l in self.layers:
             x = l(a)
-            if False: #a.size() == x.size():  # Use residual connection if sizes allow
+            if a.size() == x.size():  # Use residual connection if sizes allow
                 a = a + self.nonlinearity(x)
             else:
                 a = self.nonlinearity(x)
-        return torch.sum(x * boundary_params, dim=1, keepdims=True)
-        if self.args.quad_base:
-            base_E = torch.matmul(torch.matmul(boundary_params, self.Q), boundary_params.t())
-            base_E = torch.diag(base_E).view(-1, 1)
-            return torch.exp(x) * base_E
-        else:
-            out = (x ** 2).view(-1, 1)
 
-            if self.args.quadratic_scale:
-                quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1, 1)
-                return out * quadratic_scale * self.output_scale
-            else:
-                return out * self.output_scale
+        x = x / torch.sqrt(torch.sum(x**2, dim=0, keepdims=True)/100 + 1)
+        mixture = safe_softmax(x)
+        self.last_x = x
+        self.last_mix = mixture
+
+        # pdb.set_trace()
+
+        energy = torch.sum((torch.matmul(mixture, torchF.softplus(self.quads)) * (boundary_params**2) +
+                            torch.matmul(mixture, self.lins) * boundary_params),
+                           dim=1, keepdim=True) + torch.matmul(mixture, torchF.softplus(self.offsets))
+
+        return energy * self.output_scale

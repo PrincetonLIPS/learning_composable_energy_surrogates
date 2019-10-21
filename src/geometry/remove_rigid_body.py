@@ -42,17 +42,24 @@ def remove_translation(x):
     Expect x to have shape [batch_size, n_locs, 2].
     """
     assert len(x.size()) == 3 and x.size(2) == 2
-    return x - torch.mean(x, dim=1, keepdim=True)
+    if True:
+        return x - torch.mean(x, dim=1, keepdim=True).detach()
+    else:
+        return x
 
 
 def batched_2x2_svd(A):
     assert len(A.size()) == 3 and A.size(1) == 2 and A.size(2) == 2
+    U, S, V = torch.svd(A)
+    return U, S, V
+    '''
     U, s, V = np.linalg.svd(A.detach().cpu().numpy(), compute_uv=True)
     return (
         torch.Tensor(U).to(A.device),
         torch.Tensor(s).to(A.device),
         torch.Tensor(V).to(A.device),
     )  # Maybe replace with custom later
+    '''
 
 
 def batched_2x2_det(A):
@@ -70,17 +77,23 @@ def remove_rotation(x, ref):
     assert len(x.size()) == 3 and x.size(2) == 2
     assert len(ref.size()) == 2 and ref.size(1) == 2
     assert ref.size(0) == x.size(1)
-    batch_size = x.size(0)
-    n = x.size(1)
+    # batch_size = x.size(0)
+    # n = x.size(1)
     ref = ref.view(1, -1, 2)
 
-    B = torch.matmul(x.permute(0, 2, 1), ref)
+    if False:
+        B = torch.matmul(x.permute(0, 2, 1), ref)
 
-    U, S, V = batched_2x2_svd(B)
+        U, S, V = batched_2x2_svd(B)
 
-    R = torch.matmul(U, V.transpose(-2, -1))
+        R = torch.matmul(U, V.transpose(-2, -1))
+    else:
+        return x
 
-    return torch.matmul(R.transpose(-2, -1), x.permute(0, 2, 1)).permute(0, 2, 1)
+    ret = torch.matmul(R.transpose(-2, -1), x.permute(0, 2, 1)).permute(0, 2, 1)
+
+    # pdb.set_trace()
+    return ret
 
 
 if __name__ == "__main__":
@@ -96,6 +109,7 @@ if __name__ == "__main__":
     x_ = remove_translation(x)
     ref_ = remove_translation(ref.view(1, -1, 2)).view(-1, 2)
     x_ = remove_rotation(x_, ref_)
+    pdb.set_trace()
     print((x - ref.view(1, -1, 2)).norm())
     print((x_ - ref_.view(1, -1, 2)).norm())
     # pdb.set_trace()

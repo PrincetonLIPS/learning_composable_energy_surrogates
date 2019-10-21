@@ -113,3 +113,14 @@ class FenicsEnergyModel(object):
             raise Exception(
                 "Initial guess energy {} is too damn high".format(init_energy)
             )
+
+if __name__ == '__main__':
+    from .. import arguments
+    from ..pde.metamaterial import Metamaterial
+    from ..maps.function_space_map import FunctionSpaceMap
+    fa.set_log_level(20)
+    args = arguments.parser.parse_args()
+    pde = Metamaterial(args)
+    fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=True)
+    fem = FenicsEnergyModel(args, pde, fsm)
+    pdb.set_trace()

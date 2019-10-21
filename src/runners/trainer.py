@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import math
 
 import pdb
 import ast
@@ -12,6 +13,9 @@ from ..geometry.remove_rigid_body import RigidRemover
 
 from ..util.timer import Timer
 from ..viz.plotting import plot_boundary, plot_vectors
+from ..util.dummy import Dummy
+from ..util.kfac import KFAC
+from ..util.ekfac import EKFAC
 
 
 class Trainer(object):
@@ -20,7 +24,6 @@ class Trainer(object):
         self.pde = pde
         self.surrogate = surrogate
         self.tflogger = tflogger
-        self.init_optimizer()
         self.train_data = train_data
         self.val_data = val_data
         self.train_loader = DataLoader(
@@ -29,6 +32,7 @@ class Trainer(object):
         self.val_loader = DataLoader(
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
+        self.init_optimizer()
         self.train_f_std = torch.Tensor([[1.0]]).cuda()
         self.train_J_std = torch.Tensor([[1.0]]).cuda()
 
@@ -40,6 +44,7 @@ class Trainer(object):
                     (p for p in self.surrogate.parameters() if p.requires_grad),
                     self.args.lr,
                     weight_decay=self.args.wd,
+                    betas=ast.literal_eval(self.args.adam_betas),
                     amsgrad=(self.args.optimizer == "amsgrad"),
                 )
             elif self.args.optimizer == "sgd":
@@ -78,23 +83,35 @@ class Trainer(object):
                     milestones=[1e2,5e2,2e3,1e4,1e5])
                 """
             '''
-            self.scheduler = torch.optim.lr_scheduler.CyclicLR(
-                self.optimizer,
-                base_lr=self.args.lr * 1e-3,
-                max_lr=3 * self.args.lr,
-                step_size_up=1000,
-                step_size_down=None,
-                mode="triangular",
-                gamma=0.995,
-                scale_fn=None,
-                scale_mode="cycle",
-                cycle_momentum=False,
-                base_momentum=0.8,
-                max_momentum=0.9,
-                last_epoch=-1,
-            )
+            if self.args.cyclic_lr:
+                self.scheduler = torch.optim.lr_scheduler.CyclicLR(
+                    self.optimizer,
+                    base_lr=self.args.lr * 1e-3,
+                    max_lr=3 * self.args.lr,
+                    step_size_up=int(math.ceil(len(self.train_data)/self.args.batch_size)),
+                    step_size_down=None,
+                    mode="triangular",
+                    gamma=1.0,
+                    scale_fn=None,
+                    scale_mode="cycle",
+                    cycle_momentum=False,
+                    base_momentum=0.8,
+                    max_momentum=0.9,
+                    last_epoch=-1,
+                )
+            else:
+                self.scheduler = Dummy()
         else:
             self.optimizer = None
+
+        if self.args.preconditioner is None:
+            self.preconditioner = Dummy()
+        elif self.args.preconditioner == 'kfac':
+            self.preconditioner = KFAC(self.surrogate.net, 0.01, update_freq=100)
+        elif self.args.preconditioner == 'ekfac':
+            self.preconditioner = EKFAC(self.surrogate.net, 0.01, update_freq=100,
+                                        alpha=1.0)
+
 
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
@@ -105,8 +122,13 @@ class Trainer(object):
         with Timer() as timer:
             fhat, Jhat = self.surrogate.f_J(u, p)
 
+        #if step % 1000 == 0:
+        #    pdb.set_trace()
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
         f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(step, u, f, J, fhat, Jhat)
+
+        #if step > 3000:
+        #    pdb.set_trace()
 
         if self.optimizer:
             total_loss.backward()
@@ -125,6 +147,13 @@ class Trainer(object):
                 torch.nn.utils.clip_grad_norm_(
                     self.surrogate.net.parameters(), self.args.clip_grad_norm
                 )
+            if self.args.add_gradient_noise:
+                for p in self.surrogate.net.parameters():
+                    if p.requires_grad:
+                        noise = torch.randn_like(p.data)
+                        noise = (noise * (1+step)**(-0.55) * 0.1)
+                        p.grad.data.add_(noise)
+            self.preconditioner.step()
             self.optimizer.step()
             self.scheduler.step()
             if self.args.verbose:
@@ -309,16 +338,28 @@ class Trainer(object):
             train_J_std = torch.ones_like(J)
         '''
 
-        f_loss = rmse(f / self.train_f_std, fhat / self.train_f_std, loss_scale)
+        f_loss = torch.nn.functional.mse_loss(f, fhat)
+        J_loss = torch.nn.functional.mse_loss(J, Jhat)
+
+        '''
+        if self.args.log_loss:
+            f_loss = rmse(torch.log(f) / torch.log(self.train_f_std),
+                          torch.log(fhat) / torch.log(self.train_f_std), loss_scale)
+        else:
+            f_loss = rmse(f / self.train_f_std, fhat / self.train_f_std, loss_scale)
 
         J_loss = rmse(J / self.train_J_std, Jhat / self.train_J_std, loss_scale)
+        '''
 
-        total_loss = f_loss + self.args.J_weight * J_loss
+        total_loss = self.args.f_weight * f_loss + self.args.J_weight * J_loss
 
         f_pce = error_percent(f, fhat)
         J_pce = error_percent(J, Jhat)
 
         J_sim = similarity(J, Jhat)
+
+        #if step > 1000:
+        #    pdb.set_trace()
 
         if self.tflogger is not None:
             self.tflogger.log_scalar("train_set_size", len(self.train_data), step)
@@ -380,12 +421,19 @@ def rmse(y, y_, loss_scale=torch.Tensor([1.0])):
         )
     return torch.sqrt(torch.mean((y - y_) ** 2 * loss_scale))
 
+def rel_rmse(y, y_, loss_scale=torch.Tensor([1.0])):
+    ybatch = y.view(y.size(0), -1)
+    y_batch = y_.view(y_.size(0), -1).to(y.device)
+    loss_scale = loss_scale.to(y.device) / (torch.norm(ybatch, dim=1) + torch.norm(y_batch, dim=1))
+    return rmse(y, y_, loss_scale)
+
 
 def error_percent(y, y_):
     """Mean of abs(err) / abs(true_val)"""
     y_ = y_.view(y_.size(0), -1).cpu()
     y = y.view(y_.size()).cpu()
-    return torch.mean(torch.norm(y - y_, dim=1) / (torch.norm(y, dim=1) + 1e-7))
+    return torch.mean(torch.norm(y - y_, dim=1) / (torch.max(torch.norm(y, dim=1),
+                                                   torch.Tensor([1e-12]))))
 
 
 def similarity(y, y_):

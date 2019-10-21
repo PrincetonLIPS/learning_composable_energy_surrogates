@@ -22,6 +22,9 @@ from .arguments import parser
 # from ..runners.online_trainer import OnlineTrainer
 from .pde.metamaterial import Metamaterial
 from .nets.feed_forward_net import FeedForwardNet
+from .nets.mix_quad_net import MixQuadNet
+from .nets.ae_net import AutoencoderNet
+from .nets.ring_net import RingNet
 from .maps.function_space_map import FunctionSpaceMap
 from .energy_model.surrogate_energy_model import SurrogateEnergyModel
 from .logging.tensorboard_logger import Logger as TFLogger
@@ -31,6 +34,7 @@ from .runners.evaluator import Evaluator
 from .runners.harvester import Harvester
 from .data.buffer import DataBuffer
 from .util.exponential_moving_stats import ExponentialMovingStats
+from .util.dummy import Dummy
 
 from .util.timer import Timer
 import time
@@ -40,23 +44,26 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10}, memory=3e9, object_store_memory=1e9)
-        args.batch_size = 1
-        args.train_size = 1
-        args.val_size = 0
+        # ray.init(resources={"WorkerFlags": 10}, memory=3e9, object_store_memory=1e9)
+        # args.batch_size = 1
+        # args.train_size = 1
+        # args.val_size = 0
         args.n_safe = 0
-        args.max_collectors = 1
-        args.max_evaluators = 1
-        args.ffn_layer_sizes = "[128,128]"
+        # args.max_collectors = 1
+        # args.max_evaluators = 1
+        # args.ffn_layer_sizes = "[1024,1024,1024,1024]"
         args.results_dir = "results"
-        args.verbose = True
+        # args.verbose = True
+
+        ray = Dummy()
     else:
         ray.init(redis_address="localhost:6379")
     time.sleep(10)
-    # print("Nodes: ", ray.nodes())
     print("Resources: ", ray.cluster_resources())
     print("Available resources: ", ray.available_resources())
     print("{} nodes".format(len(ray.nodes())))
+    # print("Nodes: ", ray.nodes())
+
 
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -87,7 +94,17 @@ if __name__ == "__main__":
     try:
         fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=True)
 
-        net = FeedForwardNet(args, fsm)
+        if args.net == 'ffn':
+            net = FeedForwardNet(args, fsm)
+        elif args.net == 'aen':
+            net = AutoencoderNet(args, fsm)
+        elif args.net == 'mqn':
+            net = MixQuadNet(args, fsm)
+        elif args.net == 'ring':
+            net = RingNet(args, fsm)
+        else:
+            raise Exception("Unknown net ", args.net)
+
         net = net.cuda()
 
         surrogate = SurrogateEnergyModel(args, net, fsm)
@@ -103,8 +120,12 @@ if __name__ == "__main__":
             train_data = datasets["train_data"]
             train_data.memory_size = args.train_size
             train_data.safe_idx = args.n_safe
+            train_data.data = [train_data[train_data.size() - i - 1]
+                               for i in range(train_data.size())]
             val_data = datasets["val_data"]
             val_data.memory_size = args.val_size
+            val_data.data = [val_data[val_data.size() - i - 1]
+                             for i in range(val_data.size())]
 
             print(
                 "Require initial data with sizes: train {}, val {}".format(
@@ -196,14 +217,27 @@ if __name__ == "__main__":
             del train_harvester
             del val_harvester
 
-            torch.save(
-                {"train_data": train_data, "val_data": val_data},
-                os.path.join(data_dir, "initial_datasets.pt"),
-            )
+            if not args.run_local:
+                torch.save(
+                    {"train_data": train_data, "val_data": val_data},
+                    os.path.join(data_dir, "initial_datasets.pt"),
+                )
 
-            time.sleep(10)
+            time.sleep(1)
 
         # ---------- Finish data collection
+
+        train_f_mean = torch.mean(torch.stack([f
+                                               for _, _, f, _ in train_data.data[
+                                                   :train_data.memory_size]]))
+
+        for e in train_data.data[:train_data.memory_size]:
+            e[2].data /= train_f_mean
+            e[3].data /= train_f_mean
+
+        for e in val_data.data[:val_data.memory_size]:
+            e[2].data /= train_f_mean
+            e[3].data /= train_f_mean
 
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 
@@ -221,7 +255,7 @@ if __name__ == "__main__":
                 surrogate.net.normalizer.mean.data
             )
             # User prompt in case want to check anything
-            pdb.set_trace()
+            # pdb.set_trace()
         else:
             surrogate.net.normalizer.var.data = (
                 torch.std(preprocd_u, dim=0, keepdims=True) ** 2
@@ -247,6 +281,9 @@ if __name__ == "__main__":
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
+        dagger_harvester = Dummy()
+        deploy_harvester = Dummy()
+        '''
         dagger_harvester = Harvester(
             args, train_data, PolicyCollector, args.max_collectors if args.dagger else 0
         )
@@ -254,6 +291,7 @@ if __name__ == "__main__":
         deploy_harvester = Harvester(
             args, deploy_ems, Evaluator, args.max_evaluators if args.deploy else 0
         )
+        '''
 
         n_batches = len(trainer.train_loader)
         step = 0
@@ -267,12 +305,13 @@ if __name__ == "__main__":
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(5)
 
-            state_dict = surrogate.net.state_dict()
-            state_dict = {
-                k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
-                for k, v in state_dict.items()
-            }
-            broadcast_net_state = ray.put(state_dict)
+            if not args.run_local:
+                state_dict = surrogate.net.state_dict()
+                state_dict = {
+                    k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
+                    for k, v in state_dict.items()
+                }
+                broadcast_net_state = ray.put(state_dict)
 
             surrogate.net.train()
             for bidx, batch in enumerate(trainer.train_loader):
@@ -280,7 +319,7 @@ if __name__ == "__main__":
 
                 if not args.run_local and args.dagger:
                     dagger_harvester.step(init_args=(broadcast_net_state,))
-                if args.deploy:
+                if not args.run_local and args.deploy:
                     deploy_harvester.step(step_args=(broadcast_net_state,))
 
                 step += 1
@@ -288,9 +327,9 @@ if __name__ == "__main__":
             epoch += 1
 
             # User prompt in case want to check anything
-            if args.run_local:
+            if False:  # args.run_local:
                 pdb.set_trace()
-            else:
+            elif not args.run_local:
                 trainer.visualize(
                     step - 1, next(iter(trainer.train_loader)), "Training"
                 )
@@ -300,23 +339,24 @@ if __name__ == "__main__":
 
             surrogate.net.eval()
 
-            if not args.run_local:
+            if not False:  # args.run_local:
                 v_losses = trainer.val_step(step)
             else:
                 v_losses = [0.0, 0.0, 0.0, 0.0, 0.0]
 
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "traindata": trainer.train_data,
-                    "valdata": trainer.val_data,
-                    "model_state_dict": surrogate.net.state_dict(),
-                    "optimizer_state_dict": trainer.optimizer.state_dict,
-                    "tloss": t_losses[4],
-                    "vloss": v_losses[4],
-                },
-                os.path.join(out_dir, "ckpt.pt"),
-            )
+            if not args.run_local:
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "traindata": trainer.train_data,
+                        "valdata": trainer.val_data,
+                        "model_state_dict": surrogate.net.state_dict(),
+                        "optimizer_state_dict": trainer.optimizer.state_dict,
+                        "tloss": t_losses[4],
+                        "vloss": v_losses[4],
+                    },
+                    os.path.join(out_dir, "ckpt.pt"),
+                )
 
             msg = (
                 "step {}, epoch {}: "
@@ -349,27 +389,28 @@ if __name__ == "__main__":
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
                 lossfile.write(msg)
 
-            print(
-                "Harvest stats: dagsuccess {}, dagdeath {}, "
-                "depsuccess {}, depdeath {}".format(
-                    dagger_harvester.n_success,
-                    dagger_harvester.n_death,
-                    deploy_harvester.n_success,
-                    deploy_harvester.n_death,
+            if not args.run_local:
+                print(
+                    "Harvest stats: dagsuccess {}, dagdeath {}, "
+                    "depsuccess {}, depdeath {}".format(
+                        dagger_harvester.n_success,
+                        dagger_harvester.n_death,
+                        deploy_harvester.n_success,
+                        deploy_harvester.n_death,
+                    )
                 )
-            )
-            print(
-                "Deploy harvester last error {}s ago: {}".format(
-                    time.time() - deploy_harvester.last_error_time,
-                    deploy_harvester.last_error,
+                print(
+                    "Deploy harvester last error {}s ago: {}".format(
+                        time.time() - deploy_harvester.last_error_time,
+                        deploy_harvester.last_error,
+                    )
                 )
-            )
-            print(
-                "Dagger harvester last error {}s ago: {}".format(
-                    time.time() - dagger_harvester.last_error_time,
-                    dagger_harvester.last_error,
+                print(
+                    "Dagger harvester last error {}s ago: {}".format(
+                        time.time() - dagger_harvester.last_error_time,
+                        dagger_harvester.last_error,
+                    )
                 )
-            )
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:

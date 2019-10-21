@@ -47,6 +47,7 @@ def make_piecewise_spline_map(t_eval, n_cpoints):
     A = np.array(A).transpose()
     # Aij is dYi_dcj
     # so Y is np.matmul(A, c)
+    assert np.all(np.isclose(A.sum(axis=1), 1.0))
     return A
 
 

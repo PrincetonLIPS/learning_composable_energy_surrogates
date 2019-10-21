@@ -48,7 +48,7 @@ class PolarBase(object):
 
 class Polarizer(PolarBase):
     def polarize(self, inputs):
-        x = self.fsm.to_ring(inputs)
+        x = self.fsm.to_ring(inputs, keep_grad=True)
         r = torch.norm(x, dim=2)
         rad_component, tang_component = self.decompose(x)
         theta = torch.atan2(tang_component, rad_component)
@@ -73,7 +73,7 @@ class Polarizer(PolarBase):
 
 class SemiPolarizer(PolarBase):
     def polarize(self, inputs):
-        x = self.fsm.to_ring(inputs)
+        x = self.fsm.to_ring(inputs, keep_grad=True)
 
         rad_component, tang_component = self.decompose(x)
 
@@ -81,7 +81,7 @@ class SemiPolarizer(PolarBase):
         return self.postprocess(ret, inputs)
 
     def depolarize(self, inputs):
-        x = self.fsm.to_ring(inputs)
+        x = self.fsm.to_ring(inputs, keep_grad=True)
         rad_size = x[:, :, 0]
         tang_size = x[:, :, 1]
         rad = self.ref.view(1, -1, 2)

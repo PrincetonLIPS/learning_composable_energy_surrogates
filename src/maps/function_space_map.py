@@ -5,6 +5,8 @@ from torch.autograd import Variable
 from .. import fa_combined as fa
 from ..splines.piecewise_spline import make_piecewise_spline_map
 
+import pdb
+
 
 class FunctionSpaceMap(object):
     """Map between V, torch, numpy representations.
@@ -102,6 +104,9 @@ class FunctionSpaceMap(object):
         def radius(x1, x2):
             return np.linalg.norm(np.array([x1, x2]) - 0.5)
 
+        # THIS DOES NOT WORK
+        # fix the ratios stuff
+
         ratios = np.array(
             [radius(*coords[i]) / radius(*xrefs[i]) for i in range(len(coords))]
         )
@@ -109,6 +114,8 @@ class FunctionSpaceMap(object):
         svals = np.array([float(i) for i in range(4 * self.elems_along_edge)])
 
         A = make_piecewise_spline_map(coords_s, len(svals))
+
+        pdb.set_trace()
 
         return torch.Tensor(A).float() * torch.Tensor(ratios).view(-1, 1)
 
@@ -414,3 +421,76 @@ def de_interleave(c):
     a = c[0::2]
     b = c[1::2]
     return a, b
+
+
+if __name__ == '__main__':
+    from ..arguments import parser
+    from ..pde.metamaterial import Metamaterial
+    from ..util.timer import Timer
+    from ..data.sample_params import make_bc
+    import pdb
+
+    fa.set_log_level(20)
+
+    args = parser.parse_args()
+    pde = Metamaterial(args)
+    with Timer() as t_fsm:
+        fsm = FunctionSpaceMap(pde.V, 10)
+    y = torch.ones(fsm.vector_dim)
+    with Timer() as t_toV:
+        u = fsm.to_V(y)
+
+    du = fa.Function(fsm.V)
+    du.vector().set_local(np.ones_like(du.vector()))
+    du.is_fa_gradient = True
+    with Timer() as t_toRing:
+        dy = fsm.to_ring(du)
+    '''
+    du_ = torch.stack([torch.Tensor(du.vector()) for _ in range(50)])
+    with Timer() as t_batchedtoRing_50:
+        uvec = torch.stack([du_[:, 0::2], du_[:, 1::2]], dim=1)
+        grad_ring = torch.matmul(uvec, fsm.A) # D x |y|
+        grad_ring = grad_ring.permute(0, 2, 1) # |y| x D
+    du_ = torch.stack([torch.Tensor(du.vector()) for _ in range(200)])
+    with Timer() as t_batchedtoRing_200:
+        uvec = torch.stack([du_[:, 0::2], du_[:, 1::2]], dim=1)
+        grad_ring = torch.matmul(uvec, fsm.A) # D x |y|
+        grad_ring = grad_ring.permute(0, 2, 1) # |y| x D
+    '''
+    ub_np = np.random.randn(fsm.vector_dim) / 1000.
+    delta = np.random.randn(fsm.vector_dim) / 1000000.
+
+    uV = fsm.to_V(ub_np)
+    E1 = pde.energy(pde.solve_problem(args=args, boundary_fn=uV))
+    adj = fa.compute_gradient(E1, fa.Control(uV))
+    adj_np = fsm.to_numpy(adj)
+
+    uV2 = fsm.to_V(ub_np + delta)
+    E2 = pde.energy(pde.solve_problem(args=args, boundary_fn=uV2))
+
+    print(E1)
+    print(E2)
+    print(np.dot(delta, adj_np))
+    print(E2 - E1)
+    print(E2 - (E1 + np.dot(delta, adj_np)))
+
+    pdb.set_trace()
+
+    ub_bc, _, _, _ = make_bc(args, fsm)
+    delta, _, _, _ = make_bc(args, fsm)
+    ub_bc = ub_bc / 100.
+    delta = delta / 100000.
+
+    uV = fsm.to_V(ub_bc)
+    E1 = pde.energy(pde.solve_problem(args=args, boundary_fn=uV))
+    adj = fa.compute_gradient(E1, fa.Control(uV))
+    adj_np = fsm.to_numpy(adj)
+
+    uV2 = fsm.to_V(ub_bc + delta)
+    E2 = pde.energy(pde.solve_problem(args=args, boundary_fn=uV2))
+
+    print(E1)
+    print(E2)
+    print(np.dot(delta.data.cpu().numpy(), adj_np))
+    print(E2 - E1)
+    print(E2 - (E1 + np.dot(delta.data.cpu().numpy(), adj_np)))
