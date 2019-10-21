@@ -47,12 +47,8 @@ def remove_translation(x):
 
 def batched_2x2_svd(A):
     assert len(A.size()) == 3 and A.size(1) == 2 and A.size(2) == 2
-    U, s, V = np.linalg.svd(A.detach().cpu().numpy(), compute_uv=True)
-    return (
-        torch.Tensor(U).to(A.device),
-        torch.Tensor(s).to(A.device),
-        torch.Tensor(V).to(A.device),
-    )  # Maybe replace with custom later
+    U, S, V = torch.svd(A)
+    return U, S, V
 
 
 def batched_2x2_det(A):

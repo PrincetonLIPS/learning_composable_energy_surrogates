@@ -309,9 +309,11 @@ class Trainer(object):
             train_J_std = torch.ones_like(J)
         '''
 
-        f_loss = rmse(f / self.train_f_std, fhat / self.train_f_std, loss_scale)
+        f_loss = torch.nn.functional.mse_loss(f/(self.train_f_std*loss_scale),
+                                              fhat/(self.train_f_std*loss_scale))
 
-        J_loss = rmse(J / self.train_J_std, Jhat / self.train_J_std, loss_scale)
+        J_loss = torch.nn.functional.mse_loss(J/(self.train_J_std*loss_scale),
+                                              Jhat/(self.train_J_std*loss_scale))
 
         total_loss = f_loss + self.args.J_weight * J_loss
 
@@ -366,19 +368,6 @@ def log(message, *args):
     print(message)
     with open("log.txt", "w+") as logfile:
         logfile.write(message)
-
-
-def rmse(y, y_, loss_scale=torch.Tensor([1.0])):
-    """Root mean squared error"""
-    y_ = y_.to(y.device)
-    assert y.size() == y_.size()
-    loss_scale = loss_scale.to(y.device)
-    if len(y.size()) > 1:
-        loss_scale = loss_scale.view(-1, *[1 for _ in range(len(y.size()) - 1)])
-        loss_scale = loss_scale * torch.prod(
-            torch.Tensor([s for s in y.shape[1:]]).to(y.device)
-        )
-    return torch.sqrt(torch.mean((y - y_) ** 2 * loss_scale))
 
 
 def error_percent(y, y_):
