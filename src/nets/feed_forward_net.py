@@ -95,10 +95,7 @@ class FeedForwardNet(nn.Module):
         a = x
         for l in self.layers:
             x = l(a)
-            if a.size() == x.size():  # Use residual connection if sizes allow
-                a = a + self.nonlinearity(x)
-            else:
-                a = self.nonlinearity(x)
+            a = self.nonlinearity(x)
         out = (x ** 2).view(-1, 1)
         if self.args.quadratic_scale:
             quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1, 1)
