@@ -309,11 +309,11 @@ class Trainer(object):
             train_J_std = torch.ones_like(J)
         '''
 
-        f_loss = torch.nn.functional.mse_loss(f/(self.train_f_std*loss_scale),
-                                              fhat/(self.train_f_std*loss_scale))
+        f_loss = torch.nn.functional.mse_loss(f,  # /(self.train_f_std*loss_scale),
+                                              fhat)  #/(self.train_f_std*loss_scale))
 
-        J_loss = torch.nn.functional.mse_loss(J/(self.train_J_std*loss_scale),
-                                              Jhat/(self.train_J_std*loss_scale))
+        J_loss = torch.nn.functional.mse_loss(J,  #/(self.train_J_std*loss_scale),
+                                              Jhat)  #/(self.train_J_std*loss_scale))
 
         total_loss = f_loss + self.args.J_weight * J_loss
 
