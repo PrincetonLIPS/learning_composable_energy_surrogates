@@ -33,10 +33,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--max_collectors", help="max Collector workers", type=int, default=390
+    "--max_collectors", help="max Collector workers", type=int, default=0
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=5
+    "--max_evaluators", help="max Evaluator workers", type=int, default=6
 )
 
 parser.add_argument(
@@ -142,7 +142,7 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[1024,1024,1024]",
+    default="[1024,512,256]",
     type=str,
 )
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
@@ -227,7 +227,7 @@ parser.add_argument(
 parser.add_argument("--lr", help="Learning rate", type=float, default=3e-4)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument(
-    "--J_weight", help="Weight on Jacobian loss", type=float, default=10.0
+    "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
 )
 
 parser.add_argument(
