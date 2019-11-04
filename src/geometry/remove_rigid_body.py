@@ -78,12 +78,12 @@ def remove_rotation(x, ref, return_theta_R=False):
 
     theta = torch.atan2(torch.sum(w_*yr_ - z_*xr_, dim=1),
                         torch.sum(w_*xr_ + z_*yr_, dim=1))
-    print(theta)
+    # print(theta)
     R = torch.stack([torch.stack([torch.cos(theta), -torch.sin(theta)], dim=1),
                     torch.stack([torch.sin(theta), torch.cos(theta)], dim=1)], dim=1)
 
     # print(R.shape)
-    print(R)
+    # print(R)
     # B = torch.matmul(x.permute(0, 2, 1), ref)
 
     # U, S, V = batched_2x2_svd(B)
