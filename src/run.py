@@ -216,7 +216,7 @@ if __name__ == "__main__":
             preprocd_u, dim=0, keepdims=True
         ).data
 
-        if args.run_local:
+        if True:  # args.run_local:
             surrogate.net.normalizer.var.data = torch.ones_like(
                 surrogate.net.normalizer.mean.data
             )
