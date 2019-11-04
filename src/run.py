@@ -221,7 +221,7 @@ if __name__ == "__main__":
                 surrogate.net.normalizer.mean.data
             )
             # User prompt in case want to check anything
-            pdb.set_trace()
+            # pdb.set_trace()
         else:
             surrogate.net.normalizer.var.data = (
                 torch.std(preprocd_u, dim=0, keepdims=True) ** 2
