@@ -21,7 +21,6 @@ class Trainer(object):
         self.pde = pde
         self.surrogate = surrogate
         self.tflogger = tflogger
-        self.init_optimizer()
         self.train_data = train_data
         self.val_data = val_data
         self.train_loader = DataLoader(
@@ -30,6 +29,7 @@ class Trainer(object):
         self.val_loader = DataLoader(
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
+        self.init_optimizer()
         self.train_f_std = torch.Tensor([[1.0]]).cuda()
         self.train_J_std = torch.Tensor([[1.0]]).cuda()
 
