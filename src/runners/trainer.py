@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import pdb
 import ast
 import matplotlib.pyplot as plt
+import math
 
 import io
 from ..geometry.remove_rigid_body import RigidRemover
@@ -82,8 +83,8 @@ class Trainer(object):
                 self.optimizer,
                 base_lr=self.args.lr * 1e-3,
                 max_lr=3 * self.args.lr,
-                step_size_up=1000,
-                step_size_down=None,
+                step_size_up=int(math.ceil(len(self.train_loader)/2)),
+                step_size_down=int(math.floor(len(self.train_loader)/2)),
                 mode="triangular",
                 gamma=0.995,
                 scale_fn=None,
