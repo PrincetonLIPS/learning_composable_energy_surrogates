@@ -1,4 +1,5 @@
 import numpy as np
+import pdb
 
 
 class EMSVector(object):
@@ -58,3 +59,8 @@ class ExponentialMovingStats(object):
             return current + self.delta / (1.0 - p)
         else:
             return current
+
+
+if __name__ == '__main__':
+    ems = ExponentialMovingStats(0.9)
+    pdb.set_trace()
