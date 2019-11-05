@@ -15,7 +15,7 @@ class EMSVector(object):
 class ExponentialMovingStats(object):
     def __init__(self, alpha):
         self.n = 0.0
-        self.alpha = 0.0
+        self.alpha = alpha
         self._mean = 0.0
         self._std = 0.0
         self.m90 = np.nan
