@@ -24,6 +24,7 @@ class ExponentialMovingStats(object):
 
     def feed(self, dpoint):
         self._mean = self.alpha * self._mean + (1.0 - self.alpha) * dpoint
+        self.n += 1
         self._std = (
             self.alpha * self._std + (1.0 - self.alpha) * (self.mean - dpoint) ** 2
         )
@@ -31,7 +32,6 @@ class ExponentialMovingStats(object):
         self.m90 = self.update_percentile(self.m90, dpoint, 0.9)
         self.m50 = self.update_percentile(self.m50, dpoint, 0.5)
         self.m10 = self.update_percentile(self.m10, dpoint, 0.1)
-        self.n += 1
 
     @property
     def mean(self):
