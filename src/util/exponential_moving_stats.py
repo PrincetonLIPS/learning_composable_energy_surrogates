@@ -18,7 +18,7 @@ class ExponentialMovingStats(object):
         self.n = 0.0
         self.alpha = alpha
         self._mean = 0.0
-        self._std = 0.0
+        self._std2 = 0.0
         self.m90 = np.nan
         self.m50 = np.nan
         self.m10 = np.nan
@@ -26,8 +26,8 @@ class ExponentialMovingStats(object):
     def feed(self, dpoint):
         self._mean = self.alpha * self._mean + (1.0 - self.alpha) * dpoint
         self.n += 1
-        self._std = (
-            self.alpha * self._std + (1.0 - self.alpha) * (self.mean - dpoint) ** 2
+        self._std2 = (
+            self.alpha * self._std2 + (1.0 - self.alpha) * (self.mean - dpoint)**2
         )
 
         self.m90 = self.update_percentile(self.m90, dpoint, 0.9)
@@ -44,11 +44,11 @@ class ExponentialMovingStats(object):
     def std(self):
         if self.n <= 0:
             return np.nan
-        return self._std / (1 - self.alpha ** self.n)
+        return np.sqrt(self._std2 / (1 - self.alpha ** self.n))
 
     @property
     def delta(self):
-        return self.std * 0.05
+        return self.std * 0.1
 
     def update_percentile(self, current, new, p):
         if not np.isfinite(current) or not np.isfinite(self.std):
