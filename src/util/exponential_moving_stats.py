@@ -48,7 +48,7 @@ class ExponentialMovingStats(object):
 
     @property
     def delta(self):
-        return self.std * 0.1
+        return self.std * 0.05
 
     def update_percentile(self, current, new, p):
         if not np.isfinite(current) or not np.isfinite(self.std):
