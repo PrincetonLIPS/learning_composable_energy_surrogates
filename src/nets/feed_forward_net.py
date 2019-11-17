@@ -70,8 +70,7 @@ class FeedForwardNet(nn.Module):
                 for i in range(len(self.sizes) - 1)
             ]
         )
-        self.output_scale = nn.Parameter(torch.Tensor([[1.0]]),
-                                         requires_grad=False)
+        self.output_scale = nn.Parameter(torch.Tensor([[1.0]]), requires_grad=False)
         for l in self.layers:
             self.init(l.weight)
 

@@ -27,7 +27,7 @@ class ExponentialMovingStats(object):
         self._mean = self.alpha * self._mean + (1.0 - self.alpha) * dpoint
         self.n += 1
         self._std2 = (
-            self.alpha * self._std2 + (1.0 - self.alpha) * (self.mean - dpoint)**2
+            self.alpha * self._std2 + (1.0 - self.alpha) * (self.mean - dpoint) ** 2
         )
 
         self.m90 = self.update_percentile(self.m90, dpoint, 0.9)
@@ -61,6 +61,6 @@ class ExponentialMovingStats(object):
             return current
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     ems = ExponentialMovingStats(0.9)
     pdb.set_trace()

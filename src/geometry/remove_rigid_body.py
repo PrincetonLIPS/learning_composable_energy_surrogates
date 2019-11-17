@@ -76,11 +76,17 @@ def remove_rotation(x, ref, return_theta_R=False):
     w_ = x[:, :, 0]
     z_ = x[:, :, 1]
 
-    theta = torch.atan2(torch.sum(w_*yr_ - z_*xr_, dim=1),
-                        torch.sum(w_*xr_ + z_*yr_, dim=1))
+    theta = torch.atan2(
+        torch.sum(w_ * yr_ - z_ * xr_, dim=1), torch.sum(w_ * xr_ + z_ * yr_, dim=1)
+    )
     # print(theta)
-    R = torch.stack([torch.stack([torch.cos(theta), -torch.sin(theta)], dim=1),
-                    torch.stack([torch.sin(theta), torch.cos(theta)], dim=1)], dim=1)
+    R = torch.stack(
+        [
+            torch.stack([torch.cos(theta), -torch.sin(theta)], dim=1),
+            torch.stack([torch.sin(theta), torch.cos(theta)], dim=1),
+        ],
+        dim=1,
+    )
 
     # print(R.shape)
     # print(R)
@@ -109,10 +115,10 @@ if __name__ == "__main__":
     print(R.shape)
     print(R)
     trans = torch.Tensor(np.random.randn(256, 1, 2))
-    x = torch.matmul(R, ref.unsqueeze(0).permute(0, 2, 1)).permute(0, 2, 1)# + trans
+    x = torch.matmul(R, ref.unsqueeze(0).permute(0, 2, 1)).permute(0, 2, 1)  # + trans
 
-    x_ = x # remove_translation(x)
-    ref_ = ref # remove_translation(ref.view(1, -1, 2)).view(-1, 2)
+    x_ = x  # remove_translation(x)
+    ref_ = ref  # remove_translation(ref.view(1, -1, 2)).view(-1, 2)
     x_, thetahat, Rhat = remove_rotation(x_, ref_, return_theta_R=True)
     print((x - ref.view(1, -1, 2)).norm())
     print((x_ - ref_.view(1, -1, 2)).norm())

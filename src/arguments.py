@@ -22,10 +22,12 @@ parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
 parser.add_argument("--deploy", help="Deploy", type=s2b, default=True)
 
-parser.add_argument("--batch_normalize_loss",
-                    help="per-batch normalize f, J before loss",
-                    type=s2b,
-                    default=False)
+parser.add_argument(
+    "--batch_normalize_loss",
+    help="per-batch normalize f, J before loss",
+    type=s2b,
+    default=False,
+)
 
 parser.add_argument("--train_size", type=int, help="n train data", default=55000)
 parser.add_argument("--val_size", type=int, help="n val data", default=5000)
@@ -112,10 +114,7 @@ parser.add_argument(
     type=s2b,
 )
 parser.add_argument(
-    "--semipolarize",
-    help="preproc inputs to semipolar coords",
-    default=True,
-    type=s2b,
+    "--semipolarize", help="preproc inputs to semipolar coords", default=True, type=s2b,
 )
 parser.add_argument("--use_bias", help="use biases in nets", default=True, type=s2b)
 parser.add_argument(
