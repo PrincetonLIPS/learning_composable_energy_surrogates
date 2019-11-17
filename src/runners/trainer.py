@@ -311,7 +311,7 @@ class Trainer(object):
         ''
 
         if self.args.log_loss_scale:
-            f_loss = torch.nn.functional.mse_loss(torch.log(f+1e-7), torch.log(fhat+1e-7)
+            f_loss = torch.nn.functional.mse_loss(torch.log(f+1e-7), torch.log(fhat+1e-7))
             J_loss = torch.nn.functional.mse_loss(J / (self.train_J_std*loss_scale),
                                                   Jhat / (self.train_J_std*loss_scale))
         elif self.args.quadratic_loss_scale:
