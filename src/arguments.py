@@ -16,6 +16,7 @@ def s2b(v):
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--run_local", help="Run locally", type=s2b, default=False)
+parser.add_argument("--log_loss_scale", help="Log loss scale", type=s2b, default=False)
 
 parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
