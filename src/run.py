@@ -52,7 +52,7 @@ if __name__ == "__main__":
         args.verbose = True
     else:
         ray.init(redis_address="localhost:6379")
-    time.sleep(10)
+    time.sleep(0.1)
     # print("Nodes: ", ray.nodes())
     print("Resources: ", ray.cluster_resources())
     print("Available resources: ", ray.available_resources())
@@ -201,7 +201,7 @@ if __name__ == "__main__":
                 os.path.join(data_dir, "initial_datasets.pt"),
             )
 
-            time.sleep(10)
+            time.sleep(0.1)
 
         # ---------- Finish data collection
 
