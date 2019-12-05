@@ -113,3 +113,41 @@ class FenicsEnergyModel(object):
             raise Exception(
                 "Initial guess energy {} is too damn high".format(init_energy)
             )
+
+
+# Taylor test
+if __name__ == "__main__":
+    from ..arguments import parser
+    from ..pde.metamaterial import Metamaterial
+    from ..maps.function_space_map import FunctionSpaceMap
+    from ..data.sample_params import make_bc
+
+    print("Preparing for Taylor test")
+    args = parser.parse_args()
+    args.relaxation_parameter = 0.9
+    pde = Metamaterial(args)
+    print("Created PDE")
+    fsm = FunctionSpaceMap(V=pde.V, bV_dim=args.bV_dim, cuda=False)
+    print("Created FSM")
+    fem = FenicsEnergyModel(args, pde, fsm)
+    print("Created FEM")
+    x0 = 0.05 * make_bc(args, fsm)[0]
+    dx = 0.05 * make_bc(args, fsm)[0]
+
+    fa.set_log_level(20)
+
+    f0, J0 = fem.f_J(x0)
+    J0 = fsm.to_torch(J0)
+
+    for factor in [0.1 / (2 ** i) for i in range(10)]:
+        delta = dx * factor
+        f1 = fem.f(x0 + delta)
+        first_order_remainder = np.abs(f1 - f0)
+        second_order_remainder = np.abs(f1 - f0 - (delta * J0).sum().data.cpu().numpy())
+        # pdb.set_trace()
+        print(
+            "Factor: {}, first-order remainder: {}, "
+            "second-order remainder: {}".format(
+                factor, first_order_remainder, second_order_remainder
+            )
+        )

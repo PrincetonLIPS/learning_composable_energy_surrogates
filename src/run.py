@@ -34,22 +34,15 @@ from .util.exponential_moving_stats import ExponentialMovingStats
 
 from .util.timer import Timer
 import time
+import io
 
 
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10}, memory=3e9, object_store_memory=1e9)
-        args.batch_size = 1
-        args.train_size = 1
-        args.val_size = 0
-        args.n_safe = 0
-        args.max_collectors = 1
-        args.max_evaluators = 1
-        args.ffn_layer_sizes = "[128,128]"
-        args.results_dir = "results"
-        args.verbose = True
+        ray.init(resources={"WorkerFlags": 10}, memory=8e9, object_store_memory=3e9)
+        # args.verbose = True
     else:
         ray.init(redis_address="localhost:6379")
     time.sleep(0.1)
@@ -130,11 +123,13 @@ if __name__ == "__main__":
 
             # Collect initial data
             train_harvester = Harvester(
-                args, train_data, Collector, int(args.max_collectors * (1.0 - val_frac))
+                args, lambda x: train_data.feed(x),
+                Collector, int(args.max_collectors * (1.0 - val_frac))
             )
             print("Train harvester size ", train_harvester.max_workers)
             val_harvester = Harvester(
-                args, val_data, Collector, int(args.max_collectors * val_frac)
+                args, lambda x: val_data.feed(x), Collector,
+                int(args.max_collectors * val_frac)
             )
             print("Val harvester size ", val_harvester.max_workers)
             harvested = train_data.size() + val_data.size()
@@ -212,44 +207,32 @@ if __name__ == "__main__":
             torch.stack([u for u, _, _, _ in trainer.train_data.data])
         )
 
-        surrogate.net.normalizer.mean.data = torch.mean(
-            preprocd_u, dim=0, keepdims=True
-        ).data
+        #surrogate.net.normalizer.mean.data = torch.mean(
+        #    preprocd_u, dim=0, keepdims=True
+        #).data
 
-        if True:  # args.run_local:
-            surrogate.net.normalizer.var.data = torch.ones_like(
-                surrogate.net.normalizer.mean.data
-            )
-            # User prompt in case want to check anything
-            # pdb.set_trace()
-        else:
-            surrogate.net.normalizer.var.data = (
-                torch.std(preprocd_u, dim=0, keepdims=True) ** 2
-            ).data
-            trainer.train_f_std = torch.std(
-                torch.stack([f for _, _, f, _ in trainer.train_data.data], dim=0),
-                dim=0,
-                keepdims=True,
-            ).cuda()
-            trainer.train_J_std = torch.std(
-                torch.stack([J for _, _, _, J in trainer.train_data.data], dim=0),
-                dim=0,
-                keepdims=True,
-            ).cuda()
-            surrogate.net.output_scale.data = torch.mean(
-                torch.stack([f for _, _, f, _ in trainer.train_data.data], dim=0),
-                dim=0,
-                keepdims=True,
-            ).cuda()
+        surrogate.net.normalizer.var.data = (
+            torch.std(preprocd_u, dim=0, keepdims=True) ** 2
+        ).data
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
+
+
         dagger_harvester = Harvester(
-            args, train_data, PolicyCollector, args.max_collectors if args.dagger else 0
+            args, lambda x: train_data.feed(x), PolicyCollector,
+            args.max_collectors if args.dagger else 0
         )
 
+        def deploy_feed(x):
+            deploy_ems.feed(x[0])
+            # pdb.set_trace()
+            img = io.BytesIO(bytes(x[1]))
+            tflogger.log_images('Deployment trajectory', [img], x[2])
+
         deploy_harvester = Harvester(
-            args, deploy_ems, Evaluator, args.max_evaluators if args.deploy else 0
+            args, deploy_feed, Evaluator,
+            args.max_evaluators if args.deploy else 0
         )
 
         n_batches = len(trainer.train_loader)
@@ -258,6 +241,8 @@ if __name__ == "__main__":
 
         ids_to_collectors = {}
         ids_to_evaluators = {}
+
+        last_viz_time = time.time()
 
         while step < args.max_train_steps:
 
@@ -278,42 +263,38 @@ if __name__ == "__main__":
                 if not args.run_local and args.dagger:
                     dagger_harvester.step(init_args=(broadcast_net_state,))
                 if args.deploy:
-                    deploy_harvester.step(step_args=(broadcast_net_state,))
+                    deploy_harvester.step(step_args=(broadcast_net_state,
+                                                     step))
 
                 step += 1
             # pdb.set_trace()
             epoch += 1
 
-            # User prompt in case want to check anything
-            if args.run_local:
-                pdb.set_trace()
-            else:
+            surrogate.net.eval()
+
+            v_losses = trainer.val_step(step)
+
+            # visualize and save at most once every 2min
+            if time.time() - last_viz_time > 120:
                 trainer.visualize(
                     step - 1, next(iter(trainer.train_loader)), "Training"
                 )
                 trainer.visualize(
                     step - 1, next(iter(trainer.val_loader)), "Validation"
                 )
-
-            surrogate.net.eval()
-
-            if not args.run_local:
-                v_losses = trainer.val_step(step)
-            else:
-                v_losses = [0.0, 0.0, 0.0, 0.0, 0.0]
-
-            torch.save(
-                {
-                    "epoch": epoch,
-                    "traindata": trainer.train_data,
-                    "valdata": trainer.val_data,
-                    "model_state_dict": surrogate.net.state_dict(),
-                    "optimizer_state_dict": trainer.optimizer.state_dict,
-                    "tloss": t_losses[4],
-                    "vloss": v_losses[4],
-                },
-                os.path.join(out_dir, "ckpt.pt"),
-            )
+                torch.save(
+                    {
+                        "epoch": epoch,
+                        "traindata": trainer.train_data,
+                        "valdata": trainer.val_data,
+                        "model_state_dict": surrogate.net.state_dict(),
+                        "optimizer_state_dict": trainer.optimizer.state_dict(),
+                        "tloss": t_losses[4],
+                        "vloss": v_losses[4],
+                    },
+                    os.path.join(out_dir, "ckpt.pt"),
+                )
+                last_viz_time = time.time()
 
             msg = (
                 "step {}, epoch {}: "

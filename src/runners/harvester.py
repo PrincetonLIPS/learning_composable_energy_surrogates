@@ -48,7 +48,7 @@ class Harvester(object):
                 self.last_error_time = time.time()
 
         for res in valid_results:
-            self.accumulator.feed(res)
+            self.accumulator(res)
 
 
 def carefully_get(x):

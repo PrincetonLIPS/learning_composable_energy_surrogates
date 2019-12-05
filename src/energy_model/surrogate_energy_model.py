@@ -12,11 +12,45 @@ import copy
 from .. import fa_combined as fa
 
 
+class EnergyScaler(object):
+    def __init__(self, args, preproc):
+        self.quadratic_scale = args.quadratic_scale
+        self.log_scale = args.log_scale
+        self.preproc = preproc
+
+    def scale(self, f, bparams):
+        if self.quadratic_scale:
+            f = f / torch.sum(
+                self.preproc(bparams) ** 2,
+                dim=tuple(i for i in range(1, len(bparams.size()))),
+                keepdims=True,
+            )
+
+        if self.log_scale:
+            f = torch.log(1e6 * f) - torch.log(torch.ones_like(f) * 1e6)
+
+        return f
+
+    def descale(self, f, bparams):
+        if self.log_scale:
+            f = torch.exp(f)
+
+        if self.quadratic_scale:
+            f = f * torch.sum(
+                self.preproc(bparams) ** 2,
+                dim=tuple(i for i in range(1, len(bparams.size()))),
+                keepdims=True,
+            )
+
+        return f
+
+
 class SurrogateEnergyModel(object):
     def __init__(self, args, net, function_space_map):
         self.net = net
         self.args = args
         self.fsm = function_space_map
+        self.scaler = EnergyScaler(args, self.net.preproc)
 
     def prep_inputs(self, inputs):
         inputs = self.fsm.to_torch(inputs)
@@ -35,6 +69,8 @@ class SurrogateEnergyModel(object):
         if force_data is not None:
             force_data = self.prep_inputs(force_data)
         energy = self.net(boundary_inputs, params)
+        energy = self.scaler.descale(energy,
+                                     boundary_inputs)
         if force_data is not None:
             energy = energy + self.external_work(boundary_inputs, force_data)
         return energy
@@ -156,16 +192,18 @@ class SurrogateEnergyModel(object):
 
         traj_u = []
         traj_f = []
+        traj_g = []
 
         def closure():
             # print("closure")
             optimizer.zero_grad()
             f = obj_fn(x)
+            loss = torch.sum(f)
+            loss.backward()
             if return_intermediate:
                 traj_u.append(x.data.detach().clone())
                 traj_f.append(f.data.detach().clone())
-            loss = torch.sum(f)
-            loss.backward()
+                traj_g.append(torch.norm(x.grad.detach().clone()))
             return loss
 
         optimizer.step(closure)
@@ -174,9 +212,11 @@ class SurrogateEnergyModel(object):
         if return_intermediate:
             traj_u.append(x.data.detach().clone())
             traj_f.append(obj_fn(x).data.detach().clone())
+            traj_g.append(torch.norm(x.grad.detach().clone()))
+
 
         if return_intermediate:
-            return x, traj_u, traj_f
+            return x, traj_u, traj_f, traj_g
         else:
             return x
 
@@ -214,6 +254,7 @@ class SurrogateEnergyModel(object):
 
         traj_u = []
         traj_f = []
+        traj_g = []
 
         for i in range(opt_steps):
             optimizer.zero_grad()
@@ -222,6 +263,8 @@ class SurrogateEnergyModel(object):
             if return_intermediate:
                 traj_u.append(x.data.detach().clone())
                 traj_f.append(objective.data.detach().clone())
+                traj_g.append(torch.norm(x.grad.detach().clone()))
+
             optimizer.step()
 
         if return_intermediate:
@@ -230,12 +273,14 @@ class SurrogateEnergyModel(object):
                 traj_f = [traj_f[0]] + traj_f[:: int(len(traj_f) / 20)]
             traj_u.append(x.detach().clone())
             traj_f.append(obj_fn(x).detach().clone())
+            traj_g.append(torch.norm(x.grad.detach().clone()))
+
         """
         for idx in self.constrained_idxs:
             assert np.all(np.isclose(x.data[idx].cpu().numpy(),
                               self.boundary_ring_data.data[idx].cpu().numpy()))
         """
         if return_intermediate:
-            return x, traj_u, traj_f
+            return x, traj_u, traj_f, traj_g
         else:
             return x

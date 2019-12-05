@@ -99,37 +99,47 @@ class Trainer(object):
 
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
-        if self.optimizer is not None:
+        if self.optimizer:
             self.optimizer.zero_grad()
         u, p, f, J = batch
-        u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
+
+        with Timer() as timer:
+            u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
+
+        self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
+
         with Timer() as timer:
             fhat, Jhat = self.surrogate.f_J(u, p)
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
-        f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(step, u, f, J, fhat, Jhat)
 
-        if self.optimizer:
-            total_loss.backward()
-            if self.args.verbose:
-                log(
-                    [
-                        getattr(p.grad, "data", torch.Tensor([0.0]))
-                        .norm()
-                        .cpu()
-                        .numpy()
-                        .sum()
-                        for p in self.surrogate.net.parameters()
-                    ]
-                )
-            if self.args.clip_grad_norm is not None:
-                torch.nn.utils.clip_grad_norm_(
-                    self.surrogate.net.parameters(), self.args.clip_grad_norm
-                )
-            self.optimizer.step()
-            self.scheduler.step()
-            if self.args.verbose:
-                log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
+        with Timer() as timer:
+            f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(step, u, f, J, fhat, Jhat)
+        self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
+
+        with Timer() as timer:
+            if self.optimizer:
+                total_loss.backward()
+                if self.args.verbose:
+                    log(
+                        [
+                            getattr(p.grad, "data", torch.Tensor([0.0]))
+                            .norm()
+                            .cpu()
+                            .numpy()
+                            .sum()
+                            for p in self.surrogate.net.parameters()
+                        ]
+                    )
+                if self.args.clip_grad_norm is not None:
+                    torch.nn.utils.clip_grad_norm_(
+                        self.surrogate.net.parameters(), self.args.clip_grad_norm
+                    )
+                self.optimizer.step()
+                self.scheduler.step()
+                if self.args.verbose:
+                    log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
+        self.tflogger.log_scalar("backward_time", timer.interval, step)
 
         return (
             f_loss.item(),
@@ -295,42 +305,10 @@ class Trainer(object):
     def stats(self, step, u, f, J, fhat, Jhat, phase="train"):
         """Take ground truth and predictions. Log stats and return loss."""
 
-        if self.args.quadratic_loss_scale:
-            loss_scale = 1.0 / torch.mean(u ** 2, dim=1, keepdims=True)
-        else:
-            loss_scale = torch.Tensor([[1.0]])
-
-        # FLAG - this is different to other one. change.
-        """
-        if len(u) > 1 and self.args.batch_normalize_loss:
-            train_f_std = torch.std(f, dim=0, keepdims=True) + 1e-3
-            train_J_std = torch.std(J, dim=0, keepdims=True) + 1e-3
-        else:
-            train_f_std = torch.ones_like(f)
-            train_J_std = torch.ones_like(J)
-        """
-
-        if self.args.log_loss_scale:
-            f_loss = torch.nn.functional.mse_loss(
-                torch.log(f + 1e-7), torch.log(fhat + 1e-7)
-            )
-            J_loss = torch.nn.functional.mse_loss(
-                J / (self.train_J_std * loss_scale),
-                Jhat / (self.train_J_std * loss_scale),
-            )
-        elif self.args.quadratic_loss_scale:
-            f_loss = torch.nn.functional.mse_loss(
-                f / (self.train_f_std * loss_scale),
-                fhat / (self.train_f_std * loss_scale),
-            )
-
-            J_loss = torch.nn.functional.mse_loss(
-                J / (self.train_J_std * loss_scale),
-                Jhat / (self.train_J_std * loss_scale),
-            )
-        else:
-            f_loss = torch.nn.functional.mse_loss(f, fhat)
-            J_loss = torch.nn.functional.mse_loss(J, Jhat)
+        f_loss = torch.nn.functional.mse_loss(
+            self.surrogate.scaler.scale(f, u), self.surrogate.scaler.scale(fhat, u)
+        )
+        J_loss = torch.nn.functional.mse_loss(J, Jhat)
 
         total_loss = f_loss + self.args.J_weight * J_loss
 
@@ -391,7 +369,7 @@ def error_percent(y, y_):
     """Mean of abs(err) / abs(true_val)"""
     y_ = y_.view(y_.size(0), -1).cpu()
     y = y.view(y_.size()).cpu()
-    return torch.mean(torch.norm(y - y_, dim=1) / (torch.norm(y, dim=1) + 1e-7))
+    return torch.mean(torch.norm(y - y_, dim=1) / (torch.norm(y, dim=1) + 1e-14))
 
 
 def similarity(y, y_):
@@ -401,5 +379,6 @@ def similarity(y, y_):
     assert y.size(0) == y_.size(0)
     assert y.size(1) == y_.size(1)
     return torch.mean(
-        torch.sum(y * y_, dim=1) / (torch.norm(y, dim=1) * torch.norm(y_, dim=1))
+        torch.sum(y * y_, dim=1)
+        / (torch.norm(y, dim=1) * torch.norm(y_, dim=1) + 1e-14)
     )

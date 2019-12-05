@@ -66,7 +66,7 @@ class Metamaterial(PDE):
                     else material_in_cell + material_domain
                 )
 
-        mesh = mshr.generate_mesh(material_domain, resolution * n_cells)
+        mesh = fa.Mesh(mshr.generate_mesh(material_domain, resolution * n_cells))
 
         self.mesh = mesh
 

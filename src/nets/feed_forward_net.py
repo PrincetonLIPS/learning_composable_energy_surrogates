@@ -4,6 +4,7 @@ from torch.nn import functional as torchF
 import ast
 from ..geometry.polar import SemiPolarizer
 from ..geometry.remove_rigid_body import RigidRemover
+import pdb
 
 nonlinearities = {
     "selu": torchF.selu,
@@ -31,6 +32,7 @@ class MovingAverageNormalzier(nn.Module):
         self.fixed = fixed
 
     def forward(self, x):
+        # pdb.set_trace()
         out = (x - self.mean) / torch.sqrt(self.var + 1e-12)
         if self.training and not self.fixed:
             batch_mean = torch.mean(x, dim=0, keepdims=True).data
@@ -71,8 +73,8 @@ class FeedForwardNet(nn.Module):
             ]
         )
         self.output_scale = nn.Parameter(torch.Tensor([[1.0]]), requires_grad=False)
-        for l in self.layers:
-            self.init(l.weight)
+        # for l in self.layers:
+        #     self.init(l.weight)
 
     def preproc(self, x):
         for fn in self.preproc_fns:
@@ -95,9 +97,5 @@ class FeedForwardNet(nn.Module):
         for l in self.layers:
             x = l(a)
             a = self.nonlinearity(x)
-        out = (x ** 2).view(-1, 1)
-        if self.args.quadratic_scale:
-            quadratic_scale = torch.mean(boundary_params ** 2, dim=1).view(-1, 1)
-            return out * quadratic_scale * self.output_scale
-        else:
-            return out * self.output_scale
+        out = x.view(-1, 1)
+        return out

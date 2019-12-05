@@ -15,8 +15,7 @@ def s2b(v):
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--run_local", help="Run locally", type=s2b, default=False)
-parser.add_argument("--log_loss_scale", help="Log loss scale", type=s2b, default=False)
+parser.add_argument("--run_local", help="Run locally", type=s2b, default=True)
 
 parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
@@ -39,7 +38,7 @@ parser.add_argument(
     "--max_collectors", help="max Collector workers", type=int, default=0
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=6
+    "--max_evaluators", help="max Evaluator workers", type=int, default=24
 )
 
 parser.add_argument(
@@ -129,9 +128,9 @@ parser.add_argument(
 parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int
 )
-parser.add_argument("--solve_lbfgs_steps", help="steps for lbfgs", default=20, type=int)
+parser.add_argument("--solve_lbfgs_steps", help="steps for lbfgs", default=100, type=int)
 parser.add_argument(
-    "--solve_lbfgs_stepsize", help="stepsize for lbfgs", default=1e-2, type=float
+    "--solve_lbfgs_stepsize", help="stepsize for lbfgs", default=1e-1, type=float
 )
 parser.add_argument(
     "--solve_adam_stepsize", help="stepsize for adam", default=1e-2, type=float
@@ -142,35 +141,33 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[1024,512,256]",
+    default="[256,128,64,32]",
     type=str,
 )
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
 parser.add_argument(
     "--quadratic_scale",
-    help="Scale net output by average of squared inputs",
+    help="Scale energies by average of squared inputs",
     default=True,
     type=s2b,
 )
-parser.add_argument(
-    "--quadratic_loss_scale",
-    help="divide loss by mean of squared inputs",
-    default=True,
-    type=s2b,
-)
+parser.add_argument("--log_scale", help="Log scale energies", type=s2b, default=True)
+
 parser.add_argument(
     "--max_train_steps", help="Maximum training steps", type=int, default=int(1e7)
 )
 parser.add_argument(
-    "--optimizer", help="adam or sgd or amsgrad", type=str, default="amsgrad"
+    "--optimizer", help="adam or sgd or amsgrad", type=str, default="adam"
 )
 parser.add_argument(
     "--results_dir",
     help="Dir for tensorboard and other output",
     type=str,
-    default="/efs_nmor/results",
+    default="results",
 )
-parser.add_argument("--data_name", help="Name of data run", type=str, default="bV5")
+parser.add_argument(
+    "--data_name", help="Name of data run", type=str, default="bV5_big_new"
+)
 parser.add_argument(
     "--experiment_name", help="Name of experiment run", type=str, default="default"
 )
@@ -178,13 +175,13 @@ parser.add_argument(
     "--reload_data", help="Reload data if found", default=True, type=s2b
 )
 
-parser.add_argument("--batch_size", help="Batch size", type=int, default=128)
+parser.add_argument("--batch_size", help="Batch size", type=int, default=512)
 
 parser.add_argument(
     "--nonlinearity",
     help="selu, elu, relu, swish, sigmoid, tanh",
     type=str,
-    default="tanh",
+    default="selu",
 )
 parser.add_argument(
     "--init", help="kaiming, xavier, orthogonal", type=str, default="xavier"
@@ -231,7 +228,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=None
+    "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=0.01
 )
 
 parser.add_argument(
