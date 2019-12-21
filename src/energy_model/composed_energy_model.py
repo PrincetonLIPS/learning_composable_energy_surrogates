@@ -251,6 +251,8 @@ class ComposedEnergyModel(object):
             if len(traj_u) > 20:
                 traj_u = [traj_u[0]] + traj_u[:: int(len(traj_u) / 20)]
                 traj_f = [traj_f[0]] + traj_f[:: int(len(traj_f) / 20)]
+                traj_g = [traj_g[0]] + traj_g[:: int(len(traj_g) / 20)]
+
             traj_u.append(x.detach().clone())
             traj_f.append(obj_fn(x).detach().clone())
             traj_g.append(torch.norm(x.grad.detach().clone()))
@@ -274,7 +276,7 @@ if __name__ == '__main__':
     from .surrogate_energy_model import SurrogateEnergyModel
     from ..data.sample_params import make_bc
     from ..data.random_fourier_fn import make_random_fourier_expression
-
+    import numpy as np
     import pdb
 
     args = parser.parse_args()
@@ -285,6 +287,9 @@ if __name__ == '__main__':
     fsm = FunctionSpaceMap(V=pde.V, bV_dim=args.bV_dim, cuda=False)
     net = lambda x, params: (x**2).sum()
     net.preproc = lambda x: x
+
+    np.random.seed(0)
+
     sem = SurrogateEnergyModel(args, net, fsm)
 
     cem = ComposedEnergyModel(args, sem, 4, 3)

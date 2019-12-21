@@ -271,6 +271,8 @@ class SurrogateEnergyModel(object):
             if len(traj_u) > 20:
                 traj_u = [traj_u[0]] + traj_u[:: int(len(traj_u) / 20)]
                 traj_f = [traj_f[0]] + traj_f[:: int(len(traj_f) / 20)]
+                traj_g = [traj_g[0]] + traj_g[:: int(len(traj_g) / 20)]
+
             traj_u.append(x.detach().clone())
             traj_f.append(obj_fn(x).detach().clone())
             traj_g.append(torch.norm(x.grad.detach().clone()))

@@ -6,6 +6,7 @@ import mshr
 from .. import fa_combined as fa
 from .pde import PDE
 from .strain import NeoHookeanEnergy
+import pdb
 
 
 class Metamaterial(PDE):
@@ -34,41 +35,10 @@ class Metamaterial(PDE):
         if L0 is None:
             L0 = 1.0 / self.args.n_cells
 
-        r0 = L0 * math.sqrt(2 * porosity) / math.sqrt(math.pi * (2 + c1 ** 2 + c2 ** 2))
-
-        def coords_fn(theta):
-            return r0 * (1 + c1 * fa.cos(4 * theta) + c2 * fa.cos(8 * theta))
-
-        base_pore_points, radii, thetas = build_base_pore(
-            coords_fn, pore_radial_resolution
+        self.mesh = make_metamaterial_mesh(
+            L0, c1, c2, pore_radial_resolution, min_feature_size,
+            resolution, n_cells, porosity
         )
-
-        verify_params(base_pore_points, radii, L0, min_feature_size)
-
-        material_domain = None
-        pore_domain = None
-
-        for i in range(n_cells):
-            for j in range(n_cells):
-                pore = build_pore_polygon(
-                    base_pore_points, offset=(L0 * (i + 0.5), L0 * (j + 0.5))
-                )
-
-                pore_domain = pore if not pore_domain else pore + pore_domain
-
-                cell = mshr.Rectangle(
-                    fa.Point(L0 * i, L0 * j), fa.Point(L0 * (i + 1), L0 * (j + 1))
-                )
-                material_in_cell = cell - pore
-                material_domain = (
-                    material_in_cell
-                    if not material_domain
-                    else material_in_cell + material_domain
-                )
-
-        mesh = fa.Mesh(mshr.generate_mesh(material_domain, resolution * n_cells))
-
-        self.mesh = mesh
 
     def _build_function_space(self):
         """Create 2d VectorFunctionSpace and an exterior domain"""
@@ -139,8 +109,38 @@ class Metamaterial(PDE):
 
 """ Helper functions """
 
+def make_metamaterial_mesh(L0, c1, c2, pore_radial_resolution,
+                           min_feature_size, resolution, n_cells,
+                           porosity):
 
-def build_base_pore(coords_fn, n_points):
+    material_domain = None
+    base_pore_points = None
+    for i in range(n_cells):
+        for j in range(n_cells):
+            c1_ = (c1[i, j] if isinstance(c1, np.ndarray) else c1)
+            c2_ = (c2[i, j] if isinstance(c2, np.ndarray) else c2)
+
+            if isinstance(c1, np.ndarray) or base_pore_points is None:
+                base_pore_points, radii, thetas = build_base_pore(
+                    L0, c1_, c2_, pore_radial_resolution, porosity
+                )
+
+                verify_params(base_pore_points, radii, L0, min_feature_size)
+
+            cell = make_cell(i, j, L0, base_pore_points)
+            material_domain = (cell if material_domain is None
+                               else cell + material_domain)
+
+    return fa.Mesh(mshr.generate_mesh(material_domain, resolution * n_cells))
+
+
+def build_base_pore(L0, c1, c2, n_points, porosity):
+    # pdb.set_trace()
+    r0 = L0 * math.sqrt(2 * porosity) / math.sqrt(math.pi * (2 + c1 ** 2 + c2 ** 2))
+
+    def coords_fn(theta):
+        return r0 * (1 + c1 * fa.cos(4 * theta) + c2 * fa.cos(8 * theta))
+
     thetas = [float(i) * 2 * math.pi / n_points for i in range(n_points)]
     radii = [coords_fn(float(i) * 2 * math.pi / n_points) for i in range(n_points)]
     points = [
@@ -154,6 +154,18 @@ def build_pore_polygon(base_pore_points, offset):
     points = [fa.Point(p[0] + offset[0], p[1] + offset[1]) for p in base_pore_points]
     pore = mshr.Polygon(points)
     return pore
+
+
+def make_cell(i, j, L0, base_pore_points):
+    pore = build_pore_polygon(
+        base_pore_points, offset=(L0 * (i + 0.5), L0 * (j + 0.5))
+    )
+
+    cell = mshr.Rectangle(
+        fa.Point(L0 * i, L0 * j), fa.Point(L0 * (i + 1), L0 * (j + 1))
+    )
+    material_in_cell = cell - pore
+    return material_in_cell
 
 
 def verify_params(pore_points, radii, L0, min_feature_size):
