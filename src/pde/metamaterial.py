@@ -36,8 +36,14 @@ class Metamaterial(PDE):
             L0 = 1.0 / self.args.n_cells
 
         self.mesh = make_metamaterial_mesh(
-            L0, c1, c2, pore_radial_resolution, min_feature_size,
-            resolution, n_cells, porosity
+            L0,
+            c1,
+            c2,
+            pore_radial_resolution,
+            min_feature_size,
+            resolution,
+            n_cells,
+            porosity,
         )
 
     def _build_function_space(self):
@@ -109,16 +115,17 @@ class Metamaterial(PDE):
 
 """ Helper functions """
 
-def make_metamaterial_mesh(L0, c1, c2, pore_radial_resolution,
-                           min_feature_size, resolution, n_cells,
-                           porosity):
+
+def make_metamaterial_mesh(
+    L0, c1, c2, pore_radial_resolution, min_feature_size, resolution, n_cells, porosity
+):
 
     material_domain = None
     base_pore_points = None
     for i in range(n_cells):
         for j in range(n_cells):
-            c1_ = (c1[i, j] if isinstance(c1, np.ndarray) else c1)
-            c2_ = (c2[i, j] if isinstance(c2, np.ndarray) else c2)
+            c1_ = c1[i, j] if isinstance(c1, np.ndarray) else c1
+            c2_ = c2[i, j] if isinstance(c2, np.ndarray) else c2
 
             if isinstance(c1, np.ndarray) or base_pore_points is None:
                 base_pore_points, radii, thetas = build_base_pore(
@@ -128,8 +135,9 @@ def make_metamaterial_mesh(L0, c1, c2, pore_radial_resolution,
                 verify_params(base_pore_points, radii, L0, min_feature_size)
 
             cell = make_cell(i, j, L0, base_pore_points)
-            material_domain = (cell if material_domain is None
-                               else cell + material_domain)
+            material_domain = (
+                cell if material_domain is None else cell + material_domain
+            )
 
     return fa.Mesh(mshr.generate_mesh(material_domain, resolution * n_cells))
 
@@ -157,9 +165,7 @@ def build_pore_polygon(base_pore_points, offset):
 
 
 def make_cell(i, j, L0, base_pore_points):
-    pore = build_pore_polygon(
-        base_pore_points, offset=(L0 * (i + 0.5), L0 * (j + 0.5))
-    )
+    pore = build_pore_polygon(base_pore_points, offset=(L0 * (i + 0.5), L0 * (j + 0.5)))
 
     cell = mshr.Rectangle(
         fa.Point(L0 * i, L0 * j), fa.Point(L0 * (i + 1), L0 * (j + 1))

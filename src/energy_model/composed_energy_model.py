@@ -31,9 +31,8 @@ class ComposedEnergyModel(object):
                     self.global_coords.append(coord)
                 else:
                     cond = np.isclose(self.global_coords, coord.reshape(1, -1))
-                    if not np.any(cond[:, 0]*cond[:, 1]):
+                    if not np.any(cond[:, 0] * cond[:, 1]):
                         self.global_coords.append(coord)
-
 
         cell_maps = []
         for coords in self.cell_coords:
@@ -86,21 +85,20 @@ class ComposedEnergyModel(object):
         return data
 
     def energy(self, global_coords, params, force_data):
-        cell_coords = torch.matmul(self.cell_maps.view(-1,
-                                                       self.cell_maps.size(2)),
-                                   global_coords)
+        cell_coords = torch.matmul(
+            self.cell_maps.view(-1, self.cell_maps.size(2)), global_coords
+        )
         cell_coords = cell_coords.view(self.n_cells, -1, 2)
 
         if force_data is not None:
             cell_force_data = torch.matmul(
-                self.cell_maps.view(-1, self.cell_maps.size(2)),
-                force_data)
+                self.cell_maps.view(-1, self.cell_maps.size(2)), force_data
+            )
             cell_force_data = cell_force_data.view(self.n_cells, -1, 2)
 
         # pdb.set_trace()
 
         return torch.sum(self.sem.f(cell_coords, params, cell_force_data))
-
 
     def solve(
         self, params, boundary_data, constraint_mask, force_data, *args, **kwargs
@@ -196,7 +194,6 @@ class ComposedEnergyModel(object):
             traj_f.append(obj_fn(x).data.detach().clone())
             traj_g.append(torch.norm(x.grad.detach().clone()))
 
-
         if return_intermediate:
             return x, traj_u, traj_f, traj_g
         else:
@@ -268,8 +265,7 @@ class ComposedEnergyModel(object):
             return x
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     from ..arguments import parser
     from ..pde.metamaterial import Metamaterial
     from ..maps.function_space_map import FunctionSpaceMap
@@ -285,7 +281,7 @@ if __name__ == '__main__':
     args.relaxation_parameter = 0.9
     pde = Metamaterial(args)
     fsm = FunctionSpaceMap(V=pde.V, bV_dim=args.bV_dim, cuda=False)
-    net = lambda x, params: (x**2).sum()
+    net = lambda x, params: (x ** 2).sum()
     net.preproc = lambda x: x
 
     np.random.seed(0)
@@ -298,14 +294,15 @@ if __name__ == '__main__':
     )
 
     boundary_data = torch.Tensor(cem.interpolate(boundary_expression))
-    #params, boundary_data, constraint_mask, force_data
-    params = torch.zeros(4*3, 1)
-    constraint_mask = torch.Tensor([1.0 if i in cem.bot_idxs() else 0.0
-                                    for i in range(len(boundary_data))])
+    # params, boundary_data, constraint_mask, force_data
+    params = torch.zeros(4 * 3, 1)
+    constraint_mask = torch.Tensor(
+        [1.0 if i in cem.bot_idxs() else 0.0 for i in range(len(boundary_data))]
+    )
     force_data = torch.zeros_like(boundary_data)
 
     solution, traj_u, traj_f, traj_g = cem.solve(
-        params, boundary_data, constraint_mask, force_data,
-        return_intermediate=True)
+        params, boundary_data, constraint_mask, force_data, return_intermediate=True
+    )
 
     pdb.set_trace()

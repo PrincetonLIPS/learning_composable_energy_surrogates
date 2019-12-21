@@ -1,8 +1,8 @@
-
 import copy
+import numpy as np
+
 from .. import fa_combined as fa
 from ..pde.metamaterial import Metamaterial, make_metamaterial_mesh
-import numpy as np
 
 
 class ComposedFenicsEnergyModel(object):
@@ -13,22 +13,30 @@ class ComposedFenicsEnergyModel(object):
         self.args = copy.deepcopy(args)
         del args
         if self.args.L0 is None:
-            self.args.L0 = 1./self.args.n_cells
+            self.args.L0 = 1.0 / self.args.n_cells
 
         c1s = np.repeat(
-                np.repeat(np.reshape(c1s, (n_high, n_wide)),
-                          self.args.n_cells, axis=1),
-                self.args.n_cells, axis=0)
+            np.repeat(np.reshape(c1s, (n_high, n_wide)), self.args.n_cells, axis=1),
+            self.args.n_cells,
+            axis=0,
+        )
         c2s = np.repeat(
-                np.repeat(np.reshape(c2s, (n_high, n_wide)),
-                          self.args.n_cells, axis=1),
-                self.args.n_cells, axis=0)
+            np.repeat(np.reshape(c2s, (n_high, n_wide)), self.args.n_cells, axis=1),
+            self.args.n_cells,
+            axis=0,
+        )
 
         self.args.n_cells *= n_high
         mesh = make_metamaterial_mesh(
-            self.args.L0, c1s, c2s, self.args.pore_radial_resolution,
-            self.args.min_feature_size, self.args.metamaterial_mesh_size,
-            self.args.n_cells, self.args.porosity)
+            self.args.L0,
+            c1s,
+            c2s,
+            self.args.pore_radial_resolution,
+            self.args.min_feature_size,
+            self.args.metamaterial_mesh_size,
+            self.args.n_cells,
+            self.args.porosity,
+        )
 
         self.pde = Metamaterial(self.args, mesh)
 
@@ -85,7 +93,8 @@ class ComposedFenicsEnergyModel(object):
                 "Initial guess energy {} is too damn high".format(init_energy)
             )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from ..arguments import parser
     from ..pde.metamaterial import Metamaterial
     from ..maps.function_space_map import FunctionSpaceMap
@@ -102,8 +111,8 @@ if __name__ == '__main__':
 
     n_high = 2
     n_wide = 2
-    c1s = np.random.randn(2*2) * 0.01
-    c2s = np.random.randn(2*2) * 0.01
+    c1s = np.random.randn(2 * 2) * 0.01
+    c2s = np.random.randn(2 * 2) * 0.01
 
     cfem = ComposedFenicsEnergyModel(args, n_high, n_wide, c1s, c2s)
 
@@ -111,8 +120,8 @@ if __name__ == '__main__':
 
     initial_guess = fa.Function(cfem.pde.V)
     initial_guess.vector().set_local(
-        np.random.randn(len(initial_guess.vector()))*0.00001)
+        np.random.randn(len(initial_guess.vector())) * 0.00001
+    )
 
-    cfem.solve(boundary_fn=boundary_fn,
-               initial_guess=initial_guess.vector())
+    cfem.solve(boundary_fn=boundary_fn, initial_guess=initial_guess.vector())
     pdb.set_trace()

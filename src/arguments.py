@@ -128,7 +128,9 @@ parser.add_argument(
 parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int
 )
-parser.add_argument("--solve_lbfgs_steps", help="steps for lbfgs", default=100, type=int)
+parser.add_argument(
+    "--solve_lbfgs_steps", help="steps for lbfgs", default=100, type=int
+)
 parser.add_argument(
     "--solve_lbfgs_stepsize", help="stepsize for lbfgs", default=1e-1, type=float
 )

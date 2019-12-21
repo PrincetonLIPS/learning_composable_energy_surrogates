@@ -17,7 +17,7 @@ class Logger(object):
     def __init__(self, log_dir):
         """Creates a summary writer logging to log_dir."""
         self.writer = tf.summary.create_file_writer(log_dir)
-        image_dir = os.path.join(log_dir, 'images')
+        image_dir = os.path.join(log_dir, "images")
         if not os.path.exists(image_dir):
             os.mkdir(image_dir)
 

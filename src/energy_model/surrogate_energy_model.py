@@ -69,8 +69,7 @@ class SurrogateEnergyModel(object):
         if force_data is not None:
             force_data = self.prep_inputs(force_data)
         energy = self.net(boundary_inputs, params)
-        energy = self.scaler.descale(energy,
-                                     boundary_inputs)
+        energy = self.scaler.descale(energy, boundary_inputs)
         if force_data is not None:
             energy = energy + self.external_work(boundary_inputs, force_data)
         return energy
@@ -213,7 +212,6 @@ class SurrogateEnergyModel(object):
             traj_u.append(x.data.detach().clone())
             traj_f.append(obj_fn(x).data.detach().clone())
             traj_g.append(torch.norm(x.grad.detach().clone()))
-
 
         if return_intermediate:
             return x, traj_u, traj_f, traj_g

@@ -53,8 +53,11 @@ class Evaluator(object):
 
         factor = float(n_anneal) / self.args.anneal_steps
         surr_soln, traj_u, traj_f, traj_g = surrogate.solve(
-            params, bc * factor, constraint_mask, force_data * factor,
-            return_intermediate=True
+            params,
+            bc * factor,
+            constraint_mask,
+            force_data * factor,
+            return_intermediate=True,
         )
 
         initial_guess = np.zeros_like(bc_V.vector())
@@ -69,9 +72,9 @@ class Evaluator(object):
             true_energy = self.fem.f(true_soln)
             initial_guess = true_soln.vector()[:]
 
-        img_buf = self.visualize_trajectory(surrogate, true_soln,
-                                            traj_u, traj_f, traj_g,
-                                            true_energy, constrained_idxs)
+        img_buf = self.visualize_trajectory(
+            surrogate, true_soln, traj_u, traj_f, traj_g, true_energy, constrained_idxs
+        )
 
         surr_soln_V = self.fsm.to_V(surr_soln)
 
@@ -81,8 +84,16 @@ class Evaluator(object):
 
         return error_V, img_buf, step
 
-    def visualize_trajectory(self, surrogate, true_solution, traj_u, traj_f,
-                             traj_g, true_energy, constrained_idxs):
+    def visualize_trajectory(
+        self,
+        surrogate,
+        true_solution,
+        traj_u,
+        traj_f,
+        traj_g,
+        true_energy,
+        constrained_idxs,
+    ):
         nrows = int(math.ceil(float(len(traj_u)) / 2))
         assert len(traj_u) == len(traj_f)
         assert nrows > 0
@@ -100,37 +111,45 @@ class Evaluator(object):
         for i, ax in enumerate(axes):
             if i >= len(traj_u):
                 break
-            plot_boundary(lambda x: (0, 0), 1000, label='reference', ax=ax)
+            plot_boundary(lambda x: (0, 0), 1000, label="reference", ax=ax)
             # plot_boundary(proj_true_soln_fn, 1000, label='projected_true_solution', ax=ax)
-            plot_boundary(true_solution_fn,
-                          1000,
-                          label='true_solution, f={:.3e}'.format(true_energy),
-                          linestyle='--',
-                          ax=ax)
+            plot_boundary(
+                true_solution_fn,
+                1000,
+                label="true_solution, f={:.3e}".format(true_energy),
+                linestyle="--",
+                ax=ax,
+            )
             # pdb.set_trace()
-            plot_boundary(surrogate.fsm.get_query_fn(traj_u[0]),
-                          1000,
-                          label='initial, fhat={:.3e}'.format(
-                              traj_f[0].item()),
-                          linestyle='dotted',
-                          ax=ax)
-            plot_boundary(surrogate.fsm.get_query_fn(traj_u[i]),
-                          1000,
-                          label='iter_{}, fhat={:.3e}, ||g||={:.3e}'.format(
-                              i, traj_f[i].item(), traj_g[i].item()),
-                          linestyle='-.',
-                          ax=ax)
+            plot_boundary(
+                surrogate.fsm.get_query_fn(traj_u[0]),
+                1000,
+                label="initial, fhat={:.3e}".format(traj_f[0].item()),
+                linestyle="dotted",
+                ax=ax,
+            )
+            plot_boundary(
+                surrogate.fsm.get_query_fn(traj_u[i]),
+                1000,
+                label="iter_{}, fhat={:.3e}, ||g||={:.3e}".format(
+                    i, traj_f[i].item(), traj_g[i].item()
+                ),
+                linestyle="-.",
+                ax=ax,
+            )
             for s in constrained_idxs:
                 x1, x2 = surrogate.fsm.s_to_x(s)
-                ax.plot([traj_u[0, s, 0].item() + x1],
-                        [traj_u[0, s, 1].item() + x2],
-                        marker='o',
-                        markersize=3,
-                        color="black")
+                ax.plot(
+                    [traj_u[0, s, 0].item() + x1],
+                    [traj_u[0, s, 1].item() + x2],
+                    marker="o",
+                    markersize=3,
+                    color="black",
+                )
             ax.legend()
         fig.canvas.draw()
         buf = io.BytesIO()
-        plt.savefig(buf, format='png')
+        plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
         return buf.getvalue()

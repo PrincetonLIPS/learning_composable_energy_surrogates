@@ -114,7 +114,9 @@ class Trainer(object):
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
 
         with Timer() as timer:
-            f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(step, u, f, J, fhat, Jhat)
+            f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(
+                step, u, f, J, fhat, Jhat
+            )
         self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
 
         with Timer() as timer:

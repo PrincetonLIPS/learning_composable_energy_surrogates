@@ -123,13 +123,17 @@ if __name__ == "__main__":
 
             # Collect initial data
             train_harvester = Harvester(
-                args, lambda x: train_data.feed(x),
-                Collector, int(args.max_collectors * (1.0 - val_frac))
+                args,
+                lambda x: train_data.feed(x),
+                Collector,
+                int(args.max_collectors * (1.0 - val_frac)),
             )
             print("Train harvester size ", train_harvester.max_workers)
             val_harvester = Harvester(
-                args, lambda x: val_data.feed(x), Collector,
-                int(args.max_collectors * val_frac)
+                args,
+                lambda x: val_data.feed(x),
+                Collector,
+                int(args.max_collectors * val_frac),
             )
             print("Val harvester size ", val_harvester.max_workers)
             harvested = train_data.size() + val_data.size()
@@ -207,9 +211,9 @@ if __name__ == "__main__":
             torch.stack([u for u, _, _, _ in trainer.train_data.data])
         )
 
-        #surrogate.net.normalizer.mean.data = torch.mean(
+        # surrogate.net.normalizer.mean.data = torch.mean(
         #    preprocd_u, dim=0, keepdims=True
-        #).data
+        # ).data
 
         surrogate.net.normalizer.var.data = (
             torch.std(preprocd_u, dim=0, keepdims=True) ** 2
@@ -217,22 +221,21 @@ if __name__ == "__main__":
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
-
-
         dagger_harvester = Harvester(
-            args, lambda x: train_data.feed(x), PolicyCollector,
-            args.max_collectors if args.dagger else 0
+            args,
+            lambda x: train_data.feed(x),
+            PolicyCollector,
+            args.max_collectors if args.dagger else 0,
         )
 
         def deploy_feed(x):
             deploy_ems.feed(x[0])
             # pdb.set_trace()
             img = io.BytesIO(bytes(x[1]))
-            tflogger.log_images('Deployment trajectory', [img], x[2])
+            tflogger.log_images("Deployment trajectory", [img], x[2])
 
         deploy_harvester = Harvester(
-            args, deploy_feed, Evaluator,
-            args.max_evaluators if args.deploy else 0
+            args, deploy_feed, Evaluator, args.max_evaluators if args.deploy else 0
         )
 
         n_batches = len(trainer.train_loader)
@@ -263,8 +266,7 @@ if __name__ == "__main__":
                 if not args.run_local and args.dagger:
                     dagger_harvester.step(init_args=(broadcast_net_state,))
                 if args.deploy:
-                    deploy_harvester.step(step_args=(broadcast_net_state,
-                                                     step))
+                    deploy_harvester.step(step_args=(broadcast_net_state, step))
 
                 step += 1
             # pdb.set_trace()
