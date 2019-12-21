@@ -2,6 +2,8 @@
 import copy
 from .. import fa_combined as fa
 from ..pde.metamaterial import Metamaterial, make_metamaterial_mesh
+import numpy as np
+
 
 class ComposedFenicsEnergyModel(object):
     def __init__(self, args, n_high, n_wide, c1s, c2s):
@@ -90,7 +92,6 @@ if __name__ == '__main__':
     from .surrogate_energy_model import SurrogateEnergyModel
     from ..data.sample_params import make_bc
     from ..data.random_fourier_fn import make_random_fourier_expression
-    import numpy as np
     import pdb
 
     args = parser.parse_args()
