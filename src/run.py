@@ -284,6 +284,7 @@ if __name__ == "__main__":
                 )
                 torch.save(
                     {
+                        "args": args,
                         "epoch": epoch,
                         "traindata": trainer.train_data,
                         "valdata": trainer.val_data,
