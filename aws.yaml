@@ -68,7 +68,7 @@ auth:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
     InstanceType: p2.xlarge
-    ImageId: ami-0dbbbd00c736b3cc8 # NMOR ami
+    ImageId: ami-0db6338f522533895 # NMOR ami
 
     # You can provision additional disk space with a conf as follows
     BlockDeviceMappings:
@@ -88,7 +88,7 @@ head_node:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 worker_nodes:
     InstanceType: m4.xlarge
-    ImageId: ami-0dbbbd00c736b3cc8 # NMOR ami
+    ImageId: ami-0db6338f522533895 # NMOR ami
 
     # Run workers on spot by default. Comment this out to use on-demand.
     InstanceMarketOptions:
@@ -126,7 +126,7 @@ setup_commands:
     - yes | pip install --upgrade ray==0.7.4
     - yes | pip install boto3
     - yes | pip install setproctitle
-    - cd nmor-ray && git fetch && git checkout && git pull
+    - cd nmor-ray && git stash && git fetch && git checkout && git pull
     # - echo 'export PATH="$HOME/anaconda3/envs/tensorflow_p36/bin:$PATH"' >> ~/.bashrc
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev4-cp27-cp27mu-manylinux1_x86_64.whl
     # - pip install -U https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-0.8.0.dev4-cp35-cp35m-manylinux1_x86_64.whl
