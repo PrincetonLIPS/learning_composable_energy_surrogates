@@ -11,3 +11,4 @@ conda install -c conda-forge hdf5==1.10.4
 conda install -c conda-forge numpy scipy matplotlib jupyter # pip install numpy scipy matplotlib jupyter
 pip install --upgrade ray==0.7.4
 pip install --upgrade tensorflow
+pip install boto3
