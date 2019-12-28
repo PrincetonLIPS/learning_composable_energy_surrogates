@@ -1,5 +1,6 @@
 #!/bin/bash
 source ~/.bashrc
+source ~/anaconda2/etc/profile.d/conda.sh
 source ~/anaconda3/etc/profile.d/conda.sh
 conda remove --name nm --all
 conda create -n nm python==3.6.3
