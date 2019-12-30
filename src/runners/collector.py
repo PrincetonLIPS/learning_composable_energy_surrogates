@@ -52,7 +52,7 @@ class CollectorBase(object):
         return Example(u, p, f, J)
 
 
-@ray.remote(resources={"WorkerFlags": 0.5})
+@ray.remote(resources={"WorkerFlags": 0.33})
 class Collector(CollectorBase):
     def get_weighted_data(self, factor):
         return self.bc * factor

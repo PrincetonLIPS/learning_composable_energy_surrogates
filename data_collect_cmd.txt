@@ -1,0 +1,5 @@
+# Example command for launching a data gathering job
+# Adjust the arguments as necessary. Set max collectors 
+# to use the max_workers from aws.yaml, multiplied
+# by collectors per WorkerFlag.
+ray exec aws.yaml 'cd nmor-ray && conda activate nm && python -m src.run --run_local False --max_collectors 195 --max_evaluators 0 --max_train_steps 0 --sample_c True --results_dir /efs_nmor/results --data_name bV_10_sample_c_test --bV_dim 10 --anneal_steps 50 --relaxation_parameter 0.8' --start --stop --cluster-name nmor-0
