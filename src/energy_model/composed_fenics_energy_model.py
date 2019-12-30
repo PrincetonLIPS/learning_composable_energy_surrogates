@@ -70,7 +70,8 @@ class ComposedFenicsEnergyModel(object):
             def external_work(u):
                 return fa.inner(u, force_fn)
 
-        self.check_initial_guess(initial_guess, boundary_fn)
+        # Check initial guess removed
+        # self.check_initial_guess(initial_guess, boundary_fn)
         return self.pde.solve_problem(
             args=args,
             boundary_fn_dic=boundary_fn_dic,
