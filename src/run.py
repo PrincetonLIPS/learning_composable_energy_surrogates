@@ -289,7 +289,9 @@ if __name__ == "__main__":
                 trainer.visualize(
                     step - 1, next(iter(trainer.val_loader)), "Validation"
                 )
-                print("Saving checkpoints..."
+                print("Saving checkpoints...")
+                os.replace(os.path.join(out_dir, "ckpt.pt"),
+                           os.path.join(out_dir, "ckpt_last.pt"))
                 torch.save(
                     {
                         "args": args,
