@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10}, memory=8e9, object_store_memory=3e9)
+        ray.init(resources={"WorkerFlags": 10}, memory=12e9, object_store_memory=5e9)
         # args.verbose = True
     else:
         ray.init(redis_address="localhost:6379")
@@ -179,6 +179,7 @@ if __name__ == "__main__":
                                 {"train_data": train_data, "val_data": val_data},
                                 os.path.join(data_dir, "initial_datasets.pt"),
                             )
+                            print("Saved intermediate data.")
 
             print(
                 "Initial harvest took {}s: tsuccess {}, tdeath {}, "
@@ -194,11 +195,12 @@ if __name__ == "__main__":
             # Garbage collect these harvesters and their workers
             del train_harvester
             del val_harvester
-
+            print("Saving collected data...")
             torch.save(
                 {"train_data": train_data, "val_data": val_data},
                 os.path.join(data_dir, "initial_datasets.pt"),
             )
+            print("Saved collected data.")
 
             time.sleep(0.1)
 
@@ -260,8 +262,11 @@ if __name__ == "__main__":
             broadcast_net_state = ray.put(state_dict)
 
             surrogate.net.train()
+            train_step_time = 0.
             for bidx, batch in enumerate(trainer.train_loader):
-                t_losses += np.array(trainer.train_step(step, batch)) / n_batches
+                with Timer() as train_step_timer:
+                    t_losses += np.array(trainer.train_step(step, batch)) / n_batches
+                train_step_time += train_step_timer.interval / n_batches
 
                 if not args.run_local and args.dagger:
                     dagger_harvester.step(init_args=(broadcast_net_state,))
@@ -284,6 +289,7 @@ if __name__ == "__main__":
                 trainer.visualize(
                     step - 1, next(iter(trainer.val_loader)), "Validation"
                 )
+                print("Saving checkpoints..."
                 torch.save(
                     {
                         "args": args,
@@ -297,6 +303,7 @@ if __name__ == "__main__":
                     },
                     os.path.join(out_dir, "ckpt.pt"),
                 )
+                print("Saved checkpoints.")
                 last_viz_time = time.time()
 
             msg = (
@@ -326,6 +333,7 @@ if __name__ == "__main__":
             )
 
             print(msg)
+            print("avg_step_time: ", train_step_time)
 
             with open(os.path.join(out_dir, "losses.txt"), "a") as lossfile:
                 lossfile.write(msg)
