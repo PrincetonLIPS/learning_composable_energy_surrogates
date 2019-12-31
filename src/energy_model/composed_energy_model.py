@@ -152,9 +152,12 @@ class ComposedEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
+        step_size=None
     ):
         if opt_steps is None:
             opt_steps = self.args.solve_lbfgs_steps
+        if step_size is None:
+            step_size = self.args.solve_lbfgs_stepsize
         x = Variable(boundary_data.detach().clone(), requires_grad=True)
         constraint_mask = constraint_mask.data.detach().clone().view(-1, 1)
         boundary = x.detach().clone().data
@@ -167,7 +170,7 @@ class ComposedEnergyModel(object):
             return self.energy(f_inputs, params, force_data=force_data)
 
         optimizer = torch.optim.LBFGS(
-            [x], lr=self.args.solve_lbfgs_stepsize, max_iter=opt_steps
+            [x], lr=step_size, max_iter=opt_steps
         )
 
         traj_u = []
@@ -207,9 +210,12 @@ class ComposedEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
+        step_size=None
     ):
         if opt_steps is None:
-            opt_steps = self.args.solve_steps
+            opt_steps = self.args.solve_sgd_steps
+        if step_size is None:
+            step_size = self.args.solve_sgd_stepsize
         x = boundary_data.data.detach().clone()
         constraint_mask = constraint_mask.data.detach().clone().view(-1, 1)
         x = Variable(x, requires_grad=True)
@@ -225,9 +231,9 @@ class ComposedEnergyModel(object):
             return self.energy(f_inputs, params, force_data=force_data)
 
         if self.args.solve_optimizer == "adam":
-            optimizer = torch.optim.Adam([x], lr=self.args.solve_adam_stepsize)
+            optimizer = torch.optim.Adam([x], lr=step_size)
         else:
-            optimizer = torch.optim.SGD([x], lr=self.args.solve_sgd_stepsize)
+            optimizer = torch.optim.SGD([x], lr=step_size)
 
         traj_u = []
         traj_f = []

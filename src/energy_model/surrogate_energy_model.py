@@ -168,9 +168,12 @@ class SurrogateEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
+        step_size=None,
     ):
         if opt_steps is None:
             opt_steps = self.args.solve_lbfgs_steps
+        if step_size is None:
+            step_size = self.args.solve_lbfgs_stepsize
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
         constraint_mask = self.fsm.to_torch(constraint_mask).data
         if self.fsm.cuda:
@@ -186,7 +189,7 @@ class SurrogateEnergyModel(object):
             return self.f(f_inputs, params, force_data=force_data)
 
         optimizer = torch.optim.LBFGS(
-            [x], lr=self.args.solve_lbfgs_stepsize, max_iter=opt_steps
+            [x], lr=step_size, max_iter=opt_steps
         )
 
         traj_u = []
@@ -226,9 +229,12 @@ class SurrogateEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
+        step_size=None,
     ):
         if opt_steps is None:
-            opt_steps = self.args.solve_steps
+            opt_steps = self.args.solve_sgd_steps
+        if step_size is None:
+            step_size = self.args.solve_sgd_stepsize
         x = self.fsm.to_torch(boundary_data).data.detach().clone()
         constraint_mask = self.fsm.to_torch(constraint_mask).data.detach().clone()
         if self.fsm.cuda:
@@ -246,9 +252,9 @@ class SurrogateEnergyModel(object):
             return self.f(f_inputs, params, force_data=force_data)
 
         if self.args.solve_optimizer == "adam":
-            optimizer = torch.optim.Adam([x], lr=self.args.solve_adam_stepsize)
+            optimizer = torch.optim.Adam([x], lr=step_size)
         else:
-            optimizer = torch.optim.SGD([x], lr=self.args.solve_sgd_stepsize)
+            optimizer = torch.optim.SGD([x], lr=step_size)
 
         traj_u = []
         traj_f = []
