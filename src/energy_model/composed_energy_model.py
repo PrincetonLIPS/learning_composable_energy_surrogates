@@ -96,6 +96,9 @@ class ComposedEnergyModel(object):
             )
             cell_force_data = cell_force_data.view(self.n_cells, -1, 2)
 
+        else:
+            cell_force_data = torch.zeros_like(cell_coords)
+
         # pdb.set_trace()
 
         return torch.sum(self.sem.f(cell_coords, params, cell_force_data))
