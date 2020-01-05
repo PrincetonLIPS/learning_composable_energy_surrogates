@@ -309,11 +309,18 @@ class FunctionSpaceMap(object):
         return self.is_ring(fn)
 
     def V_to_ring(self, fn_V):
-
         if not getattr(fn_V, "is_fa_gradient", False) and not getattr(
             fn_V, "is_fa_hessian", False
         ):
-            raise Exception("Can't do this efficiently!")
+            print("Warning: interpolating to ring. "
+                  "High-freq information may be lost.")
+            x = self.to_ring(torch.zeros([self.vector_dim]))
+            for i, xloc in enumerate(self.ring_coords):
+                x1, x2 = xloc.data.cpu().numpy()
+                y1, y2 = fn_V([x1, x2])
+                x[i, 0] = y1
+                x[i, 1] = y2
+            return x
 
         if getattr(fn_V, "is_fa_gradient", False):
             return self.V_gradient_to_ring(fn_V)

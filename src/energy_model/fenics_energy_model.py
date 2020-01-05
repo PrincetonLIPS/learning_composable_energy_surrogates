@@ -42,9 +42,8 @@ class FenicsEnergyModel(object):
         else:
             return energy, jac
 
-    def f_J_Hvp(
-        self, boundary_fn, vector, initial_guess=None, return_u=False, args=None
-    ):
+    def f_J_H(self, boundary_fn, initial_guess=None,
+              return_u=False, args=None):
         if hasattr(boundary_fn, "shape") and len(boundary_fn.shape) == 2:
             raise Exception()
 
@@ -52,17 +51,23 @@ class FenicsEnergyModel(object):
         energy, jac, solution = self.f_J(
             boundary_fn, initial_guess, return_u=True, args=args
         )
-        direction = self.fsm.to_V(vector)
-        hvp = fa.compute_hessian(energy, fa.Control(boundary_fn), direction)
-        # pdb.set_trace()
-        # jac = self.fsm.to_dV(jac)
-        # hvp = self.fsm.to_dV(hvp)
-        # solution = self.fsm.to_dV(solution)
+        n = self.fsm.vector_dim
+        hvps = []
+        for i in range(n):
+            print("Hessian direction {}/{}".format(i, n))
+            direction = torch.zeros(self.fsm.vector_dim)
+            direction[i] = 1.0
+            direction = self.fsm.to_V(direction)
+            hvp = fa.compute_hessian(energy, fa.Control(boundary_fn),
+                                     direction)
+            hvps.append(self.fsm.to_torch(
+                self.fsm.V_gradient_to_ring(hvp)))
+        hess = torch.stack(hvps, dim=0)
 
         if return_u:
-            return energy, jac, hvp, solution
+            return energy, jac, hess, solution
         else:
-            return energy, jac, hvp
+            return energy, jac, hess
 
     def solve(
         self,
@@ -124,30 +129,40 @@ if __name__ == "__main__":
 
     print("Preparing for Taylor test")
     args = parser.parse_args()
-    args.relaxation_parameter = 0.9
     pde = Metamaterial(args)
     print("Created PDE")
     fsm = FunctionSpaceMap(V=pde.V, bV_dim=args.bV_dim, cuda=False)
     print("Created FSM")
     fem = FenicsEnergyModel(args, pde, fsm)
     print("Created FEM")
-    x0 = 0.05 * make_bc(args, fsm)[0]
-    dx = 0.05 * make_bc(args, fsm)[0]
+    x0 = 0.1 * make_bc(args, fsm)[0]
+    dx = 0.1 * make_bc(args, fsm)[0]
 
     fa.set_log_level(20)
 
-    f0, J0 = fem.f_J(x0)
+    f0, J0, H0 = fem.f_J_H(x0)
     J0 = fsm.to_torch(J0)
 
+    fa.set_log_level(30)
+
     for factor in [0.1 / (2 ** i) for i in range(10)]:
+        # pdb.set_trace()
+
         delta = dx * factor
         f1 = fem.f(x0 + delta)
-        first_order_remainder = np.abs(f1 - f0)
-        second_order_remainder = np.abs(f1 - f0 - (delta * J0).sum().data.cpu().numpy())
+        fhat0 = f0
+        fhat1 = fhat0 + (delta * J0).sum().data.cpu().numpy()
+        fhat2 = fhat1 + torch.matmul(
+            torch.matmul(delta.view(1, -1), H0),
+            delta.view(-1, 1)).sum().data.cpu().numpy()/2
+        first_order_remainder = np.abs(f1 - fhat0)
+        second_order_remainder = np.abs(f1 - fhat1)
+        third_order_remainder = np.abs(f1 - fhat2)
         # pdb.set_trace()
         print(
-            "Factor: {}, first-order remainder: {}, "
-            "second-order remainder: {}".format(
-                factor, first_order_remainder, second_order_remainder
+            "Factor: {}, first-ord remainder: {}, "
+            "second-ord rem: {}, third-ord rem: {}".format(
+                factor, first_order_remainder, second_order_remainder,
+                third_order_remainder
             )
         )

@@ -310,22 +310,16 @@ if __name__ == "__main__":
 
             msg = (
                 "step {}, epoch {}: "
-                "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, tL: {:.3e} "
-                "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, vL: {:.3e} "
+                "tfL: {:.3e}, tf%: {:.3e}, tJL: {:.3e}, tJsim: {:.3e}, "
+                "tHL: {:.3e}, tHsim: {:.3e}, tL: {:.3e}, "
+                "vfL: {:.3e}, vf%: {:.3e}, vJL: {:.3e}, vJsim: {:.3e}, "
+                "vHL: {:.3e}, vHsim: {:.3e}, vL: {:.3e}, "
                 "dloss_mean: {:.3e}, dloss_std: {:.3e}, dloss_90: {:.3e}, "
                 "dloss_50: {:.3e}, dloss_10: {:.3e}\n".format(
                     step,
                     epoch,
-                    t_losses[0],
-                    t_losses[1],
-                    t_losses[2],
-                    t_losses[3],
-                    t_losses[4],
-                    v_losses[0],
-                    v_losses[1],
-                    v_losses[2],
-                    v_losses[3],
-                    v_losses[4],
+                    *t_losses,
+                    *v_losses,
                     deploy_ems.mean,
                     deploy_ems.std,
                     deploy_ems.m90,

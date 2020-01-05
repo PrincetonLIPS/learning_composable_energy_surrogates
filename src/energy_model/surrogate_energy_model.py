@@ -85,6 +85,17 @@ class SurrogateEnergyModel(object):
         jac = jac.contiguous()
         return energy, jac
 
+    def f_J_Hvp(self, boundary_inputs, params, vectors):
+        boundary_inputs = self.prep_inputs(boundary_inputs)
+        energy, jac = self.f_J(boundary_inputs, params)
+        vectors = self.fsm.to_torch(vectors)
+        jvp = torch.sum(jac * vectors)
+        hvp = torch.autograd.grad(
+            jvp, boundary_inputs, create_graph=True, retain_graph=True
+        )[0]
+        hvp = Hvp.contiguous()
+        return energy, jac, hvp
+
     def f_J_H(self, single_boundary_input, single_param):
         single_boundary_input = self.prep_inputs(single_boundary_input)
         if single_param is not None:

@@ -101,21 +101,29 @@ class Trainer(object):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
         if self.optimizer:
             self.optimizer.zero_grad()
-        u, p, f, J = batch
+        u, p, f, J, H = batch
 
         with Timer() as timer:
-            u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
+            u, p, f, J, H = u.cuda(), p.cuda(), f.cuda(), J.cuda(), H.cuda()
 
         self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
 
         with Timer() as timer:
-            fhat, Jhat = self.surrogate.f_J(u, p)
+            if self.args.hess:
+                vectors = torch.random.randn(*J.size())
+                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
+                                                            vectors=vectors)
+                Hvp = torch.matmul(vectors, H)
+            else:
+                fhat, Jhat = self.surrogate.f_J(u, p)
+                Hvphat = torch.zeros_like(Jhat)
+                Hvp = torch.zeros_like(Jhat)
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
 
         with Timer() as timer:
-            f_loss, f_pce, J_loss, J_sim, total_loss = self.stats(
-                step, u, f, J, fhat, Jhat
+            f_loss, f_pce, J_loss, J_sim, H_loss, H_sim, total_loss = self.stats(
+                step, u, f, J, Hvp, fhat, Jhat, Hvphat
             )
         self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
 
@@ -148,23 +156,37 @@ class Trainer(object):
             f_pce.item(),
             J_loss.item(),
             J_sim.item(),
+            H_loss.item(),
+            H_sim.item()
             total_loss.item(),
         )
 
     def val_step(self, step):
         """Do a single validation step. Log stats to tensorboard."""
         for i, batch in enumerate(self.val_loader):
-            u, p, f, J = batch
-            u, p, f, J = u.cuda(), p.cuda(), f.cuda(), J.cuda()
-            fhat, Jhat = self.surrogate.f_J(u, p)
+            u, p, f, J, H = batch
+            u, p, f, J, H = u.cuda(), p.cuda(), f.cuda(), J.cuda(), H.cuda()
+            if self.args.hess:
+                vectors = torch.random.randn(*J.size())
+                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
+                                                            vectors=vectors)
+                Hvp = torch.matmul(vectors, H)
+            else:
+                fhat, Jhat = self.surrogate.f_J(u, p)
+                Hvphat = torch.zeros_like(Jhat)
+                Hvp = torch.zeros_like(Jhat)
+
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
             J_ = torch.cat([J_, J.data], dim=0) if i > 0 else J.data
+            Hvp_ = torch.cat([Hvp_, Hvp.data], dim=0) if i > 0 else Hvp.data
             fhat_ = torch.cat([fhat_, fhat.data], dim=0) if i > 0 else fhat.data
             Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
+            Hvphat_ = torch.cat([Hvphat_, Hvphat.data], dim=0) if i > 0 else Hvphat.data
+
 
         return list(
-            r.item() for r in self.stats(step, u_, f_, J_, fhat_, Jhat_, phase="val")
+            r.item() for r in self.stats(step, u_, f_, J_, Hvp_, fhat_, Jhat_, Hvphat_, phase="val")
         )
 
     def visualize(self, step, batch, dataset_name):
@@ -304,7 +326,7 @@ class Trainer(object):
             self.tflogger.log_images("{} Jacobians".format(dataset_name), [buf], step)
         self.surrogate.fsm.cuda = cuda
 
-    def stats(self, step, u, f, J, fhat, Jhat, phase="train"):
+    def stats(self, step, u, f, J, Hvp, fhat, Jhat, Hvphat, phase="train"):
         """Take ground truth and predictions. Log stats and return loss."""
 
         f_loss = torch.nn.functional.mse_loss(
@@ -312,12 +334,16 @@ class Trainer(object):
         )
         J_loss = torch.nn.functional.mse_loss(J, Jhat)
 
-        total_loss = f_loss + self.args.J_weight * J_loss
+        H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)
+
+        total_loss = f_loss + self.args.J_weight * J_loss + self.args.H_weight * H_loss
 
         f_pce = error_percent(f, fhat)
         J_pce = error_percent(J, Jhat)
+        H_pce = error_percent(Hvp, Hvphat)
 
         J_sim = similarity(J, Jhat)
+        H_sim = similarity(Hvp, Hvphat)
 
         if self.tflogger is not None:
             self.tflogger.log_scalar("train_set_size", len(self.train_data), step)
@@ -346,6 +372,10 @@ class Trainer(object):
             self.tflogger.log_scalar("J_pce_" + phase, J_pce.item(), step)
             self.tflogger.log_scalar("J_sim_" + phase, J_sim.item(), step)
 
+            self.tflogger.log_scalar("H_loss_" + phase, H_loss.item(), step)
+            self.tflogger.log_scalar("H_pce_" + phase, H_pce.item(), step)
+            self.tflogger.log_scalar("H_sim_" + phase, H_sim.item(), step)
+
             self.tflogger.log_scalar("J_mean_" + phase, J.mean().item(), step)
             self.tflogger.log_scalar(
                 "J_std_mean_" + phase, J.std(dim=1).mean().item(), step
@@ -355,7 +385,7 @@ class Trainer(object):
                 "Jhat_std_mean_" + phase, Jhat.std(dim=1).mean().item(), step
             )
 
-        return (f_loss, f_pce, J_loss, J_sim, total_loss)
+        return (f_loss, f_pce, J_loss, J_sim, H_loss, H_sim, total_loss)
 
 
 def log(message, *args):

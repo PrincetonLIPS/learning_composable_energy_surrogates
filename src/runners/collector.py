@@ -39,9 +39,15 @@ class CollectorBase(object):
         )
         weighted_data = self.get_weighted_data(factor)
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
-        f, JV, solution = self.fem.f_J(
-            input_boundary_fn, initial_guess=self.guess, return_u=True
-        )
+        if self.args.hess:
+            f, JV, H, solution = self.fem.f_J_H(
+                input_boundary_fn, initial_guess=self.guess, return_u=True
+            )
+        else:
+            H = torch.zeros(self.fem.fsm.vector_dim, self.fem.fsm.vector_dim)
+            f, JV, solution = self.fem.f_J(
+                input_boundary_fn, initial_guess=self.guess, return_u=True
+            )
 
         self.guess = solution.vector()
         u = torch.Tensor(weighted_data.data)
@@ -49,7 +55,7 @@ class CollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
-        return Example(u, p, f, J)
+        return Example(u, p, f, J, H)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})

@@ -88,6 +88,30 @@ parser.add_argument(
     default=0.5,
 )
 parser.add_argument(
+    "--boundary_sin_scale",
+    type=float,
+    help="maximum amplitude scale for boundary sinusoid,",
+    default=0.2,
+)
+parser.add_argument(
+    "--boundary_gauss_scale",
+    type=float,
+    help="maximum amplitude scale for boundary iid gaussian strain,",
+    default=0.1,
+)
+parser.add_argument(
+    "--boundary_ax_scale",
+    type=float,
+    help="maximum amplitude scale for boundary axial strain,",
+    default=0.2,
+)
+parser.add_argument(
+    "--boundary_shear_scale",
+    type=float,
+    help="maximum amplitude scale for boundary shear strain,",
+    default=0.05,
+)
+parser.add_argument(
     "--force_freq_scale",
     type=float,
     help="maximum frequency scale for force random fourier fn",
@@ -190,22 +214,22 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--relaxation_parameter", default=0.5, type=float, help="relaxation parameter"
+    "--relaxation_parameter", default=0.1, type=float, help="relaxation parameter"
 )
 parser.add_argument(
-    "--max_newton_iter", default=50, type=int, help="maximum Newton iters"
+    "--max_newton_iter", default=1000, type=int, help="maximum Newton iters"
 )
 
 parser.add_argument(
     "--metamaterial_mesh_size",
-    default=80,
+    default=16,
     type=int,
     help="N points along one dim in each cell. "
     " Overvelde&Bertoldi use about sqrt(1000)",
 )
 parser.add_argument(
     "--pore_radial_resolution",
-    default=100,
+    default=120,
     type=int,
     help=" Number of points around each pore",
 )

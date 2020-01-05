@@ -2,6 +2,9 @@ import numpy as np
 from ..pde.metamaterial import Metamaterial
 from .random_fourier_fn import make_random_fourier_expression
 import torch
+import random
+import math
+from .. import fa_combined as fa
 
 
 def make_p(args):
@@ -41,16 +44,45 @@ def make_force(args, fsm):
 def make_bc(args, fsm):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
     amp_scale = np.random.uniform(0.0, args.boundary_amp_scale)
+    gauss_scale = np.random.uniform(0.0, args.boundary_gauss_scale)
+    sin_scale = np.random.uniform(0.0, args.boundary_sin_scale)
+    shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
+    ax_scale = np.random.uniform(0.0, args.boundary_ax_scale)
+
+
     boundary_expression = make_random_fourier_expression(
         2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
-    boundary_data = np.zeros([4 * fsm.elems_along_edge, 2])
+
+    t = float(int(2*random.random())) * math.pi
+
+    W = np.random.randn(2, 2)
+
+    lin_expression = fa.Expression(
+          ('w00*x[0] + w01*x[1]', 'w10*x[0]+w11*x[1]'),
+          w00=W[0,0]*ax_scale,
+          w01=W[0,1]*shear_scale,
+          w10=W[1,0]*shear_scale,
+          w11=W[1,1]*ax_scale,
+          degree=2)
+
+    sin_expression = fa.Expression(
+          ('a*sin(b*x[1]+t)', '-a*sin(b*x[0]+t)'),
+          a=sin_scale,
+          b=2*math.pi,
+          t=t,
+          degree=2)
+
+    boundary_data = np.random.randn(4 * fsm.elems_along_edge, 2) * gauss_scale 
 
     for s in range(len(boundary_data)):
         x1, x2 = fsm.s_to_x(s)
         u1, u2 = boundary_expression([x1, x2])
-        boundary_data[s][0] = u1
-        boundary_data[s][1] = u2
+        u1s, u2s = sin_expression([x1, x2])
+        u1l, u2l = lin_expression([x1, x2])
+
+        boundary_data[s][0] += u1 + u1s + u1l
+        boundary_data[s][1] += u2 + u2s + u2l
 
     boundary_data = fsm.to_torch(torch.Tensor(boundary_data))
     # Randomly constrain sides
