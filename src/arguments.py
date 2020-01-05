@@ -252,7 +252,12 @@ parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=32.0
 )
-
+parser.add_argument(
+    "--H_weight", help="Weight on Jacobian loss", type=float, default=32.0
+)
+parser.add_argument(
+    "--hess", help="Use Hvp training", type=s2b, default=True
+)
 parser.add_argument(
     "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=0.01
 )

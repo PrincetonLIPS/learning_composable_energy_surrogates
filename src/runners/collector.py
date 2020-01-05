@@ -30,6 +30,9 @@ class CollectorBase(object):
     def increment_factor(self):
         self.steps += 1
 
+    def get_weighted_data(self, factor):
+        return self.bc * factor
+
     def step(self):
         self.increment_factor()
         # if self.steps > self.args.anneal_steps:
@@ -64,8 +67,7 @@ class Collector(CollectorBase):
         return self.bc * factor
 
 
-@ray.remote(resources={"WorkerFlags": 0.5})
-class PolicyCollector(CollectorBase):
+class PolicyCollectorBase(CollectorBase):
     def __init__(self, args, seed, state_dict):
         CollectorBase.__init__(self, args, seed)
 
@@ -108,3 +110,16 @@ class PolicyCollector(CollectorBase):
         u = alpha * u2 + (1.0 - alpha) * u1
 
         return torch.Tensor(u.data)
+
+@ray.remote(resources={"WorkerFlags": 0.5})
+class PolicyCollector(PolicyCollectorBase):
+    pass
+
+if __name__ == '__main__':
+    from ..arguments import parser
+    import pdb
+    fa.set_log_level(20)
+    args = parser.parse_args()
+    collector = CollectorBase(args, 0)
+    example = collector.step()
+    pdb.set_trace()
