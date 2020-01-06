@@ -54,7 +54,8 @@ class FenicsEnergyModel(object):
         n = self.fsm.vector_dim
         hvps = []
         for i in range(n):
-            print("Hessian direction {}/{}".format(i, n))
+            if self.args.verbose:
+                print("Hessian direction {}/{}".format(i, n))
             direction = torch.zeros(self.fsm.vector_dim)
             direction[i] = 1.0
             direction = self.fsm.to_V(direction)

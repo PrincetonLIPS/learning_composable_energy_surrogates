@@ -173,10 +173,13 @@ if __name__ == "__main__":
                                 htimer.interval,
                             )
                         )
+                        last_error_msg = str(train_harvester.last_error)
+                        if len(last_error_msg.split('\n')) > 3:
+                            last_error_msg = '\n'.join(last_error_msg.split('\n')[-3:])
                         print(
                             "Last error {}s ago: {}".format(
                                 time.time() - train_harvester.last_error_time,
-                                train_harvester.last_error,
+                                last_error_msg,
                             )
                         )
                         if time.time() > last_save_time + 300:  # Save every 5min
