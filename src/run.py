@@ -37,11 +37,18 @@ import time
 import io
 
 
+def _cuda(x):
+    if torch.cuda.is_available():
+        return x.cuda()
+    else:
+        return x
+
+
 if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 10}, memory=12e9, object_store_memory=5e9)
+        ray.init(resources={"WorkerFlags": 3}, memory=12e9, object_store_memory=5e9)
         # args.verbose = True
     else:
         ray.init(redis_address="localhost:6379")
@@ -78,10 +85,10 @@ if __name__ == "__main__":
             argfile.write(arg + ": " + str(getattr(args, arg)) + "\n")
 
     try:
-        fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=True)
+        fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=torch.cuda.is_available())
 
         net = FeedForwardNet(args, fsm)
-        net = net.cuda()
+        net = _cuda(net)
 
         surrogate = SurrogateEnergyModel(args, net, fsm)
 
@@ -210,7 +217,7 @@ if __name__ == "__main__":
 
         # Init whitening module
         preprocd_u = surrogate.net.preproc(
-            torch.stack([u for u, _, _, _ in trainer.train_data.data])
+            torch.stack([u for u, _, _, _, _ in trainer.train_data.data])
         )
 
         # surrogate.net.normalizer.mean.data = torch.mean(
@@ -252,7 +259,7 @@ if __name__ == "__main__":
         while step < args.max_train_steps:
 
             # [f_loss, f_pce, J_loss, J_cossim, loss]
-            t_losses = np.zeros(5)
+            t_losses = np.zeros(7)
 
             state_dict = surrogate.net.state_dict()
             state_dict = {
@@ -300,8 +307,8 @@ if __name__ == "__main__":
                         "valdata": trainer.val_data,
                         "model_state_dict": surrogate.net.state_dict(),
                         "optimizer_state_dict": trainer.optimizer.state_dict(),
-                        "tloss": t_losses[4],
-                        "vloss": v_losses[4],
+                        "tloss": t_losses[6],
+                        "vloss": v_losses[6],
                     },
                     os.path.join(out_dir, "ckpt.pt"),
                 )

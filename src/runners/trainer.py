@@ -15,6 +15,13 @@ from ..util.timer import Timer
 from ..viz.plotting import plot_boundary, plot_vectors
 
 
+def _cuda(x):
+    if torch.cuda.is_available():
+        return x.cuda()
+    else:
+        return x
+
+
 class Trainer(object):
     def __init__(self, args, surrogate, train_data, val_data, tflogger=None, pde=None):
         self.args = args
@@ -30,8 +37,8 @@ class Trainer(object):
             self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
         )
         self.init_optimizer()
-        self.train_f_std = torch.Tensor([[1.0]]).cuda()
-        self.train_J_std = torch.Tensor([[1.0]]).cuda()
+        self.train_f_std = _cuda(torch.Tensor([[1.0]]))
+        self.train_J_std = _cuda(torch.Tensor([[1.0]]))
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
@@ -104,20 +111,21 @@ class Trainer(object):
         u, p, f, J, H = batch
 
         with Timer() as timer:
-            u, p, f, J, H = u.cuda(), p.cuda(), f.cuda(), J.cuda(), H.cuda()
+            u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
 
         self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
 
         with Timer() as timer:
             if self.args.hess:
-                vectors = torch.random.randn(*J.size())
+                vectors = torch.randn(*J.size())
                 fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
                                                             vectors=vectors)
-                Hvp = torch.matmul(vectors, H)
+                Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
             else:
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
+        # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
 
@@ -157,7 +165,7 @@ class Trainer(object):
             J_loss.item(),
             J_sim.item(),
             H_loss.item(),
-            H_sim.item()
+            H_sim.item(),
             total_loss.item(),
         )
 
@@ -165,12 +173,12 @@ class Trainer(object):
         """Do a single validation step. Log stats to tensorboard."""
         for i, batch in enumerate(self.val_loader):
             u, p, f, J, H = batch
-            u, p, f, J, H = u.cuda(), p.cuda(), f.cuda(), J.cuda(), H.cuda()
+            u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
             if self.args.hess:
-                vectors = torch.random.randn(*J.size())
+                vectors = torch.randn(*J.size())
                 fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
                                                             vectors=vectors)
-                Hvp = torch.matmul(vectors, H)
+                Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
             else:
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
@@ -190,7 +198,7 @@ class Trainer(object):
         )
 
     def visualize(self, step, batch, dataset_name):
-        u, p, f, J = batch
+        u, p, f, J, H = batch
         u, p, f, J = u[:4], p[:4], f[:4], J[:4]
         fhat, Jhat = self.surrogate.f_J(u, p)
 
@@ -334,6 +342,7 @@ class Trainer(object):
         )
         J_loss = torch.nn.functional.mse_loss(J, Jhat)
 
+        # pdb.set_trace()
         H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)
 
         total_loss = f_loss + self.args.J_weight * J_loss + self.args.H_weight * H_loss

@@ -93,7 +93,7 @@ class SurrogateEnergyModel(object):
         hvp = torch.autograd.grad(
             jvp, boundary_inputs, create_graph=True, retain_graph=True
         )[0]
-        hvp = Hvp.contiguous()
+        hvp = hvp.contiguous()
         return energy, jac, hvp
 
     def f_J_H(self, single_boundary_input, single_param):

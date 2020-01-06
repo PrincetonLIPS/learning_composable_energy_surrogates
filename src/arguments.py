@@ -31,7 +31,7 @@ parser.add_argument(
 parser.add_argument("--train_size", type=int, help="n train data", default=55000)
 parser.add_argument("--val_size", type=int, help="n val data", default=5000)
 parser.add_argument(
-    "--n_safe", type=int, help="n train data maintained from original dist", default=500
+    "--n_safe", type=int, help="n train data maintained from original dist", default=0
 )
 
 parser.add_argument(
@@ -253,7 +253,7 @@ parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=32.0
 )
 parser.add_argument(
-    "--H_weight", help="Weight on Jacobian loss", type=float, default=32.0
+    "--H_weight", help="Weight on Jacobian loss", type=float, default=0.1
 )
 parser.add_argument(
     "--hess", help="Use Hvp training", type=s2b, default=True

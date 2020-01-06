@@ -26,9 +26,16 @@ class CollectorBase(object):
         self.factor = 0.0
         self.guess = fa.Function(self.fsm.V).vector()
         self.steps = 0
+        self.base_relax = self.args.relaxation_parameter
 
     def increment_factor(self):
         self.steps += 1
+        if self.steps > self.args.anneal_steps:
+            self.__init__(self.args, np.random.RandomState())
+        if self.args.verbose:
+            print("Anneal step {}/{}".format(self.steps,
+                                             self.args.anneal_steps))
+
 
     def get_weighted_data(self, factor):
         return self.bc * factor
@@ -38,19 +45,36 @@ class CollectorBase(object):
         # if self.steps > self.args.anneal_steps:
         #     raise Exception("Self-destructing; have completed annealing")
         factor = (
-            max(1.0, (self.steps + np.random.random() - 0.5)) / self.args.anneal_steps
+            (self.steps + np.random.random() - 0.5) / self.args.anneal_steps
         )
         weighted_data = self.get_weighted_data(factor)
+        if self.args.verbose:
+            print("Factor: {}".format(factor))
         input_boundary_fn = self.fem.fsm.to_V(weighted_data)
-        if self.args.hess:
-            f, JV, H, solution = self.fem.f_J_H(
-                input_boundary_fn, initial_guess=self.guess, return_u=True
-            )
-        else:
-            H = torch.zeros(self.fem.fsm.vector_dim, self.fem.fsm.vector_dim)
-            f, JV, solution = self.fem.f_J(
-                input_boundary_fn, initial_guess=self.guess, return_u=True
-            )
+
+        tries = 0
+        success = False
+        while not success:
+            self.fem.args.relaxation_parameter = self.base_relax / (4**tries)
+            try:
+                if self.args.verbose:
+                    print("Try {}/{}".format(tries+1, 3))
+                if self.args.hess:
+                    f, JV, H, solution = self.fem.f_J_H(
+                        input_boundary_fn, initial_guess=self.guess, return_u=True
+                    )
+                else:
+                    H = torch.zeros(self.fem.fsm.vector_dim, self.fem.fsm.vector_dim)
+                    f, JV, solution = self.fem.f_J(
+                        input_boundary_fn, initial_guess=self.guess, return_u=True
+                    )
+                success = True
+            except Exception as e:
+                print(e)
+                tries += 1
+                if tries >= 3:
+                    raise(e)
+        self.fem.args.relaxation_parameter = self.base_relax
 
         self.guess = solution.vector()
         u = torch.Tensor(weighted_data.data)
@@ -63,8 +87,7 @@ class CollectorBase(object):
 
 @ray.remote(resources={"WorkerFlags": 0.33})
 class Collector(CollectorBase):
-    def get_weighted_data(self, factor):
-        return self.bc * factor
+    pass
 
 
 class PolicyCollectorBase(CollectorBase):

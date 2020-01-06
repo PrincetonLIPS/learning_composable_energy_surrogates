@@ -114,7 +114,7 @@ class FenicsEnergyModel(object):
         init_energy = self.pde.energy(init_guess_fn)
         if self.args.verbose:
             print("Init energy: {}".format(init_energy))
-        if not init_energy < 1e2 or not np.isfinite(init_energy):
+        if not init_energy < 1e3 or not np.isfinite(init_energy):
             raise Exception(
                 "Initial guess energy {} is too damn high".format(init_energy)
             )
