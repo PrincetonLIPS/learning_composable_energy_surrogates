@@ -199,10 +199,10 @@ class Trainer(object):
 
     def visualize(self, step, batch, dataset_name):
         u, p, f, J, H = batch
-        u, p, f, J = u[:4], p[:4], f[:4], J[:4]
+        u, p, f, J = u[:16], p[:16], f[:16], J[:16]
         fhat, Jhat = self.surrogate.f_J(u, p)
 
-        assert len(u) <= 4
+        assert len(u) <= 16
         assert len(u) == len(p)
         assert len(u) == len(f)
         assert len(u) == len(J)
@@ -214,7 +214,7 @@ class Trainer(object):
         cuda = self.surrogate.fsm.cuda
         self.surrogate.fsm.cuda = False
 
-        fig, axes = plt.subplots(2, 2, figsize=(8, 8))
+        fig, axes = plt.subplots(4, 4, figsize=(16, 16))
         axes = [ax for axs in axes for ax in axs]
         RCs = self.surrogate.fsm.ring_coords.cpu().detach().numpy()
         rigid_remover = RigidRemover(self.surrogate.fsm)
@@ -294,7 +294,7 @@ class Trainer(object):
         self.tflogger.log_images("{} displacements".format(dataset_name), [buf], step)
 
         if J is not None and Jhat is not None:
-            fig, axes = plt.subplots(2, 2, figsize=(8, 8))
+            fig, axes = plt.subplots(4, 4, figsize=(16, 16))
             axes = [ax for axs in axes for ax in axs]
             for i in range(len(J)):
                 ax = axes[i]

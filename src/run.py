@@ -174,8 +174,8 @@ if __name__ == "__main__":
                             )
                         )
                         last_error_msg = str(train_harvester.last_error)
-                        if len(last_error_msg.split('\n')) > 3:
-                            last_error_msg = '\n'.join(last_error_msg.split('\n')[-3:])
+                        if len(last_error_msg.split('\n')) > 15:
+                            last_error_msg = '\n'.join(last_error_msg.split('\n')[-15:])
                         print(
                             "Last error {}s ago: {}".format(
                                 time.time() - train_harvester.last_error_time,
