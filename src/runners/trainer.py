@@ -117,7 +117,7 @@ class Trainer(object):
 
         with Timer() as timer:
             if self.args.hess:
-                vectors = torch.randn(*J.size())
+                vectors = torch.randn(*J.size()).to(J.device)
                 fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
                                                             vectors=vectors)
                 Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
@@ -175,7 +175,7 @@ class Trainer(object):
             u, p, f, J, H = batch
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
             if self.args.hess:
-                vectors = torch.randn(*J.size())
+                vectors = torch.randn(*J.size()).to(J.device)
                 fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
                                                             vectors=vectors)
                 Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
