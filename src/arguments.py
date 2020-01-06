@@ -79,19 +79,19 @@ parser.add_argument(
     "--boundary_freq_scale",
     type=float,
     help="maximum frequency scale for boundary random fourier fn",
-    default=10.0,
+    default=20.0,
 )
 parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=0.5,
+    default=0.25,
 )
 parser.add_argument(
     "--boundary_sin_scale",
     type=float,
     help="maximum amplitude scale for boundary sinusoid,",
-    default=0.2,
+    default=0.3,
 )
 parser.add_argument(
     "--boundary_gauss_scale",
@@ -103,7 +103,7 @@ parser.add_argument(
     "--boundary_ax_scale",
     type=float,
     help="maximum amplitude scale for boundary axial strain,",
-    default=0.2,
+    default=0.3,
 )
 parser.add_argument(
     "--boundary_shear_scale",
