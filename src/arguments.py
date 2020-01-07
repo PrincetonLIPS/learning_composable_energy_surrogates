@@ -260,6 +260,10 @@ parser.add_argument(
     type=s2b, default=False
 )
 parser.add_argument(
+    "--mag_weight", help="magnitude weight for decoupled angle and log magnitude loss for vecs",
+    type=float, default=1.0
+)
+parser.add_argument(
     "--hess", help="Use Hvp training", type=s2b, default=True
 )
 parser.add_argument(

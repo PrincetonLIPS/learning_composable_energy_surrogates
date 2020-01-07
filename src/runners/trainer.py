@@ -342,12 +342,12 @@ class Trainer(object):
         )
 
         if self.args.angle_magnitude:
-            J_loss = torch.nn.functional.mse_loss(
+            J_loss = self.args.mag_weight*torch.nn.functional.mse_loss(
                 torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
-                ) - similarity(J, Jhat)
-            H_loss = torch.nn.functional.mse_loss(
+                ) + 1. - similarity(J, Jhat)
+            H_loss = self.args.mag_weight*torch.nn.functional.mse_loss(
                 torch.log(Hvp.norm(dim=1)), torch.log(Hvphat.norm(dim=1))
-                ) - similarity(Hvp, Hvphat)
+                ) + 1. - similarity(Hvp, Hvphat)
         else:
             J_loss = torch.nn.functional.mse_loss(J, Jhat)
             H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)
