@@ -341,7 +341,7 @@ class Trainer(object):
             self.surrogate.scaler.scale(f, u), self.surrogate.scaler.scale(fhat, u)
         )
 
-        if args.angle_magnitude:
+        if self.args.angle_magnitude:
             J_loss = torch.nn.functional.mse_loss(
                 torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
                 ) - similarity(J, Jhat)
@@ -422,8 +422,8 @@ def error_percent(y, y_):
 
 def similarity(y, y_):
     """Cosine similarity between vectors"""
-    y = y.view(y.size(0), -1).cpu()
-    y_ = y_.view(y_.size(0), -1).cpu()
+    y = y.view(y.size(0), -1)
+    y_ = y_.view(y_.size(0), -1).to(y.device)
     assert y.size(0) == y_.size(0)
     assert y.size(1) == y_.size(1)
     return torch.mean(
