@@ -170,6 +170,7 @@ parser.add_argument(
     default="[256,128,64,32]",
     type=str,
 )
+parser.add_argument("--drop_prob", default=0.0, type=float, help="dropout probability")
 parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
 parser.add_argument(
     "--quadratic_scale",

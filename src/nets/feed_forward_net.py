@@ -66,6 +66,7 @@ class FeedForwardNet(nn.Module):
         self.init = inits[args.init]
         self.input_dim = fsm.vector_dim + 2
         self.sizes = [self.input_dim] + sizes + [1]
+        self.dropout = nn.Dropout(p=args.drop_prob)
         self.layers = nn.ModuleList(
             [
                 nn.Linear(self.sizes[i], self.sizes[i + 1], bias=bias)
@@ -96,6 +97,6 @@ class FeedForwardNet(nn.Module):
         a = x
         for l in self.layers:
             x = l(a)
-            a = self.nonlinearity(x)
+            a = self.dropout(self.nonlinearity(x))
         out = x.view(-1, 1)
         return out
