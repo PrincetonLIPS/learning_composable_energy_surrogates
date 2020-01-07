@@ -340,10 +340,17 @@ class Trainer(object):
         f_loss = torch.nn.functional.mse_loss(
             self.surrogate.scaler.scale(f, u), self.surrogate.scaler.scale(fhat, u)
         )
-        J_loss = torch.nn.functional.mse_loss(J, Jhat)
 
-        # pdb.set_trace()
-        H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)
+        if args.angle_magnitude:
+            J_loss = torch.nn.functional.mse_loss(
+                torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
+                ) - similarity(J, Jhat)
+            H_loss = torch.nn.functional.mse_loss(
+                torch.log(Hvp.norm(dim=1)), torch.log(Hvphat.norm(dim=1))
+                ) - similarity(Hvp, Hvphat)
+        else:
+            J_loss = torch.nn.functional.mse_loss(J, Jhat)
+            H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)
 
         total_loss = f_loss + self.args.J_weight * J_loss + self.args.H_weight * H_loss
 

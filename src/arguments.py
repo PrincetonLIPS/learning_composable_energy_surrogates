@@ -256,6 +256,10 @@ parser.add_argument(
     "--H_weight", help="Weight on Jacobian loss", type=float, default=0.1
 )
 parser.add_argument(
+    "--angle_magnitude", help="Decoupled angle and log magnitude loss for vecs",
+    type=s2b, default=False
+)
+parser.add_argument(
     "--hess", help="Use Hvp training", type=s2b, default=True
 )
 parser.add_argument(
