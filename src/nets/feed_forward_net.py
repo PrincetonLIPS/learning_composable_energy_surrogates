@@ -63,6 +63,8 @@ class FeedForwardNet(nn.Module):
         self.normalizer = MovingAverageNormalzier(
             args.normalizer_alpha, (fsm.vector_dim,), self.args.fix_normalizer
         )
+        self.input_dim = fsm.vector_dim + 2
+        self.sizes = [self.input_dim] + sizes + [1]
         if args.nonlinearity == 'swish':
             self.betas = nn.ModuleList([
                 nn.Parameter(torch.ones(1, self.sizes[i+1]))
@@ -70,8 +72,6 @@ class FeedForwardNet(nn.Module):
             ])
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
-        self.input_dim = fsm.vector_dim + 2
-        self.sizes = [self.input_dim] + sizes + [1]
         self.dropout = nn.Dropout(p=args.drop_prob)
         self.layers = nn.ModuleList(
             [
