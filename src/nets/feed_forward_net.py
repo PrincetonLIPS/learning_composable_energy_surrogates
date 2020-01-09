@@ -12,9 +12,9 @@ nonlinearities = {
     "elu": torchF.elu,
     "sin": torch.sin,
     "tanh": torchF.tanh,
-    "swish1": lambda x, beta: x * torchF.sigmoid(x),
-    "swish": lambda x, beta: x * torchF.sigmoid(x * beta),
-    "sigmoid": lambda x: torchF.sigmoid(x),
+    "swish1": lambda x, beta: x * torch.sigmoid(x),
+    "swish": lambda x, beta: x * torch.sigmoid(x * beta),
+    "sigmoid": lambda x: torch.sigmoid(x),
 }
 
 inits = {
@@ -63,15 +63,15 @@ class FeedForwardNet(nn.Module):
         self.normalizer = MovingAverageNormalzier(
             args.normalizer_alpha, (fsm.vector_dim,), self.args.fix_normalizer
         )
+        self.input_dim = fsm.vector_dim + 2
+        self.sizes = [self.input_dim] + sizes + [1]
         if args.nonlinearity == 'swish':
-            self.betas = nn.ModuleList([
+            self.betas = nn.ParameterList([
                 nn.Parameter(torch.ones(1, self.sizes[i+1]))
                 for i in range(len(self.sizes) - 1)
             ])
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
-        self.input_dim = fsm.vector_dim + 2
-        self.sizes = [self.input_dim] + sizes + [1]
         self.dropout = nn.Dropout(p=args.drop_prob)
         self.layers = nn.ModuleList(
             [
