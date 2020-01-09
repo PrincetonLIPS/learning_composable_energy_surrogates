@@ -111,19 +111,20 @@ class Trainer(object):
         u, p, f, J, H = batch
         u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
         u_sgld = u
-        lam, eps, temp = (self.args.cd_sgld_lambda,
+        lam, eps, TEMP = (self.args.cd_sgld_lambda,
                           self.args.cd_sgld_eps,
                           self.args.cd_sgld_temp)
-        for i in range(1000):
+        for i in range(self.args.cd_sgld_steps):
+            temp = TEMP * self.args.cd_sgld_steps / (i+1)
             u_sgld = (
                 u_sgld - 0.5 * self.args.sgld_lambda * torch.autograd.grad(
                     torch.log(self.surrogate.f(u_sgld, p) + eps).sum() / temp,
-                    x_sgld)[0]
+                    x_sgld)[0].clamp(-1, +1)
                 + lam * _cuda(torch.randn(*u.size()))
 
-        eplus = torch.log(self.surrogate.f(u.detach())).mean()
+        eplus = torch.log(self.surrogate.f(u.detach()) + eps).mean()
 
-        eminus = torch.log(self.surrogate.f(u_sgld.detach())).mean()
+        eminus = torch.log(self.surrogate.f(u_sgld.detach()) + eps).mean()
         cd_loss = eplus - eminus
 
         cd_loss.backward()

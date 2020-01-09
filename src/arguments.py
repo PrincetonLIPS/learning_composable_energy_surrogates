@@ -274,6 +274,25 @@ parser.add_argument(
     "--hess", help="Use Hvp training", type=s2b, default=True
 )
 parser.add_argument(
+    "--cd", help="Use CD training", type=s2b, default=True
+)
+parser.add_argument(
+    "--cd_sgld_steps", help="steps for CD sgld",
+    type=float, default=250
+)
+parser.add_argument(
+    "--cd_sgld_lambda", help="lambda for CD sgld",
+    type=float, default=1e-2
+)
+parser.add_argument(
+    "--cd_sgld_eps", help="eps for CD sgld",
+    type=float, default=1e-6
+)
+parser.add_argument(
+    "--cd_sgld_temp", help="temp for CD sgld",
+    type=float, default=10.
+)
+parser.add_argument(
     "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=0.01
 )
 
