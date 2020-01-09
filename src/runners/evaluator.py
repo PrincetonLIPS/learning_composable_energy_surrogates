@@ -25,7 +25,8 @@ class Evaluator(object):
         np.random.seed(seed)
         self.p = make_p(self.args)
         self.pde = Metamaterial(self.args)
-        self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False)
+        self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False,
+                                    args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
         self.net = FeedForwardNet(args, self.fsm)

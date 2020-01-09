@@ -19,7 +19,7 @@ class CollectorBase(object):
         np.random.seed(seed)
         make_p(args)
         self.pde = Metamaterial(args)
-        self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim)
+        self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.bc, _, _, self.constraint_mask = make_bc(args, self.fsm)
         self.stepsize = 1.0 / args.anneal_steps

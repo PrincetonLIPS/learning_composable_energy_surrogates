@@ -86,6 +86,70 @@ def MooneyRiven_Energy(u, c1, c2, return_stress=False):
     return energy
 
 
+'''
+How to do NHE from DoFs:
+- map from DoFs to piecewise constant gradient within squares
+- bsize * n_squares * dim
+- compute DefGrad F for squares
+- bsize * n_squares * dim * dim
+- compute invariants, I1 = tr(F.T * F), J = det(F)
+- bsize * n_squares * 1
+- compute energy density within squares
+- bsize * n_squares * 1
+- compute energy = sum_squares ed * square_area
+'''
+
+def torchDet(x):
+    assert len(x.size()) >= 2
+    assert x.size(-1) == x.size(-2)
+    if x.size(-1) == 1:
+        return x.squeeze(-1)
+    elif x.size(-1) == 2:
+        return x[:, :, 0, 0] * x[:, :, 1, 1] - x[:, :, 0, 1] * x[:, :, 1, 0]
+    else:
+        raise Exception("Haven't implemented det for dim {}".format(
+            x.size(-1)))
+
+def PTNeoHookeanEnergy(grad_u, young_mod, poisson_ratio, elem_weights=None):
+    '''Pytorch NeoHookeanEnergy
+
+    Inputs:
+        grad_u: Tensor [batch_sze, n_elems, dim, dim]
+        young_mod: Float
+        poisson_ratio: Float
+        elem_weights: Tensor [batch_size or 1, n_elems]. Assumed uniform if None
+    '''
+    if poisson_ratio >= 0.5:
+        raise ValueError(
+            "Poisson's ratio must be below isotropic upper limit 0.5. Found {}".format(
+                poisson_ratio
+            )
+        )
+
+    shear_mod = young_mod / (2 * (1 + poisson_ratio))
+    bulk_mod = young_mod / (3 * (1 - 2 * poisson_ratio))
+    d = grad_u.size(2)
+
+    # Deformation Gradient
+    I = torch.eye(d).view(1, 1, d, d).repeat(
+        grad_u.size(0), grad_u.size(1), 1, 1)
+
+    F = I + grad_u
+
+    J = torchDet(F)
+
+    Jinv = J ** (-2 / d)
+
+    right_cauchy_green = torch.matmul(
+        torch.transpose(F, -1, -2),
+        F)
+
+    I1 = (I * right_cauchy_green).sum(dim=3).sum(dim=2, keepdims=True)
+
+    energy = (shear_mod / 2) * (Jinv * I1 - d) + (bulk_mod / 2) * (J - 1) ** 2
+    return energy
+
+
 def NeoHookeanEnergy(u, young_mod, poisson_ratio, return_stress=False):
     if poisson_ratio >= 0.5:
         raise ValueError(

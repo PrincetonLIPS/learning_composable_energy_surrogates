@@ -4,6 +4,7 @@ from torch.autograd import Variable
 
 from .. import fa_combined as fa
 from ..splines.piecewise_spline import make_piecewise_spline_map
+from ..pde.metamaterial import Metamaterial
 
 
 class FunctionSpaceMap(object):
@@ -17,19 +18,23 @@ class FunctionSpaceMap(object):
     Throw errors if things don't belong to the correct fn space / shape
     """
 
-    def __init__(self, V, bV_dim, cuda=False):
+    def __init__(self, V, bV_dim, cuda=False, args=None):
         self.V = V
         if V.mesh().geometric_dimension() == 2:
-            self.mesh = fa.BoundaryMesh(
-                fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1), "exterior"
+            self.mesh = fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1)
+            self.bmesh = fa.BoundaryMesh(
+                self.mesh, "exterior"
             )
         else:
             raise Exception("Invalid geometric dimension")
         if V.ufl_element().value_size() == 1:
-            self.bV = fa.FunctionSpace(self.mesh, "P", 1)
+            self.small_V = fa.FunctionSpace(self.mesh, "P", 1)
+            self.bV = fa.FunctionSpace(self.bmesh, "P", 1)
         else:
+            self.small_V = fa.VectorFunctionSpace(
+                self.mesh, "P", 1, dim=V.ufl_element().value_size())
             self.bV = fa.VectorFunctionSpace(
-                self.mesh, "P", 1, dim=V.ufl_element().value_size()
+                self.bmesh, "P", 1, dim=V.ufl_element().value_size()
             )
         self.bV_dim = bV_dim
         self.elems_along_edge = self.bV_dim - 1
@@ -39,7 +44,18 @@ class FunctionSpaceMap(object):
         self.create_boundary_measure()
 
         self.init_ring(V)
-        self.init_spline(V)
+
+        self.A_cpu = self.make_A(V)
+        if self.cuda:
+            self.A_cuda = self.A_cpu.cuda()
+
+        self.small_A_cpu = self.make_A(self.small_V)
+        if self.cuda:
+            self.small_A_cuda = self.small_A_cpu.cuda()
+
+        if args is not None:
+            self.small_pde = Metamaterial(args, self.mesh)
+
 
     def init_ring(self, V):
         self.channels = V.ufl_element().value_size()
@@ -75,15 +91,13 @@ class FunctionSpaceMap(object):
         if self.cuda:
             self.vec_to_ring_map_cuda = self.vec_to_ring_map_cpu.cuda()
 
-    def init_spline(self, V):
-        self.A_cpu = self.make_A(V)
-
-        if self.cuda:
-            self.A_cuda = self.A_cpu.cuda()
-
     @property
     def A(self):
         return self.A_cuda if self.cuda else self.A_cpu
+
+    @property
+    def small_A(self):
+        return self.small_A_cuda if self.cuda else self.small_A_cpu
 
     @property
     def vec_to_ring_map(self):
@@ -229,6 +243,13 @@ class FunctionSpaceMap(object):
         else:
             return self.ring_to_V(self.to_ring(fn_or_vec))
 
+    def to_small_V(self, fn_or_vec):
+        fn_or_vec = self.maybe_interpolate(fn_or_vec)
+        if self.is_small_V(fn_or_vec):
+            return fn_or_vec
+        else:
+            return self.ring_to_small_V(self.to_ring(fn_or_vec))
+
     def to_ring(self, fn_or_vec, keep_grad=False):
         fn_or_vec = self.maybe_interpolate(fn_or_vec)
         if self.is_V(fn_or_vec):
@@ -259,6 +280,12 @@ class FunctionSpaceMap(object):
             return False
         else:
             return fn_or_vec.function_space() == self.V
+
+    def is_small_V(self, fn_or_vec):
+        if not isinstance(fn_or_vec, fa.Function):
+            return False
+        else:
+            return fn_or_vec.function_space() == self.small_V
 
     def is_numpy(self, fn_or_vec):
         if not isinstance(fn_or_vec, np.ndarray):
@@ -350,6 +377,19 @@ class FunctionSpaceMap(object):
         fn_V = fa.Function(self.V)
         fn_V.vector().set_local(uvec)
         return fn_V
+
+    def ring_to_small_V(self, fn_ring):
+        """fn_ring is |y| x D"""
+        assert self.is_ring(fn_ring)
+        if len(fn_ring.shape) == 3:
+            assert fn_ring.size(0) == 1
+            fn_ring = fn_ring.squeeze(0)
+        uvec = torch.matmul(self.small_A, fn_ring)  # |Y| x D
+        uvec = interleave(uvec[:, 0], uvec[:, 1])  # (|Y|xD)
+        uvec = uvec.data.cpu().numpy()
+        fn_sV = fa.Function(self.small_V)
+        fn_sV.vector().set_local(uvec)
+        return fn_sV
 
     def numpy_to_torch(self, fn_numpy):
         assert self.is_numpy(fn_numpy)
