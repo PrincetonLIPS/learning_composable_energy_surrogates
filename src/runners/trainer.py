@@ -93,7 +93,6 @@ class Trainer(object):
                 step_size_up=int(math.ceil(len(self.train_loader) / 2)),
                 step_size_down=int(math.floor(len(self.train_loader) / 2)),
                 mode="triangular",
-                gamma=0.995,
                 scale_fn=None,
                 scale_mode="cycle",
                 cycle_momentum=False,
