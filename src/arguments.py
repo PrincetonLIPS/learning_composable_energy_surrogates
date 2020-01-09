@@ -178,6 +178,12 @@ parser.add_argument(
     default=True,
     type=s2b,
 )
+parser.add_argument(
+    "--fenics_scale",
+    help="Scale energies by energy computed from small Fenics pde",
+    default=False,
+    type=s2b,
+)
 parser.add_argument("--log_scale", help="Log scale energies", type=s2b, default=True)
 
 parser.add_argument(

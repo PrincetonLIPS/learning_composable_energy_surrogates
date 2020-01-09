@@ -13,13 +13,20 @@ from .. import fa_combined as fa
 
 
 class EnergyScaler(object):
-    def __init__(self, args, preproc):
+    def __init__(self, args, preproc, fsm):
         self.quadratic_scale = args.quadratic_scale
         self.log_scale = args.log_scale
+        self.fenics_scale = args.fenics_scale
         self.preproc = preproc
+        self.fsm = fsm
 
     def scale(self, f, bparams):
-        if self.quadratic_scale:
+        if self.fenics_scale:
+            # pdb.set_trace()
+            f = f / torch.Tensor(
+                [float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
+                 for i in range(len(bparams))]).view(-1, 1)
+        elif self.quadratic_scale:
             f = f / torch.sum(
                 self.preproc(bparams) ** 2,
                 dim=tuple(i for i in range(1, len(bparams.size()))),
@@ -34,8 +41,12 @@ class EnergyScaler(object):
     def descale(self, f, bparams):
         if self.log_scale:
             f = torch.exp(f)
-
-        if self.quadratic_scale:
+        if self.fenics_scale:
+            # pdb.set_trace()
+            f = f * torch.Tensor(
+                [float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
+                 for i in range(len(bparams))]).view(-1, 1)
+        elif self.quadratic_scale:
             f = f * torch.sum(
                 self.preproc(bparams) ** 2,
                 dim=tuple(i for i in range(1, len(bparams.size()))),
@@ -50,7 +61,7 @@ class SurrogateEnergyModel(object):
         self.net = net
         self.args = args
         self.fsm = function_space_map
-        self.scaler = EnergyScaler(args, self.net.preproc)
+        self.scaler = EnergyScaler(args, self.net.preproc, self.fsm)
 
     def prep_inputs(self, inputs):
         inputs = self.fsm.to_torch(inputs)

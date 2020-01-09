@@ -104,6 +104,36 @@ class Trainer(object):
         else:
             self.optimizer = None
 
+    def cd_step(self, step, batch):
+        """Do a single step of CD training. Log stats to tensorboard."""
+        if self.optimizer:
+            self.optimizer.zero_grad()
+        u, p, f, J, H = batch
+        u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
+        u_sgld = u
+        lam, eps, temp = (self.args.cd_sgld_lambda,
+                          self.args.cd_sgld_eps,
+                          self.args.cd_sgld_temp)
+        for i in range(1000):
+            u_sgld = (
+                u_sgld - 0.5 * self.args.sgld_lambda * torch.autograd.grad(
+                    torch.log(self.surrogate.f(u_sgld, p) + eps).sum() / temp,
+                    x_sgld)[0]
+                + lam * _cuda(torch.randn(*u.size()))
+
+        eplus = torch.log(self.surrogate.f(u.detach())).mean()
+
+        eminus = torch.log(self.surrogate.f(u_sgld.detach())).mean()
+        cd_loss = eplus - eminus
+
+        cd_loss.backward()
+        self.optimizer.step()
+
+        self.tflogger.log_scalar("cd_E+_mean", eplus.item(), step)
+        self.tflogger.log_scalar("cd_E-_mean", eminus.item(), step)
+        self.tflogger.log_scalar("cd_loss", cd_loss.item(), step)
+
+
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
         if self.optimizer:

@@ -117,7 +117,8 @@ class Metamaterial(PDE):
 
 
 def make_metamaterial_mesh(
-    L0, c1, c2, pore_radial_resolution, min_feature_size, resolution, n_cells, porosity
+    L0, c1, c2, pore_radial_resolution,
+    min_feature_size, resolution, n_cells, porosity
 ):
 
     material_domain = None
