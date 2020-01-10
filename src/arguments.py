@@ -277,7 +277,7 @@ parser.add_argument(
     "--hess", help="Use Hvp training", type=s2b, default=True
 )
 parser.add_argument(
-    "--cd", help="Use CD training", type=s2b, default=True
+    "--cd", help="Use CD training", type=s2b, default=False
 )
 parser.add_argument(
     "--cd_sgld_steps", help="steps for CD sgld",
