@@ -56,16 +56,16 @@ parser.add_argument(
     "--sample_c", help="sample c1, c2. else take mean", type=s2b, default=False
 )
 parser.add_argument(
-    "--c1_low", help="minimum low-freq param for pore shape", type=float, default=-0.1
+    "--c1_low", help="minimum low-freq param for pore shape", type=float, default=-0.5
 )
 parser.add_argument(
-    "--c1_high", help="maximum low-freq param for pore shape", type=float, default=0.1
+    "--c1_high", help="maximum low-freq param for pore shape", type=float, default=0.2
 )
 parser.add_argument(
-    "--c2_low", help="minimum high-freq param for pore shape", type=float, default=-0.1
+    "--c2_low", help="minimum high-freq param for pore shape", type=float, default=-0.2
 )
 parser.add_argument(
-    "--c2_high", help="maximum high-freq param for pore shape", type=float, default=0.1
+    "--c2_high", help="maximum high-freq param for pore shape", type=float, default=0.3
 )
 parser.add_argument(
     "--min_feature_size",
@@ -85,7 +85,7 @@ parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=0.25,
+    default=0.3,
 )
 parser.add_argument(
     "--boundary_sin_scale",
@@ -109,7 +109,7 @@ parser.add_argument(
     "--boundary_shear_scale",
     type=float,
     help="maximum amplitude scale for boundary shear strain,",
-    default=0.05,
+    default=0.3,
 )
 parser.add_argument(
     "--force_freq_scale",
@@ -127,7 +127,7 @@ parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=12,
+    default=15,
 )
 
 parser.add_argument(
@@ -229,7 +229,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--metamaterial_mesh_size",
-    default=16,
+    default=20,
     type=int,
     help="N points along one dim in each cell. "
     " Overvelde&Bertoldi use about sqrt(1000)",
