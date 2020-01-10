@@ -72,7 +72,7 @@ class CollectorBase(object):
             except Exception as e:
                 print(e)
                 tries += 1
-                if tries >= 3:
+                if tries >= 1:
                     raise(e)
         self.fem.args.relaxation_parameter = self.base_relax
 
