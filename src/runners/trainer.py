@@ -105,6 +105,7 @@ class Trainer(object):
 
     def cd_step(self, step, batch):
         """Do a single step of CD training. Log stats to tensorboard."""
+        self.surrogate.net.train()
         if self.optimizer:
             self.optimizer.zero_grad()
         u, p, f, J, H = batch
@@ -140,6 +141,7 @@ class Trainer(object):
 
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
+        self.surrogate.net.train()
         if self.optimizer:
             self.optimizer.zero_grad()
         u, p, f, J, H = batch
@@ -205,6 +207,7 @@ class Trainer(object):
 
     def val_step(self, step):
         """Do a single validation step. Log stats to tensorboard."""
+        self.surrogate.net.eval()
         for i, batch in enumerate(self.val_loader):
             u, p, f, J, H = batch
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
