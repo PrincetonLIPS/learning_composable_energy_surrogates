@@ -167,7 +167,7 @@ parser.add_argument(
 parser.add_argument(
     "--ffn_layer_sizes",
     help="Layer sizes for feed forward net",
-    default="[256,128,64,32]",
+    default="[512,512,512]",
     type=str,
 )
 parser.add_argument("--drop_prob", default=0.0, type=float, help="dropout probability")
@@ -212,12 +212,12 @@ parser.add_argument("--batch_size", help="Batch size", type=int, default=512)
 
 parser.add_argument(
     "--nonlinearity",
-    help="selu, elu, relu, swish, sigmoid, tanh",
+    help="selu, elu, relu, swish, swish1, sigmoid, tanh",
     type=str,
-    default="selu",
+    default="swish",
 )
 parser.add_argument(
-    "--init", help="kaiming, xavier, orthogonal", type=str, default="xavier"
+    "--init", help="kaiming, xavier, orthogonal", type=str, default="kaiming"
 )
 
 parser.add_argument(
