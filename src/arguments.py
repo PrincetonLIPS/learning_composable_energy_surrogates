@@ -85,7 +85,7 @@ parser.add_argument(
     "--boundary_amp_scale",
     type=float,
     help="maximum amplitude scale for boundary random fourier fn,",
-    default=0.3,
+    default=0.0,
 )
 parser.add_argument(
     "--boundary_sin_scale",
@@ -97,7 +97,7 @@ parser.add_argument(
     "--boundary_gauss_scale",
     type=float,
     help="maximum amplitude scale for boundary iid gaussian strain,",
-    default=0.1,
+    default=0.2,
 )
 parser.add_argument(
     "--boundary_ax_scale",
@@ -221,10 +221,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--relaxation_parameter", default=0.05, type=float, help="relaxation parameter"
+    "--relaxation_parameter", default=0.1, type=float, help="relaxation parameter"
 )
 parser.add_argument(
-    "--max_newton_iter", default=2500, type=int, help="maximum Newton iters"
+    "--max_newton_iter", default=500, type=int, help="maximum Newton iters"
 )
 
 parser.add_argument(

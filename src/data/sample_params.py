@@ -54,7 +54,7 @@ def make_bc(args, fsm):
         2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
 
-    t = float(int(2*random.random())) * math.pi
+    t = float(2*random.random()) * math.pi
 
     W = np.random.randn(2, 2)
 
@@ -69,7 +69,7 @@ def make_bc(args, fsm):
     sin_expression = fa.Expression(
           ('a*sin(b*x[1]+t)', '-a*sin(b*x[0]+t)'),
           a=sin_scale,
-          b=2*math.pi,
+          b=2*math.pi*math.sqrt(random.random()),
           t=t,
           degree=2)
 
