@@ -109,24 +109,28 @@ class Trainer(object):
             self.optimizer.zero_grad()
         u, p, f, J, H = batch
         u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
-        u_sgld = u
+        u_sgld = torch.autograd.Variable(u, requires_grad=True)
         lam, eps, TEMP = (self.args.cd_sgld_lambda,
                           self.args.cd_sgld_eps,
                           self.args.cd_sgld_temp)
         for i in range(self.args.cd_sgld_steps):
             temp = TEMP * self.args.cd_sgld_steps / (i+1)
             u_sgld = (
-                u_sgld - 0.5 * self.args.sgld_lambda * torch.autograd.grad(
+                u_sgld - 0.5 * lam * torch.autograd.grad(
                     torch.log(self.surrogate.f(u_sgld, p) + eps).sum() / temp,
-                    x_sgld)[0].clamp(-1, +1)
-                + lam * _cuda(torch.randn(*u.size()))
+                    u_sgld)[0].clamp(-0.1, +0.1)
+                + lam * _cuda(torch.randn(*u.size())))
 
-        eplus = torch.log(self.surrogate.f(u.detach()) + eps).mean()
+        eplus = torch.log(self.surrogate.f(u.detach(), p) + eps).mean()
 
-        eminus = torch.log(self.surrogate.f(u_sgld.detach()) + eps).mean()
+        eminus = torch.log(self.surrogate.f(u_sgld.detach(), p) + eps).mean()
         cd_loss = eplus - eminus
 
-        cd_loss.backward()
+        (cd_loss*self.args.cd_weight).backward()
+        if self.args.clip_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(
+                self.surrogate.net.parameters(), self.args.clip_grad_norm
+            )
         self.optimizer.step()
 
         self.tflogger.log_scalar("cd_E+_mean", eplus.item(), step)

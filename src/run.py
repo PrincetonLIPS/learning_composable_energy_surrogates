@@ -277,7 +277,7 @@ if __name__ == "__main__":
             for bidx, batch in enumerate(trainer.train_loader):
                 with Timer() as train_step_timer:
                     t_losses += np.array(trainer.train_step(step, batch)) / n_batches
-                    if args.cd:
+                    if args.cd and (bidx-1) % args.cd_sgld_steps == 0:
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
