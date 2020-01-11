@@ -31,7 +31,7 @@ class CollectorBase(object):
     def increment_factor(self):
         self.steps += 1
         if self.steps > self.args.anneal_steps:
-            self.__init__(self.args, np.random.RandomState())
+            raise Exception("Collector finished annealing successfully.")
         if self.args.verbose:
             print("Anneal step {}/{}".format(self.steps,
                                              self.args.anneal_steps))
