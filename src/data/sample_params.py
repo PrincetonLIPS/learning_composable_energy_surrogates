@@ -54,8 +54,6 @@ def make_bc(args, fsm):
         2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
 
-    t = float(2*random.random()) * math.pi
-
     W = np.random.randn(2, 2)
 
     lin_expression = fa.Expression(
@@ -69,16 +67,18 @@ def make_bc(args, fsm):
     sin_expression = fa.Expression(
           ('a*sin(b*x[1]+t)', '-a*sin(b*x[0]+t)'),
           a=sin_scale,
-          b=2*math.pi*math.sqrt(random.random()),
-          t=t,
+          b=2*math.pi*(random.random() + 0.5),
+          t=2*math.pi*random.random(),
           degree=2)
 
-    boundary_data = np.random.randn(4 * fsm.elems_along_edge, 2) * gauss_scale 
+    boundary_data = np.random.randn(4 * fsm.elems_along_edge, 2) * gauss_scale
 
     for s in range(len(boundary_data)):
+        if s % len(fsm.elems_along_edge) == 0:
+            sin_intensity = random.random()
         x1, x2 = fsm.s_to_x(s)
         u1, u2 = boundary_expression([x1, x2])
-        u1s, u2s = sin_expression([x1, x2])
+        u1s, u2s = sin_expression([x1, x2]) * sin_intensity
         u1l, u2l = lin_expression([x1, x2])
 
         boundary_data[s][0] += u1 + u1s + u1l
