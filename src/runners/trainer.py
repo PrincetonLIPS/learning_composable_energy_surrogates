@@ -111,23 +111,29 @@ class Trainer(object):
         u, p, f, J, H = batch
         u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
         u_sgld = torch.autograd.Variable(u, requires_grad=True)
-        lam, eps, TEMP = (self.args.cd_sgld_lambda,
-                          self.args.cd_sgld_eps,
-                          self.args.cd_sgld_temp)
+        lam, eps, TEMP = (
+            self.args.cd_sgld_lambda,
+            self.args.cd_sgld_eps,
+            self.args.cd_sgld_temp,
+        )
         for i in range(self.args.cd_sgld_steps):
-            temp = TEMP * self.args.cd_sgld_steps / (i+1)
+            temp = TEMP * self.args.cd_sgld_steps / (i + 1)
             u_sgld = (
-                u_sgld - 0.5 * lam * torch.autograd.grad(
-                    torch.log(self.surrogate.f(u_sgld, p) + eps).sum() / temp,
-                    u_sgld)[0].clamp(-0.1, +0.1)
-                + lam * _cuda(torch.randn(*u.size())))
+                u_sgld
+                - 0.5
+                * lam
+                * torch.autograd.grad(
+                    torch.log(self.surrogate.f(u_sgld, p) + eps).sum() / temp, u_sgld
+                )[0].clamp(-0.1, +0.1)
+                + lam * _cuda(torch.randn(*u.size()))
+            )
 
         eplus = torch.log(self.surrogate.f(u.detach(), p) + eps).mean()
 
         eminus = torch.log(self.surrogate.f(u_sgld.detach(), p) + eps).mean()
         cd_loss = eplus - eminus
 
-        (cd_loss*self.args.cd_weight).backward()
+        (cd_loss * self.args.cd_weight).backward()
         if self.args.clip_grad_norm is not None:
             torch.nn.utils.clip_grad_norm_(
                 self.surrogate.net.parameters(), self.args.clip_grad_norm
@@ -137,7 +143,6 @@ class Trainer(object):
         self.tflogger.log_scalar("cd_E+_mean", eplus.item(), step)
         self.tflogger.log_scalar("cd_E-_mean", eminus.item(), step)
         self.tflogger.log_scalar("cd_loss", cd_loss.item(), step)
-
 
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
@@ -154,9 +159,8 @@ class Trainer(object):
         with Timer() as timer:
             if self.args.hess:
                 vectors = torch.randn(*J.size()).to(J.device)
-                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
-                                                            vectors=vectors)
-                Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
+                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p, vectors=vectors)
+                Hvp = (vectors.view(*J.size(), 1) * H).sum(dim=1)
             else:
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
@@ -213,9 +217,8 @@ class Trainer(object):
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
             if self.args.hess:
                 vectors = torch.randn(*J.size()).to(J.device)
-                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p,
-                                                            vectors=vectors)
-                Hvp = (vectors.view(*J.size(), 1)*H).sum(dim=1)
+                fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p, vectors=vectors)
+                Hvp = (vectors.view(*J.size(), 1) * H).sum(dim=1)
             else:
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
@@ -229,9 +232,11 @@ class Trainer(object):
             Jhat_ = torch.cat([Jhat_, Jhat.data], dim=0) if i > 0 else Jhat.data
             Hvphat_ = torch.cat([Hvphat_, Hvphat.data], dim=0) if i > 0 else Hvphat.data
 
-
         return list(
-            r.item() for r in self.stats(step, u_, f_, J_, Hvp_, fhat_, Jhat_, Hvphat_, phase="val")
+            r.item()
+            for r in self.stats(
+                step, u_, f_, J_, Hvp_, fhat_, Jhat_, Hvphat_, phase="val"
+            )
         )
 
     def visualize(self, step, batch, dataset_name):
@@ -379,12 +384,22 @@ class Trainer(object):
         )
 
         if self.args.angle_magnitude:
-            J_loss = self.args.mag_weight*torch.nn.functional.mse_loss(
-                torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
-                ) + 1. - similarity(J, Jhat)
-            H_loss = self.args.mag_weight*torch.nn.functional.mse_loss(
-                torch.log(Hvp.norm(dim=1)), torch.log(Hvphat.norm(dim=1))
-                ) + 1. - similarity(Hvp, Hvphat)
+            J_loss = (
+                self.args.mag_weight
+                * torch.nn.functional.mse_loss(
+                    torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
+                )
+                + 1.0
+                - similarity(J, Jhat)
+            )
+            H_loss = (
+                self.args.mag_weight
+                * torch.nn.functional.mse_loss(
+                    torch.log(Hvp.norm(dim=1)), torch.log(Hvphat.norm(dim=1))
+                )
+                + 1.0
+                - similarity(Hvp, Hvphat)
+            )
         else:
             J_loss = torch.nn.functional.mse_loss(J, Jhat)
             H_loss = torch.nn.functional.mse_loss(Hvp, Hvphat)

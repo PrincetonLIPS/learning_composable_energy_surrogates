@@ -65,11 +65,13 @@ class FeedForwardNet(nn.Module):
         )
         self.input_dim = fsm.vector_dim + 2
         self.sizes = [self.input_dim] + sizes + [1]
-        if args.nonlinearity == 'swish':
-            self.betas = nn.ParameterList([
-                nn.Parameter(torch.ones(1, self.sizes[i+1]))
-                for i in range(len(self.sizes) - 1)
-            ])
+        if args.nonlinearity == "swish":
+            self.betas = nn.ParameterList(
+                [
+                    nn.Parameter(torch.ones(1, self.sizes[i + 1]))
+                    for i in range(len(self.sizes) - 1)
+                ]
+            )
         self.nonlinearity = nonlinearities[args.nonlinearity]
         self.init = inits[args.init]
         self.dropout = nn.Dropout(p=args.drop_prob)
@@ -103,7 +105,7 @@ class FeedForwardNet(nn.Module):
         a = x
         for i, l in enumerate(self.layers):
             x = l(a)
-            if self.args.nonlinearity == 'swish':
+            if self.args.nonlinearity == "swish":
                 a = self.nonlinearity(x, self.betas[i])
             else:
                 a = self.nonlinearity(x)

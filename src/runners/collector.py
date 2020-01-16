@@ -33,9 +33,7 @@ class CollectorBase(object):
         if self.steps > self.args.anneal_steps:
             raise Exception("Collector finished annealing successfully.")
         if self.args.verbose:
-            print("Anneal step {}/{}".format(self.steps,
-                                             self.args.anneal_steps))
-
+            print("Anneal step {}/{}".format(self.steps, self.args.anneal_steps))
 
     def get_weighted_data(self, factor):
         return self.bc * factor
@@ -44,9 +42,7 @@ class CollectorBase(object):
         self.increment_factor()
         # if self.steps > self.args.anneal_steps:
         #     raise Exception("Self-destructing; have completed annealing")
-        factor = (
-            (self.steps + np.random.random() - 0.5) / self.args.anneal_steps
-        )
+        factor = (self.steps + np.random.random() - 0.5) / self.args.anneal_steps
         weighted_data = self.get_weighted_data(factor)
         if self.args.verbose:
             print("Factor: {}".format(factor))
@@ -55,10 +51,10 @@ class CollectorBase(object):
         tries = 0
         success = False
         while not success:
-            self.fem.args.relaxation_parameter = self.base_relax / (4**tries)
+            self.fem.args.relaxation_parameter = self.base_relax / (4 ** tries)
             try:
                 if self.args.verbose:
-                    print("Try {}/{}".format(tries+1, 3))
+                    print("Try {}/{}".format(tries + 1, 3))
                 if self.args.hess:
                     f, JV, H, solution = self.fem.f_J_H(
                         input_boundary_fn, initial_guess=self.guess, return_u=True
@@ -73,7 +69,7 @@ class CollectorBase(object):
                 print(e)
                 tries += 1
                 if tries >= 1:
-                    raise(e)
+                    raise (e)
         self.fem.args.relaxation_parameter = self.base_relax
 
         self.guess = solution.vector()
@@ -134,13 +130,16 @@ class PolicyCollectorBase(CollectorBase):
 
         return torch.Tensor(u.data)
 
+
 @ray.remote(resources={"WorkerFlags": 0.5})
 class PolicyCollector(PolicyCollectorBase):
     pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from ..arguments import parser
     import pdb
+
     fa.set_log_level(20)
     args = parser.parse_args()
     collector = CollectorBase(args, 0)

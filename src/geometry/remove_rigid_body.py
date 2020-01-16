@@ -27,9 +27,7 @@ class RigidRemover(object):
         else:
             to_squeeze = False
         ret = remove_rotation(
-            remove_translation(intermediates)
-            + self.ref.view(1, -1, 2),
-            self.ref,
+            remove_translation(intermediates) + self.ref.view(1, -1, 2), self.ref,
         ) - self.ref.view(1, -1, 2)
         # pdb.set_trace()
         if to_squeeze:

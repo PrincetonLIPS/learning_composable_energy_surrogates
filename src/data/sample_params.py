@@ -49,7 +49,6 @@ def make_bc(args, fsm):
     shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
     ax_scale = np.random.uniform(0.0, args.boundary_ax_scale)
 
-
     boundary_expression = make_random_fourier_expression(
         2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
     )
@@ -57,19 +56,21 @@ def make_bc(args, fsm):
     W = np.random.randn(2, 2)
 
     lin_expression = fa.Expression(
-          ('w00*x[0] + w01*x[1]', 'w10*x[0]+w11*x[1]'),
-          w00=W[0,0]*ax_scale,
-          w01=W[0,1]*shear_scale,
-          w10=W[1,0]*shear_scale,
-          w11=W[1,1]*ax_scale,
-          degree=2)
+        ("w00*x[0] + w01*x[1]", "w10*x[0]+w11*x[1]"),
+        w00=W[0, 0] * ax_scale,
+        w01=W[0, 1] * shear_scale,
+        w10=W[1, 0] * shear_scale,
+        w11=W[1, 1] * ax_scale,
+        degree=2,
+    )
 
     sin_expression = fa.Expression(
-          ('a*sin(b*x[1]+t)', '-a*sin(b*x[0]+t)'),
-          a=sin_scale,
-          b=2*math.pi*(random.random() + 0.5),
-          t=2*math.pi*random.random(),
-          degree=2)
+        ("a*sin(b*x[1]+t)", "-a*sin(b*x[0]+t)"),
+        a=sin_scale,
+        b=2 * math.pi * (random.random() + 0.5),
+        t=2 * math.pi * random.random(),
+        degree=2,
+    )
 
     boundary_data = np.random.randn(4 * fsm.elems_along_edge, 2) * gauss_scale
 

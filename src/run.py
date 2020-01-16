@@ -86,8 +86,9 @@ if __name__ == "__main__":
             argfile.write(arg + ": " + str(getattr(args, arg)) + "\n")
 
     try:
-        fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=torch.cuda.is_available(),
-                               args=args)
+        fsm = FunctionSpaceMap(
+            pde.V, args.bV_dim, cuda=torch.cuda.is_available(), args=args
+        )
 
         net = FeedForwardNet(args, fsm)
         net = _cuda(net)
@@ -167,7 +168,12 @@ if __name__ == "__main__":
                             time.sleep(0.1)
                             print("Available resources: ", ray.available_resources())
                         print("{} nodes".format(len(ray.nodes())))
-                        print("{} train collectors, {} val collectors".format(len(train_harvester.ids_to_workers), len(val_harvester.ids_to_workers)))
+                        print(
+                            "{} train collectors, {} val collectors".format(
+                                len(train_harvester.ids_to_workers),
+                                len(val_harvester.ids_to_workers),
+                            )
+                        )
                         print(
                             "Harvested {} of {} with {} deaths at time={}s".format(
                                 harvested,
@@ -177,8 +183,8 @@ if __name__ == "__main__":
                             )
                         )
                         last_error_msg = str(train_harvester.last_error)
-                        if len(last_error_msg.split('\n')) > 10:
-                            last_error_msg = '\n'.join(last_error_msg.split('\n')[-10:])
+                        if len(last_error_msg.split("\n")) > 10:
+                            last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
                         print(
                             "Last error {}s ago: {}".format(
                                 time.time() - train_harvester.last_error_time,
@@ -275,11 +281,11 @@ if __name__ == "__main__":
             broadcast_net_state = ray.put(state_dict)
 
             surrogate.net.train()
-            train_step_time = 0.
+            train_step_time = 0.0
             for bidx, batch in enumerate(trainer.train_loader):
                 with Timer() as train_step_timer:
                     t_losses += np.array(trainer.train_step(step, batch)) / n_batches
-                    if args.cd and (bidx-1) % args.cd_sgld_steps == 0:
+                    if args.cd and (bidx - 1) % args.cd_sgld_steps == 0:
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
@@ -306,8 +312,10 @@ if __name__ == "__main__":
                 )
                 print("Saving checkpoints...")
                 if os.path.exists(os.path.join(out_dir, "ckpt.pt")):
-                    os.replace(os.path.join(out_dir, "ckpt.pt"),
-                               os.path.join(out_dir, "ckpt_last.pt"))
+                    os.replace(
+                        os.path.join(out_dir, "ckpt.pt"),
+                        os.path.join(out_dir, "ckpt_last.pt"),
+                    )
                 torch.save(
                     {
                         "args": args,

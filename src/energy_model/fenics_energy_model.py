@@ -42,8 +42,7 @@ class FenicsEnergyModel(object):
         else:
             return energy, jac
 
-    def f_J_H(self, boundary_fn, initial_guess=None,
-              return_u=False, args=None):
+    def f_J_H(self, boundary_fn, initial_guess=None, return_u=False, args=None):
         if hasattr(boundary_fn, "shape") and len(boundary_fn.shape) == 2:
             raise Exception()
 
@@ -59,10 +58,8 @@ class FenicsEnergyModel(object):
             direction = torch.zeros(self.fsm.vector_dim)
             direction[i] = 1.0
             direction = self.fsm.to_V(direction)
-            hvp = fa.compute_hessian(energy, fa.Control(boundary_fn),
-                                     direction)
-            hvps.append(self.fsm.to_torch(
-                self.fsm.V_gradient_to_ring(hvp)))
+            hvp = fa.compute_hessian(energy, fa.Control(boundary_fn), direction)
+            hvps.append(self.fsm.to_torch(self.fsm.V_gradient_to_ring(hvp)))
         hess = torch.stack(hvps, dim=0)
 
         if return_u:
@@ -153,9 +150,14 @@ if __name__ == "__main__":
         f1 = fem.f(x0 + delta)
         fhat0 = f0
         fhat1 = fhat0 + (delta * J0).sum().data.cpu().numpy()
-        fhat2 = fhat1 + torch.matmul(
-            torch.matmul(delta.view(1, -1), H0),
-            delta.view(-1, 1)).sum().data.cpu().numpy()/2
+        fhat2 = (
+            fhat1
+            + torch.matmul(torch.matmul(delta.view(1, -1), H0), delta.view(-1, 1))
+            .sum()
+            .data.cpu()
+            .numpy()
+            / 2
+        )
         first_order_remainder = np.abs(f1 - fhat0)
         second_order_remainder = np.abs(f1 - fhat1)
         third_order_remainder = np.abs(f1 - fhat2)
@@ -163,7 +165,9 @@ if __name__ == "__main__":
         print(
             "Factor: {}, first-ord remainder: {}, "
             "second-ord rem: {}, third-ord rem: {}".format(
-                factor, first_order_remainder, second_order_remainder,
-                third_order_remainder
+                factor,
+                first_order_remainder,
+                second_order_remainder,
+                third_order_remainder,
             )
         )

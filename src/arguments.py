@@ -130,19 +130,15 @@ parser.add_argument(
     default=20,
 )
 parser.add_argument(
-    "--rtol",
-    type=float,
-    help="Newton relative tolerance",
-    default=1e-8,
+    "--rtol", type=float, help="Newton relative tolerance", default=1e-8,
 )
 parser.add_argument(
-    "--atol",
-    type=float,
-    help="Newton absolute tolerance",
-    default=1e-10,
+    "--atol", type=float, help="Newton absolute tolerance", default=1e-10,
 )
 
-parser.add_argument("--fenics_solver", type=str, help="newton or snes", default='newton')
+parser.add_argument(
+    "--fenics_solver", type=str, help="newton or snes", default="newton"
+)
 
 parser.add_argument(
     "--remove_rigid",
@@ -270,9 +266,7 @@ parser.add_argument(
 
 parser.add_argument("--lr", help="Learning rate", type=float, default=3e-4)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
-parser.add_argument(
-    "--cd_weight", help="Weight on cd loss", type=float, default=1e-3
-)
+parser.add_argument("--cd_weight", help="Weight on cd loss", type=float, default=1e-3)
 parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
 )
@@ -280,35 +274,27 @@ parser.add_argument(
     "--H_weight", help="Weight on Jacobian loss", type=float, default=1.0
 )
 parser.add_argument(
-    "--angle_magnitude", help="Decoupled angle and log magnitude loss for vecs",
-    type=s2b, default=False
+    "--angle_magnitude",
+    help="Decoupled angle and log magnitude loss for vecs",
+    type=s2b,
+    default=False,
 )
 parser.add_argument(
-    "--mag_weight", help="magnitude weight for decoupled angle and log magnitude loss for vecs",
-    type=float, default=1.0
+    "--mag_weight",
+    help="magnitude weight for decoupled angle and log magnitude loss for vecs",
+    type=float,
+    default=1.0,
+)
+parser.add_argument("--hess", help="Use Hvp training", type=s2b, default=True)
+parser.add_argument("--cd", help="Use CD training", type=s2b, default=False)
+parser.add_argument(
+    "--cd_sgld_steps", help="steps for CD sgld", type=float, default=250
 )
 parser.add_argument(
-    "--hess", help="Use Hvp training", type=s2b, default=True
+    "--cd_sgld_lambda", help="lambda for CD sgld", type=float, default=1e-2
 )
-parser.add_argument(
-    "--cd", help="Use CD training", type=s2b, default=False
-)
-parser.add_argument(
-    "--cd_sgld_steps", help="steps for CD sgld",
-    type=float, default=250
-)
-parser.add_argument(
-    "--cd_sgld_lambda", help="lambda for CD sgld",
-    type=float, default=1e-2
-)
-parser.add_argument(
-    "--cd_sgld_eps", help="eps for CD sgld",
-    type=float, default=1e-6
-)
-parser.add_argument(
-    "--cd_sgld_temp", help="temp for CD sgld",
-    type=float, default=10.
-)
+parser.add_argument("--cd_sgld_eps", help="eps for CD sgld", type=float, default=1e-6)
+parser.add_argument("--cd_sgld_temp", help="temp for CD sgld", type=float, default=10.0)
 parser.add_argument(
     "--clip_grad_norm", help="Norm for gradient clipping", type=float, default=0.01
 )

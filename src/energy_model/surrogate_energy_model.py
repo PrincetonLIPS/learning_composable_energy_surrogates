@@ -24,8 +24,11 @@ class EnergyScaler(object):
         if self.fenics_scale:
             # pdb.set_trace()
             f = f / torch.Tensor(
-                [float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
-                 for i in range(len(bparams))]).view(-1, 1)
+                [
+                    float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
+                    for i in range(len(bparams))
+                ]
+            ).view(-1, 1)
         elif self.quadratic_scale:
             f = f / torch.sum(
                 self.preproc(bparams) ** 2,
@@ -44,8 +47,11 @@ class EnergyScaler(object):
         if self.fenics_scale:
             # pdb.set_trace()
             f = f * torch.Tensor(
-                [float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
-                 for i in range(len(bparams))]).view(-1, 1)
+                [
+                    float(self.fsm.small_pde.energy(self.fsm.to_small_V(bparams[i])))
+                    for i in range(len(bparams))
+                ]
+            ).view(-1, 1)
         elif self.quadratic_scale:
             f = f * torch.sum(
                 self.preproc(bparams) ** 2,
@@ -210,9 +216,7 @@ class SurrogateEnergyModel(object):
             f_inputs = f_inputs + (1.0 - constraint_mask) * x_
             return self.f(f_inputs, params, force_data=force_data)
 
-        optimizer = torch.optim.LBFGS(
-            [x], lr=step_size, max_iter=opt_steps
-        )
+        optimizer = torch.optim.LBFGS([x], lr=step_size, max_iter=opt_steps)
 
         traj_u = []
         traj_f = []

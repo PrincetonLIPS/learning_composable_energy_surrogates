@@ -155,7 +155,7 @@ class ComposedEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
-        step_size=None
+        step_size=None,
     ):
         if opt_steps is None:
             opt_steps = self.args.solve_lbfgs_steps
@@ -172,9 +172,7 @@ class ComposedEnergyModel(object):
             f_inputs = f_inputs + (1.0 - constraint_mask) * x_
             return self.energy(f_inputs, params, force_data=force_data)
 
-        optimizer = torch.optim.LBFGS(
-            [x], lr=step_size, max_iter=opt_steps
-        )
+        optimizer = torch.optim.LBFGS([x], lr=step_size, max_iter=opt_steps)
 
         traj_u = []
         traj_f = []
@@ -213,7 +211,7 @@ class ComposedEnergyModel(object):
         force_data,
         return_intermediate=False,
         opt_steps=None,
-        step_size=None
+        step_size=None,
     ):
         if opt_steps is None:
             opt_steps = self.args.solve_sgd_steps

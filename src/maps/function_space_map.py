@@ -22,9 +22,7 @@ class FunctionSpaceMap(object):
         self.V = V
         if V.mesh().geometric_dimension() == 2:
             self.mesh = fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1)
-            self.bmesh = fa.BoundaryMesh(
-                self.mesh, "exterior"
-            )
+            self.bmesh = fa.BoundaryMesh(self.mesh, "exterior")
         else:
             raise Exception("Invalid geometric dimension")
         if V.ufl_element().value_size() == 1:
@@ -32,7 +30,8 @@ class FunctionSpaceMap(object):
             self.bV = fa.FunctionSpace(self.bmesh, "P", 1)
         else:
             self.small_V = fa.VectorFunctionSpace(
-                self.mesh, "P", 1, dim=V.ufl_element().value_size())
+                self.mesh, "P", 1, dim=V.ufl_element().value_size()
+            )
             self.bV = fa.VectorFunctionSpace(
                 self.bmesh, "P", 1, dim=V.ufl_element().value_size()
             )
@@ -55,7 +54,6 @@ class FunctionSpaceMap(object):
 
         if args is not None:
             self.small_pde = Metamaterial(args, self.mesh)
-
 
     def init_ring(self, V):
         self.channels = V.ufl_element().value_size()
@@ -339,8 +337,9 @@ class FunctionSpaceMap(object):
         if not getattr(fn_V, "is_fa_gradient", False) and not getattr(
             fn_V, "is_fa_hessian", False
         ):
-            print("Warning: interpolating to ring. "
-                  "High-freq information may be lost.")
+            print(
+                "Warning: interpolating to ring. " "High-freq information may be lost."
+            )
             x = self.to_ring(torch.zeros([self.vector_dim]))
             for i, xloc in enumerate(self.ring_coords):
                 x1, x2 = xloc.data.cpu().numpy()
