@@ -30,11 +30,11 @@ class HMCCollectorBase(object):
 
     def step(self):
         self.n += 1
-        if self.n > 100:
-            self.__init__(self.args, np.random.randint(2**32))
-        path_len = np.random.uniform(0.05, 0.3)
-        std = np.random.uniform(0.05, 0.1)
-        temp = np.random.choice([0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 15.0, 20.0])
+        if self.n > 25:
+            self.__init__(self.args, np.random.randint(2**31))
+        path_len = np.random.uniform(0.05, 0.2)
+        std = np.random.uniform(0.05, 0.2)
+        temp = np.random.choice([0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0])
         sq_vn = [random.random() for _ in range(2)]
         sq_hn = [random.random() for _ in range(2)]
         sq_vp = [random.random() for _ in range(2)]
@@ -45,7 +45,7 @@ class HMCCollectorBase(object):
 
         BASE_ITER = 30
         BASE_FACTOR = 1.0
-        step_size = random.random() * 0.01
+        step_size = np.random.uniform(0.003, 0.02)
         fem = self.fem
         fsm = self.fsm
         args = self.args
@@ -178,20 +178,3 @@ class HMCCollectorBase(object):
 class HMCCollector(HMCCollectorBase):
     pass
 
-
-def hmc(last_sample, guess):
-
-    p0 = torch.randn(fsm.vector_dim) * std
-    q_new, p_new, guess_new = leapfrog(last_sample, p0, guess, path_len, step_size, temp)
-    start_f = fem.f(last_sample, initial_guess=guess)
-    start_log_p = - (start_f+EPS)/(temp*sq(last_sample)) - (p0**2).sum() * std**2
-    start_log_p = start_log_p.detach().cpu().numpy()
-    new_f = fem.f(q_new, initial_guess=guess_new)
-    new_log_p = - (new_f+EPS)/(temp*sq(q_new)) - (p_new**2).sum() * std**2
-    new_log_p = new_log_p.detach().cpu().numpy()
-    if np.isclose(new_log_p, start_log_p) and np.all(np.isclose(q_new.detach().cpu().numpy(), last_sample.detach().cpu().numpy())):
-        return q_new, guess_new, torch.zeros(fsm.vector_dim), fa.Function(fsm.V).vector()
-    elif np.log(np.random.rand()) < new_log_p - start_log_p:
-        return q_new, guess_new, q_new, guess_new
-    else:
-        return q_new, guess_new, last_sample, guess
