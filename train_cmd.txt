@@ -1,0 +1,1 @@
+python -m src.run --train_size 300000 --val_size 10000 --lr 2e-4 --hess True --angle_magnitude True --mag_weight 0. --J_weight 1. --H_weight 1. --wd 1e-5 --cd False --data_name bV10_sample_c_hess_big --experiment_name decomphess_wd1en5_h1j1_lr2en4_bsize512 --batch_size 512 --bV_dim 10
