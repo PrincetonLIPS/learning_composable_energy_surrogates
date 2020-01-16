@@ -167,6 +167,7 @@ if __name__ == "__main__":
                             time.sleep(0.1)
                             print("Available resources: ", ray.available_resources())
                         print("{} nodes".format(len(ray.nodes())))
+                        print("{} train collectors, {} val collectors".format(len(train_harvester.ids_to_workers), len(val_harvester.ids_to_workers)))
                         print(
                             "Harvested {} of {} with {} deaths at time={}s".format(
                                 harvested,
