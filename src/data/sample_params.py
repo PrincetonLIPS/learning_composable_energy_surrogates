@@ -74,11 +74,11 @@ def make_bc(args, fsm):
     boundary_data = np.random.randn(4 * fsm.elems_along_edge, 2) * gauss_scale
 
     for s in range(len(boundary_data)):
-        if s % len(fsm.elems_along_edge) == 0:
+        if s % fsm.elems_along_edge == 0:
             sin_intensity = random.random()
         x1, x2 = fsm.s_to_x(s)
         u1, u2 = boundary_expression([x1, x2])
-        u1s, u2s = sin_expression([x1, x2]) * sin_intensity
+        u1s, u2s = np.array(sin_expression([x1, x2])) * sin_intensity
         u1l, u2l = lin_expression([x1, x2])
 
         boundary_data[s][0] += u1 + u1s + u1l

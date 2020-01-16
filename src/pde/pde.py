@@ -112,9 +112,11 @@ class PDE(object):
             "relaxation_parameter": args.relaxation_parameter,
             "linear_solver": "petsc",
             "maximum_iterations": args.max_newton_iter,
+            "relative_tolerance": args.rtol,
+            "absolute_tolerance": args.atol,
         }
         solver_args = {
-            "nonlinear_solver": "newton",
+            "nonlinear_solver": args.fenics_solver,
             "snes_solver": snes_args,
             "newton_solver": newton_args,
         }

@@ -6,11 +6,6 @@ import numpy as np
 
 class Solver(object):
     """Base class for Solvers.
-
-    Manully implement Newton solver.
-    (https://fenicsproject.org/qa/536/newton-method-programmed-manually/)
-    Bugs may exsit, not sure whether it's worthwhile investigating this.
-    Happy with current FEniCS solver for now.
     """
 
     def __init__(self, args):

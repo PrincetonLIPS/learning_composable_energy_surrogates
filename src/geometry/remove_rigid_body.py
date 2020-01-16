@@ -20,12 +20,20 @@ class RigidRemover(object):
         return self.ref_cuda if self.fsm.cuda else self.ref_cpu
 
     def __call__(self, inputs):
+        intermediates = self.fsm.to_ring(inputs, keep_grad=True)
+        if len(intermediates.size()) == 2:
+            intermediates = intermediates.unsqueeze(0)
+            to_squeeze = True
+        else:
+            to_squeeze = False
         ret = remove_rotation(
-            remove_translation(self.fsm.to_ring(inputs, keep_grad=True))
+            remove_translation(intermediates)
             + self.ref.view(1, -1, 2),
             self.ref,
         ) - self.ref.view(1, -1, 2)
         # pdb.set_trace()
+        if to_squeeze:
+            ret = ret.squeeze(0)
         if self.fsm.is_ring(inputs):
             return ret
         elif self.fsm.is_torch(inputs):

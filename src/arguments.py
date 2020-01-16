@@ -129,6 +129,20 @@ parser.add_argument(
     help="number of anneal steps for data gathering",
     default=20,
 )
+parser.add_argument(
+    "--rtol",
+    type=float,
+    help="Newton relative tolerance",
+    default=1e-8,
+)
+parser.add_argument(
+    "--atol",
+    type=float,
+    help="Newton absolute tolerance",
+    default=1e-10,
+)
+
+parser.add_argument("--fenics_solver", type=str, help="newton or snes", default='newton')
 
 parser.add_argument(
     "--remove_rigid",
@@ -171,7 +185,7 @@ parser.add_argument(
     type=str,
 )
 parser.add_argument("--drop_prob", default=0.0, type=float, help="dropout probability")
-parser.add_argument("--bV_dim", default=5, type=int, help="side length of surrogate")
+parser.add_argument("--bV_dim", default=10, type=int, help="side length of surrogate")
 parser.add_argument(
     "--quadratic_scale",
     help="Scale energies by average of squared inputs",

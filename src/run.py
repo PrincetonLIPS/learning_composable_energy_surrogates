@@ -26,7 +26,8 @@ from .maps.function_space_map import FunctionSpaceMap
 from .energy_model.surrogate_energy_model import SurrogateEnergyModel
 from .logging.tensorboard_logger import Logger as TFLogger
 from .runners.trainer import Trainer
-from .runners.collector import Collector, PolicyCollector
+from .runners.collector import PolicyCollector
+from .runners.hmc_collector import HMCCollector as Collector
 from .runners.evaluator import Evaluator
 from .runners.harvester import Harvester
 from .data.buffer import DataBuffer
