@@ -27,51 +27,44 @@ class HMCCollectorBase(object):
         self.guess = fa.Function(self.fsm.V).vector()
         self.last_sample = torch.zeros(self.fsm.vector_dim)
         self.n = 0
+        self.macro = 0.15*torch.randn(2,2)
 
     def step(self):
         self.n += 1
         if self.n > 25:
-            self.__init__(self.args, np.random.randint(2 ** 31))
-        path_len = np.random.uniform(0.05, 0.2)
-        std = np.random.uniform(0.05, 0.2)
+            self.__init__(self.args, np.random.randint(2 ** 32))
+        path_len = np.random.uniform(0.05, 0.3)
+        std = np.random.uniform(0.01, 0.3)
         temp = np.random.choice(
-            [0.01, 0.05, 0.1, 0.5, 1.0, 5.0, 10.0, 50.0, 100.0, 500.0, 1000.0]
+            [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
         )
-        sq_vn = [random.random() for _ in range(2)]
-        sq_hn = [random.random() for _ in range(2)]
-        sq_vp = [random.random() for _ in range(2)]
-        sq_hp = [random.random() for _ in range(2)]
-        sq_all = random.random()
-        sq_alpha = random.random()
-        EPS = 1e-7
 
-        BASE_ITER = 30
+        BASE_ITER = 50
         BASE_FACTOR = 1.0
-        step_size = np.random.uniform(0.003, 0.02)
+        step_size = np.random.uniform(0.005, 0.02)
         fem = self.fem
         fsm = self.fsm
         args = self.args
         rigid_remover = RigidRemover(fsm)
 
-        def sq(q):
+        def logp_macro(q):
+            # Negative log probability
             q = fsm.to_ring(rigid_remover(q))
-            vert = q[fsm.top_idxs()].sum(dim=0) - q[fsm.bottom_idxs()].sum(dim=0)
-            vert[0] *= sq_vn[0] if vert[0] < 0 else sq_vp[0]
-            vert[1] *= sq_vn[1] if vert[1] < 0 else sq_vp[1]
-            vert = (vert ** 2).sum()
-            horiz = q[fsm.lhs_idxs()].sum(dim=0) - q[fsm.rhs_idxs()].sum(dim=0)
-            horiz[0] *= sq_hn[0] if horiz[0] < 0 else sq_hp[0]
-            horiz[1] *= sq_hn[1] if horiz[1] < 0 else sq_hp[1]
-            horiz = (horiz ** 2).sum()
+            vert = (q[fsm.top_idxs()].mean(dim=0) - q[fsm.bottom_idxs()].mean(dim=0))
+            horiz = (q[fsm.lhs_idxs()].mean(dim=0) - q[fsm.rhs_idxs()].mean(dim=0))
             # pdb.set_trace()
-            ret = EPS + sq_all * q.norm() ** 2 + vert + horiz
-            return (
-                ret ** sq_alpha
-            )  # + q.norm() # torch.nn.functional.softplus(vert + horiz) # + (q**2).sum()
+            # print("vert {}, horiz {}, periodic {}".format(vert.item(), horiz.item(), periodic_part_norm(q).item()))
+            x = torch.stack([vert, horiz]).view(-1)
+            mu = self.macro.view(-1)
+            Sigma_inv = mu**2
+            print("x_macro: {}, residual: {}, scaled_res: {}".format(
+            x.data.cpu().numpy(), (x-mu).data.cpu().numpy(), (Sigma_inv*(x-mu)**2).data.cpu().numpy()))
+            # pdb.set_trace()
+            return 100*(Sigma_inv*(x-mu)**2).sum()
 
-        def dsq(q):
+        def dlogp_macro(q):
             q = torch.autograd.Variable(q.data, requires_grad=True)
-            return torch.autograd.grad(sq(q), q)[0]
+            return torch.autograd.grad(logp_macro(q), q)[0]
 
         def solve(
             q,
@@ -102,7 +95,7 @@ class HMCCollectorBase(object):
             except Exception as e:
                 if q_last is None:
                     raise e
-                elif recursion_depth >= 2:
+                elif recursion_depth >= 3:
                     print("Maximum recursion depth exceeded! giving up.")
                     raise e
                 else:
@@ -127,12 +120,17 @@ class HMCCollectorBase(object):
                         recursion_depth=recursion_depth + 1,
                     )
 
+        def make_V(q, guess, q_last=None):
+            guess = solve(q, guess, q_last)
+            f, u = fem.f(q, initial_guess=guess, return_u=True)
+            return f + logp_macro(q)
+
         def make_dVdq(q, guess, q_last=None):
             guess = solve(q, guess, q_last)
             f, JV, u = fem.f_J(q, initial_guess=guess, return_u=True)
             J = fsm.to_torch(JV)
             # (f'g - g'f)/g^2
-            dVdq = (J * sq(q) - (f + EPS) * 2 * dsq(q)) / sq(q) ** 2
+            dVdq = J + dlogp_macro(q)
             return dVdq, u.vector()
 
         def leapfrog(q, p, guess):
@@ -171,14 +169,10 @@ class HMCCollectorBase(object):
             p0 = torch.randn(fsm.vector_dim) * std
             q_new, p_new, guess_new = leapfrog(last_sample, p0, guess)
             start_f = fem.f(last_sample, initial_guess=guess)
-            start_log_p = (
-                -(start_f + EPS) / (temp * sq(last_sample)) - (p0 ** 2).sum() * std ** 2
-            )
+            start_log_p = -make_V(last_sample, guess) - (p0 ** 2).sum() * std ** 2
             start_log_p = start_log_p.detach().cpu().numpy()
             new_f = fem.f(q_new, initial_guess=guess_new)
-            new_log_p = (
-                -(new_f + EPS) / (temp * sq(q_new)) - (p_new ** 2).sum() * std ** 2
-            )
+            new_log_p = -make_V(q_new, guess_new) - (p_new ** 2).sum() * std ** 2
             new_log_p = new_log_p.detach().cpu().numpy()
             if np.isclose(new_log_p, start_log_p) and np.all(
                 np.isclose(

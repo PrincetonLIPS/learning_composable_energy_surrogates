@@ -130,10 +130,10 @@ parser.add_argument(
     default=20,
 )
 parser.add_argument(
-    "--rtol", type=float, help="Newton relative tolerance", default=1e-8,
+    "--rtol", type=float, help="Newton relative tolerance", default=1e-5,
 )
 parser.add_argument(
-    "--atol", type=float, help="Newton absolute tolerance", default=1e-10,
+    "--atol", type=float, help="Newton absolute tolerance", default=1e-5,
 )
 
 parser.add_argument(
