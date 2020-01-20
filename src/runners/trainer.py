@@ -39,6 +39,35 @@ class Trainer(object):
         self.init_optimizer()
         self.train_f_std = _cuda(torch.Tensor([[1.0]]))
         self.train_J_std = _cuda(torch.Tensor([[1.0]]))
+        self.init_transformations()
+
+
+    def init_transformations(self):
+        # Init transformations corresponding to rotations, flips
+
+        d = self.surrogate.fsm.vector_dim
+
+        # rotated = R * original
+        eye = torch.eye(d)
+        e1 = torch.stack([eye[i%d]
+                          for i in range(int(d/4), int(5*d/4))]) # rotate 90deg
+        e2 = torch.stack([eye[i%d]
+                          for i in range(int(d/2), int(6*d/4))]) # rotate 180
+        e3 = torch.stack([eye[i%d]
+                          for i in range(int(3*d/4), int(7*d/4))]) # rotate 270
+
+        def flip(e):
+            return torch.stack([e[d-i-1] for i in range(d)])
+
+        trans_mats = [eye, e1, e2, e3,
+                           flip(eye), flip(e1), flip(e2), flip(e3)]
+
+        trans_mats = [_cuda(m) for m in trans_mats]
+
+        self.trans_mats = [torch.matmul(torch.matmul(
+            self.surrogate.fsm.vec_to_ring_map,
+            m), self.surrogate.fsm.vec_to_ring_map.t())
+                      for m in trans_mats]
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
@@ -153,6 +182,15 @@ class Trainer(object):
 
         with Timer() as timer:
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
+
+        T = torch.stack(
+            np.random.choice(self.trans_mats, size=len(u)))
+
+        u, J, H = (
+            torch.matmul(u, T),
+            torch.matmul(J, T),
+            torch.matmul(torch.matmul(T.t(), H), T)
+        )
 
         self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
 
