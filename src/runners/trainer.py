@@ -15,6 +15,9 @@ from ..util.timer import Timer
 from ..viz.plotting import plot_boundary, plot_vectors
 
 
+EPS = 1e-14
+
+
 def _cuda(x):
     if torch.cuda.is_available():
         return x.cuda()
@@ -165,6 +168,13 @@ class Trainer(object):
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
+        
+        fhat[f.view(-1)<0] *= 0.
+        Jhat[f.view(-1)<0] *= 0.
+        Hvphat[f.view(-1)<0] *= 0.
+        Hvp[f.view(-1)<0] *= 0.
+        J[f.view(-1)<0] *= 0.
+        f[f.view(-1)<0] *= 0.
         # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
@@ -174,6 +184,9 @@ class Trainer(object):
                 step, u, f, J, Hvp, fhat, Jhat, Hvphat
             )
         self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
+
+        if not np.isfinite(total_loss.data.cpu().numpy().sum()):
+            pdb.set_trace()
 
         with Timer() as timer:
             if self.optimizer:
@@ -198,7 +211,7 @@ class Trainer(object):
                 if self.args.verbose:
                     log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
         self.tflogger.log_scalar("backward_time", timer.interval, step)
-
+        # pdb.set_trace()
         return (
             f_loss.item(),
             f_pce.item(),
@@ -224,6 +237,13 @@ class Trainer(object):
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
 
+            fhat[f.view(-1)<0] *= 0.
+            Jhat[f.view(-1)<0] *= 0.
+            Hvphat[f.view(-1)<0] *= 0.
+            Hvp[f.view(-1)<0] *= 0.
+            J[f.view(-1)<0] *= 0.
+            f[f.view(-1)<0] *= 0.
+            
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
             J_ = torch.cat([J_, J.data], dim=0) if i > 0 else J.data
@@ -380,14 +400,14 @@ class Trainer(object):
         """Take ground truth and predictions. Log stats and return loss."""
 
         f_loss = torch.nn.functional.mse_loss(
-            self.surrogate.scaler.scale(f, u), self.surrogate.scaler.scale(fhat, u)
+            self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
         )
 
         if self.args.angle_magnitude:
             J_loss = (
                 self.args.mag_weight
                 * torch.nn.functional.mse_loss(
-                    torch.log(J.norm(dim=1)), torch.log(Jhat.norm(dim=1))
+                    torch.log(J.norm(dim=1)+EPS), torch.log(Jhat.norm(dim=1)+EPS)
                 )
                 + 1.0
                 - similarity(J, Jhat)
@@ -395,7 +415,7 @@ class Trainer(object):
             H_loss = (
                 self.args.mag_weight
                 * torch.nn.functional.mse_loss(
-                    torch.log(Hvp.norm(dim=1)), torch.log(Hvphat.norm(dim=1))
+                    torch.log(Hvp.norm(dim=1)+EPS), torch.log(Hvphat.norm(dim=1)+EPS)
                 )
                 + 1.0
                 - similarity(Hvp, Hvphat)
