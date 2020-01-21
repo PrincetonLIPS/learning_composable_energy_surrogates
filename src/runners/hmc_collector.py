@@ -200,6 +200,8 @@ class HMCCollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
+        if f <= 0.:
+            raise Exception("Invalid data point!")
         return Example(u, p, f, J, H)
 
 

@@ -38,7 +38,7 @@ parser.add_argument(
     "--max_collectors", help="max Collector workers", type=int, default=0
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=24
+    "--max_evaluators", help="max Evaluator workers", type=int, default=4
 )
 
 parser.add_argument(
@@ -163,13 +163,13 @@ parser.add_argument(
     "--solve_steps", help="steps for adam or sgd", default=1000, type=int
 )
 parser.add_argument(
-    "--solve_lbfgs_steps", help="steps for lbfgs", default=100, type=int
+    "--solve_lbfgs_steps", help="steps for lbfgs", default=250, type=int
 )
 parser.add_argument(
-    "--solve_lbfgs_stepsize", help="stepsize for lbfgs", default=1e-1, type=float
+    "--solve_lbfgs_stepsize", help="stepsize for lbfgs", default=2e-1, type=float
 )
 parser.add_argument(
-    "--solve_adam_stepsize", help="stepsize for adam", default=1e-2, type=float
+    "--solve_adam_stepsize", help="stepsize for adam", default=3e-2, type=float
 )
 parser.add_argument(
     "--solve_sgd_stepsize", help="stepsize for adam", default=1e-2, type=float
@@ -277,13 +277,13 @@ parser.add_argument(
     "--angle_magnitude",
     help="Decoupled angle and log magnitude loss for vecs",
     type=s2b,
-    default=False,
+    default=True,
 )
 parser.add_argument(
     "--mag_weight",
     help="magnitude weight for decoupled angle and log magnitude loss for vecs",
     type=float,
-    default=1.0,
+    default=0.0,
 )
 parser.add_argument("--hess", help="Use Hvp training", type=s2b, default=True)
 parser.add_argument("--cd", help="Use CD training", type=s2b, default=False)

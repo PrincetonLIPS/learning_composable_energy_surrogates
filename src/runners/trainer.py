@@ -2,6 +2,7 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+from src.data.example import Example
 
 import pdb
 import ast
@@ -33,6 +34,7 @@ class Trainer(object):
         self.tflogger = tflogger
         self.train_data = train_data
         self.val_data = val_data
+        # self.init_transformations()
         self.train_loader = DataLoader(
             self.train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True
         )
@@ -42,7 +44,6 @@ class Trainer(object):
         self.init_optimizer()
         self.train_f_std = _cuda(torch.Tensor([[1.0]]))
         self.train_J_std = _cuda(torch.Tensor([[1.0]]))
-        self.init_transformations()
 
 
     def init_transformations(self):
@@ -50,27 +51,97 @@ class Trainer(object):
 
         d = self.surrogate.fsm.vector_dim
 
+        v2r = self.surrogate.fsm.vec_to_ring_map.cpu()
+
+        v2r_perm = torch.argmax(v2r, dim=1).cpu().numpy()
+        r2v_perm = torch.argmax(v2r, dim=0).cpu().numpy()
+
         # rotated = R * original
-        eye = torch.eye(d)
-        e1 = torch.stack([eye[i%d]
-                          for i in range(int(d/4), int(5*d/4))]) # rotate 90deg
-        e2 = torch.stack([eye[i%d]
-                          for i in range(int(d/2), int(6*d/4))]) # rotate 180
-        e3 = torch.stack([eye[i%d]
-                          for i in range(int(3*d/4), int(7*d/4))]) # rotate 270
+        p1 = np.array([i for i in range(d)])
+        p2 = np.mod(p1 + int(d/4), d)  # rotate 90 
+        p3 = np.mod(p2 + int(d/4), d)  # rotate 180 
+        p4 = np.mod(p3 + int(d/4), d)  # rotate 270
 
-        def flip(e):
-            return torch.stack([e[d-i-1] for i in range(d)])
+        # flip about 0th loc which is two points in 2d
+        # TODO: make this dimension-agnostic
+        def flip(p):
+            p = p.reshape(-1, 2)
+            p = np.concatenate(([p[0]], p[1:][::-1]), axis=0)
+            return p.reshape(-1)
 
-        trans_mats = [eye, e1, e2, e3,
-                           flip(eye), flip(e1), flip(e2), flip(e3)]
+        ps = [p1, p2, p3, p4]#, p2, p3, p4]
+        # ps = ps + [flip(p) for p in ps]
+        # ps = [p.tolist() for p in ps]
 
-        trans_mats = [_cuda(m) for m in trans_mats]
+        self.perms = [v2r_perm[p[r2v_perm]].tolist() for p in ps]
+   
+        # trans_mats = [torch.eye(d)[p] for p in ps]
+        # self.trans_mats = [torch.matmul(torch.matmul(
+        #     self.surrogate.fsm.vec_to_ring_map,
+        #     _cuda(m)), self.surrogate.fsm.vec_to_ring_map.t())
+        #               for m in trans_mats]
 
-        self.trans_mats = [torch.matmul(torch.matmul(
-            self.surrogate.fsm.vec_to_ring_map,
-            m), self.surrogate.fsm.vec_to_ring_map.t())
-                      for m in trans_mats]
+        N = self.train_data.size()
+        self.train_data.memory_size = self.train_data.memory_size * 8
+        
+        us_orig = torch.stack([td[0] for td in self.train_data.data])
+        Js_orig = torch.stack([td[3] for td in self.train_data.data])
+        Hs_orig = torch.stack([td[4] for td in self.train_data.data])
+        
+        for pn, perm in enumerate(self.perms):
+            print("proc perm ", pn)
+            print("perm: ", perm)
+            us = us_orig[:, perm]
+            Js = Js_orig[:, perm]
+
+            Hs = Hs_orig[:, perm, :]
+            Hs = Hs[:, :, perm]
+
+            for i in range(len(us)):
+                self.train_data.feed(Example(us[i].clone().detach(),
+                                             self.train_data.data[i][1].clone().detach(),
+                                             self.train_data.data[i][2].clone().detach(),
+                                             Js[i].clone().detach(),
+                                             Hs[i].clone().detach()))
+            '''
+            for n in range(N):
+                if n % 1000 == 0:
+                    print('preproc perm {}, n {}'.format(pn, n))
+                u, p, f, J, H = self.train_data.data[n]
+                u = u[perm]
+                J = J[perm]
+                H = H[[perm for _ in range(len(perm))],
+                      [[i for i in range(len(perm))]
+                      for _ in range(len(perm))]]
+                H = H[[[i for i in range(len(perm))]
+                       for _ in range(len(perm))],
+                      [perm for _ in range(len(perm))]]
+                
+                self.train_data.feed(Example(u, p, f, J, H))
+            '''
+            '''
+                ii = [[i for _ in range(self.surrogate.fsm.vector_dim)]
+                        for i in range(len(u))]
+                jjs = [self.perms[np.random.choice(len(self.perms))]
+                        for _ in range(len(u))]
+
+                u = u[iis, jjs]
+                J = J[iis, jjs]
+
+                iis = [[ii for _ in range(self.surrogate.fsm.vector_dim)]
+                        for ii in iis]
+                jjs = [[jj for _ in range(self.surrogate.fsm.vector_dim)]
+                        for jj in jjs]
+                kks = [[[k for k in range(self.surrogate.fsm.vector_dim)]
+                        for _ in range(self.surrogate.fsm.vector_dim)]
+                       for _ in range(len(u))]
+                # pdb.set_trace()
+                H = H[iis, jjs, kks]
+                H = H[iis, kks, jjs]
+            '''
+        # for tm in self.trans_mats:
+            
+
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
@@ -185,15 +256,36 @@ class Trainer(object):
 
         with Timer() as timer:
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
+        # pdb.set_trace()
+        # T = torch.stack([self.trans_mats[i]
+        #                  for i in np.random.choice(len(self.trans_mats), size=len(u))])
+        # pdb.set_trace()
+        # u, J, H = (
+        #     torch.matmul(u.unsqueeze(1), T).squeeze(),
+        #     torch.matmul(J.unsqueeze(1), T).squeeze(),
+        #     torch.matmul(torch.matmul(T.permute(0, 2, 1), H), T)
+        # )
+        '''
+        iis = [[i for _ in range(self.surrogate.fsm.vector_dim)]
+                for i in range(len(u))]
+        jjs = [self.perms[np.random.choice(len(self.perms))]
+                for _ in range(len(u))]
 
-        T = torch.stack(
-            np.random.choice(self.trans_mats, size=len(u)))
+        u = u[iis, jjs]
+        J = J[iis, jjs]
 
-        u, J, H = (
-            torch.matmul(u, T),
-            torch.matmul(J, T),
-            torch.matmul(torch.matmul(T.t(), H), T)
-        )
+        iis = [[ii for _ in range(self.surrogate.fsm.vector_dim)]
+                for ii in iis]
+        jjs = [[jj for _ in range(self.surrogate.fsm.vector_dim)]
+                for jj in jjs]
+        kks = [[[k for k in range(self.surrogate.fsm.vector_dim)]
+                for _ in range(self.surrogate.fsm.vector_dim)]
+               for _ in range(len(u))]
+        # pdb.set_trace()
+        H = H[iis, jjs, kks]
+        H = H[iis, kks, jjs]
+        '''
+        # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
 

@@ -96,7 +96,6 @@ if __name__ == "__main__":
         surrogate = SurrogateEnergyModel(args, net, fsm)
 
         tflogger = TFLogger(out_dir)
-
         if args.reload_data and os.path.exists(
             os.path.join(data_dir, "initial_datasets.pt")
         ):
@@ -269,7 +268,7 @@ if __name__ == "__main__":
         last_viz_time = time.time()
 
         while step < args.max_train_steps:
-
+            # pdb.set_trace()
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(7)
 
@@ -367,18 +366,18 @@ if __name__ == "__main__":
                     deploy_harvester.n_death,
                 )
             )
-            print(
-                "Deploy harvester last error {}s ago: {}".format(
-                    time.time() - deploy_harvester.last_error_time,
-                    deploy_harvester.last_error,
-                )
-            )
-            print(
-                "Dagger harvester last error {}s ago: {}".format(
-                    time.time() - dagger_harvester.last_error_time,
-                    dagger_harvester.last_error,
-                )
-            )
+            # print(
+            #    "Deploy harvester last error {}s ago: {}".format(
+            #        time.time() - deploy_harvester.last_error_time,
+            #        deploy_harvester.last_error,
+            #    )
+            #)
+            #print(
+            #    "Dagger harvester last error {}s ago: {}".format(
+            #        time.time() - dagger_harvester.last_error_time,
+            #        dagger_harvester.last_error,
+            #    )
+            #)
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
