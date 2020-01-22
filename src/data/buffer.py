@@ -15,7 +15,7 @@ class DataBuffer(Dataset):
     def feed(self, example):
         assert isinstance(example, Example)
         if len(self.data) <= self.memory_size:
-            self.data.append((example.u, example.p, example.f, example.J, example.H))
+            self.data.append((example.u, example.p, example.f, example.J, example.H, example.guess))
         else:
             self.data[self.pos] = example
             self.pos += 1

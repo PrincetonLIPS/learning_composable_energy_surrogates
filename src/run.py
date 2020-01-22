@@ -122,6 +122,15 @@ if __name__ == "__main__":
                 )
             )
 
+            # if necessary fill Guesses
+            small_V_dim = len(fa.Function(self.fsm.small_V).vector())
+            for i in range(len(train_data.data)):
+                if train_data.data[i][-1] is None:
+                    train_data.data[i][-1] = torch.zeros(small_V_dim)
+            for i in range(len(val_data.data)):
+                if val_data.data[i][-1] is None:
+                    val_data.data[i][-1] = torch.zeros(small_V_dim)
+
         else:
             print("Gathering initial data from scratch")
             # ---------- Start data collection
@@ -224,7 +233,10 @@ if __name__ == "__main__":
 
             time.sleep(0.1)
 
+
         # ---------- Finish data collection
+
+
 
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 

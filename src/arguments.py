@@ -324,6 +324,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--adv_collect", help="Do online adversarial data collection", type=s2b,
+    default=False
+)
+
+parser.add_argument(
     "--adv_collector_stepsize", help="stepsize for adv collector", type=float,
     default=1e-4
 )

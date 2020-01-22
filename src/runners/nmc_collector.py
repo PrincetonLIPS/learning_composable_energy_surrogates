@@ -248,7 +248,11 @@ class NMCCollectorBase(object):
 
         if f <= 0.:
             raise Exception("Invalid data point!")
-        return Example(new_sample, p, f, J, H)
+
+        new_uV = fa.Function(self.fsm.V)
+        new_uV.set_local(new_guess)
+        new_usmall_guess = torch.Tensor(fa.interpolate(new_uV, self.fsm.small_V).vector())
+        return Example(new_sample, p, f, J, H, new_usmall_guess)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
@@ -411,8 +415,8 @@ class AdversarialCollectorBase(NMCCollectorBase):
         H = H[i]
 
         self.n += 1
-        if self.n > 10:
-            raise Exception("Successfully exiting after 10 iters.")
+        if self.n > 25:
+            raise Exception("Successfully exiting after 25 iters.")
 
         p = p.view(-1)
         self.args.c1 = p[0].item()
@@ -422,7 +426,7 @@ class AdversarialCollectorBase(NMCCollectorBase):
         self.sem.fsm = self.fsm
         self.net.fsm = self.fsm
 
-        if Vsmall_guess is None:
+        if Vsmall_guess is None or np.all(np.isclose(Vsmall_guess[i].numpy(), 0.)):
             guess = fa.Function(self.fsm.V).vector() # self.fsm.to_V(u).vector()
             last_u = torch.zeros_like(u)
         else:

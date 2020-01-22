@@ -202,7 +202,12 @@ class HMCCollectorBase(object):
 
         if f <= 0.:
             raise Exception("Invalid data point!")
-        return Example(u, p, f, J, H, self.guess)
+
+        new_uV = fa.Function(self.fsm.V)
+        new_uV.set_local(new_guess)
+        new_usmall_guess = torch.Tensor(fa.interpolate(new_uV, self.fsm.small_V).vector())
+
+        return Example(u, p, f, J, H, new_usmall_guess)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
