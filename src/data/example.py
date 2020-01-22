@@ -20,7 +20,8 @@ def torch_namedtuple(NamedtupleClass):
     return TorchNamedTuple
 """
 
-Example = collections.namedtuple("Example", "u p f J H")
+Example = collections.namedtuple("Example", "u p f J H guess")
+Example.__new__.__defaults__ = (None,)*len(Example._fields)
 
 """
 if __name__ == '__main__':

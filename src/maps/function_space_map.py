@@ -240,6 +240,16 @@ class FunctionSpaceMap(object):
             return fn_or_vec
         else:
             return self.ring_to_V(self.to_ring(fn_or_vec))
+            '''
+            ring = self.to_ring(fn_or_vec)
+            if len(ring.size()) > 2:
+                assert len(ring.size()) == 3 and ring.size(0) == 1
+                ring = ring.squeeze(0)
+            mean = ring.mean(dim=0, keepdims=True)
+            V_nomean = self.ring_to_V(ring - mean)
+            V_mean = fa.Constant((mean[0,0].item(), mean[0,1].item()))
+            return fa.project(V_nomean + V_mean, self.V)
+            '''
 
     def to_small_V(self, fn_or_vec):
         fn_or_vec = self.maybe_interpolate(fn_or_vec)

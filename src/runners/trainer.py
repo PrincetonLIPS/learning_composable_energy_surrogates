@@ -58,8 +58,8 @@ class Trainer(object):
 
         # rotated = R * original
         p1 = np.array([i for i in range(d)])
-        p2 = np.mod(p1 + int(d/4), d)  # rotate 90 
-        p3 = np.mod(p2 + int(d/4), d)  # rotate 180 
+        p2 = np.mod(p1 + int(d/4), d)  # rotate 90
+        p3 = np.mod(p2 + int(d/4), d)  # rotate 180
         p4 = np.mod(p3 + int(d/4), d)  # rotate 270
 
         # flip about 0th loc which is two points in 2d
@@ -74,7 +74,7 @@ class Trainer(object):
         # ps = [p.tolist() for p in ps]
 
         self.perms = [v2r_perm[p[r2v_perm]].tolist() for p in ps]
-   
+
         # trans_mats = [torch.eye(d)[p] for p in ps]
         # self.trans_mats = [torch.matmul(torch.matmul(
         #     self.surrogate.fsm.vec_to_ring_map,
@@ -83,11 +83,11 @@ class Trainer(object):
 
         N = self.train_data.size()
         self.train_data.memory_size = self.train_data.memory_size * 8
-        
+
         us_orig = torch.stack([td[0] for td in self.train_data.data])
         Js_orig = torch.stack([td[3] for td in self.train_data.data])
         Hs_orig = torch.stack([td[4] for td in self.train_data.data])
-        
+
         for pn, perm in enumerate(self.perms):
             print("proc perm ", pn)
             print("perm: ", perm)
@@ -116,7 +116,7 @@ class Trainer(object):
                 H = H[[[i for i in range(len(perm))]
                        for _ in range(len(perm))],
                       [perm for _ in range(len(perm))]]
-                
+
                 self.train_data.feed(Example(u, p, f, J, H))
             '''
             '''
@@ -140,7 +140,7 @@ class Trainer(object):
                 H = H[iis, kks, jjs]
             '''
         # for tm in self.trans_mats:
-            
+
 
 
     def init_optimizer(self):
@@ -211,7 +211,7 @@ class Trainer(object):
         self.surrogate.net.train()
         if self.optimizer:
             self.optimizer.zero_grad()
-        u, p, f, J, H = batch
+        u, p, f, J, H, _ = batch
         u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
         u_sgld = torch.autograd.Variable(u, requires_grad=True)
         lam, eps, TEMP = (
@@ -252,7 +252,7 @@ class Trainer(object):
         self.surrogate.net.train()
         if self.optimizer:
             self.optimizer.zero_grad()
-        u, p, f, J, H = batch
+        u, p, f, J, H, _ = batch
 
         with Timer() as timer:
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
@@ -298,7 +298,7 @@ class Trainer(object):
                 fhat, Jhat = self.surrogate.f_J(u, p)
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
-        
+
         fhat[f.view(-1)<0] *= 0.
         Jhat[f.view(-1)<0] *= 0.
         Hvphat[f.view(-1)<0] *= 0.
@@ -356,7 +356,7 @@ class Trainer(object):
         """Do a single validation step. Log stats to tensorboard."""
         self.surrogate.net.eval()
         for i, batch in enumerate(self.val_loader):
-            u, p, f, J, H = batch
+            u, p, f, J, H, _ = batch
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
             if self.args.hess:
                 vectors = torch.randn(*J.size()).to(J.device)
@@ -373,7 +373,7 @@ class Trainer(object):
             Hvp[f.view(-1)<0] *= 0.
             J[f.view(-1)<0] *= 0.
             f[f.view(-1)<0] *= 0.
-            
+
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
             J_ = torch.cat([J_, J.data], dim=0) if i > 0 else J.data
@@ -390,7 +390,7 @@ class Trainer(object):
         )
 
     def visualize(self, step, batch, dataset_name):
-        u, p, f, J, H = batch
+        u, p, f, J, H, _ = batch
         u, p, f, J = u[:16], p[:16], f[:16], J[:16]
         fhat, Jhat = self.surrogate.f_J(u, p)
 

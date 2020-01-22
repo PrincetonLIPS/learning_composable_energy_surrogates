@@ -78,7 +78,7 @@ class CollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
-        return Example(u, p, f, J, H)
+        return Example(u, p, f, J, H, self.guess)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})

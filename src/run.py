@@ -27,7 +27,9 @@ from .energy_model.surrogate_energy_model import SurrogateEnergyModel
 from .logging.tensorboard_logger import Logger as TFLogger
 from .runners.trainer import Trainer
 from .runners.collector import PolicyCollector
-from .runners.hmc_collector import HMCCollector as Collector
+from .runners.nmc_collector import NMCCollector as Collector
+from .runners.nmc_collector import AdversarialCollector
+
 from .runners.evaluator import Evaluator
 from .runners.harvester import Harvester
 from .data.buffer import DataBuffer
@@ -241,11 +243,11 @@ if __name__ == "__main__":
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
-        dagger_harvester = Harvester(
+        adv_harvester = Harvester(
             args,
             lambda x: train_data.feed(x),
-            PolicyCollector,
-            args.max_collectors if args.dagger else 0,
+            AdversarialCollector,
+            args.max_collectors if args.adv_collect else 0,
         )
 
         def deploy_feed(x):
@@ -288,8 +290,9 @@ if __name__ == "__main__":
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
-                if not args.run_local and args.dagger:
-                    dagger_harvester.step(init_args=(broadcast_net_state,))
+                if not args.run_local and args.adv_collect:
+                    adv_harvester.step(init_args=(broadcast_net_state,),
+                                       step_args=(batch,))
                 if args.deploy:
                     deploy_harvester.step(step_args=(broadcast_net_state, step))
 

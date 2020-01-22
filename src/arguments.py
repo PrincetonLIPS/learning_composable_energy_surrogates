@@ -42,6 +42,35 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--nmc_stepsize",
+    help="nmc stepsize",
+    type=float,
+    default=0.1,
+)
+
+parser.add_argument(
+    "--nmc_temp",
+    help="nmc temp",
+    type=float,
+    default=0.1,
+)
+
+parser.add_argument(
+    "--nmc_online_stepsize",
+    help="nmc online stepsize",
+    type=float,
+    default=0.1,
+)
+
+parser.add_argument(
+    "--nmc_online_temp",
+    help="nmc online temp",
+    type=float,
+    default=0.1,
+)
+
+
+parser.add_argument(
     "--deploy_error_alpha",
     help="moving average alpha for deploy error",
     type=float,
@@ -293,6 +322,23 @@ parser.add_argument(
 parser.add_argument(
     "--cd_sgld_lambda", help="lambda for CD sgld", type=float, default=1e-2
 )
+
+parser.add_argument(
+    "--adv_collector_stepsize", help="stepsize for adv collector", type=float,
+    default=1e-4
+)
+
+parser.add_argument(
+    "--adv_gd_steps", help="steps of GD for adv collector "
+                           "against 2nd-order fenics approx", type=int,
+    default=100
+)
+
+parser.add_argument(
+    "--adv_newton", help="use Newton step for adv collector", type=s2b,
+    default=False
+)
+
 parser.add_argument("--cd_sgld_eps", help="eps for CD sgld", type=float, default=1e-6)
 parser.add_argument("--cd_sgld_temp", help="temp for CD sgld", type=float, default=10.0)
 parser.add_argument(

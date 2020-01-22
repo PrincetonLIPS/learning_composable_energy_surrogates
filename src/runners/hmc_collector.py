@@ -202,7 +202,7 @@ class HMCCollectorBase(object):
 
         if f <= 0.:
             raise Exception("Invalid data point!")
-        return Example(u, p, f, J, H)
+        return Example(u, p, f, J, H, self.guess)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
