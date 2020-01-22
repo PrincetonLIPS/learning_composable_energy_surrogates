@@ -128,7 +128,7 @@ class NMCCollectorBase(object):
                 #               factor=new_factor, recursion_depth=recursion_depth+1)
                 if q_last is None:
                     uV = fa.Function(self.fsm.V)
-                    uV.set_local(guess)
+                    uV.vector().set_local(guess)
                     q_last = self.fsm.to_torch(uV)
                 print("first half of recursion {}".format(recursion_depth+1))
                 guess = self.solve(
@@ -389,10 +389,10 @@ class AdversarialCollectorBase(NMCCollectorBase):
         f = f + (du*J).sum(dim=1) + torch.matmul(
             du, torch.matmul(H, du.t())).diag()
 
-        print("f ", f.mean().item())
 
         fhat = self.sem.f(u, params=p.unsqueeze(0).expand((len(u)), len(p))).view(-1)
-        print("fhat ", fhat.mean().item())
+        # print("f ", f.mean().item())
+        # print("fhat ", fhat.mean().item())
         f += 1e-9
         fhat += 1e-9
         # pdb.set_trace()
@@ -401,7 +401,7 @@ class AdversarialCollectorBase(NMCCollectorBase):
 
     def step(self, batch):
 
-        u, p, f, J, H, guess = batch
+        u, p, f, J, H, Vsmall_guess = batch
 
         i = np.random.randint(len(u))
         u = u[i]
@@ -422,16 +422,23 @@ class AdversarialCollectorBase(NMCCollectorBase):
         self.sem.fsm = self.fsm
         self.net.fsm = self.fsm
 
-        if guess is None:
+        if Vsmall_guess is None:
             guess = fa.Function(self.fsm.V).vector() # self.fsm.to_V(u).vector()
             last_u = torch.zeros_like(u)
         else:
-            guess = guess[i].numpy()
+            uVsmall_guess = fa.Function(self.fsm.small_V)
+            # pdb.set_trace()
+            uVsmall_guess.vector().set_local(Vsmall_guess[i].numpy())
+            uVsmall_guess.set_allow_extrapolation(True)
+            guess = fa.interpolate(uVsmall_guess, self.fsm.V).vector()
             last_u = u
 
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
 
         u0 = u.clone().detach()
+
+        obj = - self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
+        print("error: {:.5e}".format(-obj.mean().item()))
 
         for i in range(1 if self.args.adv_newton else self.args.adv_gd_steps):
             if self.args.adv_newton:
@@ -444,7 +451,7 @@ class AdversarialCollectorBase(NMCCollectorBase):
                 # objective to minimize is the negative of the error
                 obj = - self.damped_error(stack_u, u0, p, f, J, H)
 
-                print("error: {:.5e}".format(-obj.mean().item()))
+                # print("error: {:.5e}".format(-obj.mean().item()))
 
                 stack_grad = torch.autograd.grad(obj.sum(), stack_u,
                                            create_graph=True,
@@ -456,8 +463,8 @@ class AdversarialCollectorBase(NMCCollectorBase):
 
                 eig = torch.symeig(hess).eigenvalues
                 min_eig = torch.min(eig)
-                print(min_eig)
-                print(torch.max(eig))
+                # print(min_eig)
+                # print(torch.max(eig))
                 if min_eig < 1e-9:
                     hess = hess + (1e-9 - min_eig) * torch.eye(len(u))
                 hinv = torch.cholesky_inverse(hess)
@@ -466,11 +473,11 @@ class AdversarialCollectorBase(NMCCollectorBase):
                 stack_u = torch.autograd.Variable(u.unsqueeze(0).data,
                                                   requires_grad=True)
                 obj = - self.damped_error(stack_u, u0, p, f, J, H)
-                print("error: {:.5e}".format(-obj.mean().item()))
+                # print("error: {:.5e}".format(-obj.mean().item()))
                 grad = torch.autograd.grad(obj.sum(), stack_u)[0][0]
                 delta_u = grad
 
-            print(delta_u.norm())
+            # print(delta_u.norm())
             if delta_u.norm() > 1.0:
                 delta_u_scaled = delta_u / delta_u.norm()
             else:
@@ -478,14 +485,23 @@ class AdversarialCollectorBase(NMCCollectorBase):
 
             u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
 
+        print("error: {:.5e}".format(-obj.mean().item()))
+
         new_guess = self.solve(u, guess, last_u)
 
         f, JV, H = self.fem.f_J_H(u, initial_guess=new_guess)
         J = self.fsm.to_torch(JV)
 
+        new_uV = fa.Function(self.fsm.V)
+        new_uV.vector().set_local(new_guess)
+        new_uV.set_allow_extrapolation(True)
+
+        new_Vsmall_guess = fa.interpolate(new_uV, self.fsm.small_V).vector()
+
         # pdb.set_trace()
 
-        return Example(u, p, torch.Tensor([f]), J, H, torch.Tensor(new_guess))
+        return Example(u, p, torch.Tensor([f]), J, H,
+                       torch.Tensor(new_Vsmall_guess))
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
@@ -505,7 +521,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.c1 = 0.
     args.c2 = 0.
-    # fa.set_log_level(20)
+    fa.set_log_level(20)
     pde = Metamaterial(args)
     fsm = FunctionSpaceMap(pde.V, args.bV_dim)
     fem = FenicsEnergyModel(args, pde, fsm)
@@ -529,7 +545,8 @@ if __name__ == '__main__':
                                   example.f.unsqueeze(0),
                                   example.J.unsqueeze(0),
                                   example.H.unsqueeze(0),
-                                  None))
+                                  None if example.guess is None
+                                  else example.guess.unsqueeze(0)))
         print(example[0])
 
     '''
