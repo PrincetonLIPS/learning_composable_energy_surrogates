@@ -106,8 +106,8 @@ if __name__ == "__main__":
             print("Reloading checkpoint")
             ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
                                            'ckpt.pt'))
-            trainer.train_data = ckpt['traindata']
-            trainer.val_data = ckpt['valdata']
+            train_data = ckpt['traindata']
+            val_data = ckpt['valdata']
             if args.load_net_state:
                 net.load_state_dict(ckpt['model_state_dict'])
 
