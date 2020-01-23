@@ -591,10 +591,11 @@ class AdversarialCollectorBase(object):
                     guess = self.solve(u, guess, last_u)
                     if self.args.adv_newton:
                         f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
-                        J = self.fsm.to_torch(JV)
                     else:
                         f, JV = self.fem.f_J(u, initial_guess=guess)
-                        J = self.fsm.to_torch(JV)
+                    f = torch.Tensor([f])
+                    J = self.fsm.to_torch(JV)
+                    u0 = u.clone().detach()
                     success = True
                 except Exception as e:
                     print("reducing size of u for time ", tries)
