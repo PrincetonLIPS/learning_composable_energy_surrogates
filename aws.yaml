@@ -67,7 +67,7 @@ auth:
 # For more documentation on available fields, see:
 # http://boto3.readthedocs.io/en/latest/reference/services/ec2.html#EC2.ServiceResource.create_instances
 head_node:
-    InstanceType: p2.xlarge
+    InstanceType: p3.2xlarge
     ImageId: ami-0db6338f522533895 # NMOR ami
 
     # You can provision additional disk space with a conf as follows

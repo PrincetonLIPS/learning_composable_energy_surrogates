@@ -564,8 +564,8 @@ class Trainer(object):
         H_sim = similarity(Hvp, Hvphat)
 
         if self.tflogger is not None:
-            self.tflogger.log_scalar("train_set_size", len(self.train_data), step)
-            self.tflogger.log_scalar("val_set_size", len(self.val_data), step)
+            self.tflogger.log_scalar("train_set_size", len(self.train_data.data), step)
+            self.tflogger.log_scalar("val_set_size", len(self.val_data.data), step)
 
             if hasattr(self.surrogate, "net") and hasattr(
                 self.surrogate.net, "parameters"
