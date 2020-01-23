@@ -264,8 +264,8 @@ if __name__ == "__main__":
         def is_valid(example):
             if (
                 any([not torch.isfinite(x).all() for x in example])
-                or example.f <= 0
-                or example.J.mean().norm() > 1e-7
+                or example[2] <= 0
+                or example[3].mean().norm() > 1e-7
             ):
                 return False
             else:
