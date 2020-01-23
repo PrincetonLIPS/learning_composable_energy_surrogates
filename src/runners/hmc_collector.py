@@ -82,14 +82,15 @@ class HMCCollectorBase(object):
                 new_args.relaxation_parameter = factor
                 T = 8
                 Z = sum([2 ** i for i in range(T)])
+                new_guess = guess
                 for i in range(T):
                     new_args.atol = (
                         args.atol
                     )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
                     new_args.rtol = 10 ** (math.log10(args.rtol) * 2 ** i / Z)
                     new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
-                    f, u = fem.f(q, initial_guess=guess, return_u=True, args=new_args)
-                    guess = u.vector()
+                    f, u = fem.f(q, initial_guess=new_guess, return_u=True, args=new_args)
+                    new_guess = u.vector()
                 # print("energy: {:.3e}, sq(q): {:.3e},  f/sq(q): {:.3e}".format(f, sq(q), (f+EPS)/sq(q)))
                 return u.vector()
             except Exception as e:
@@ -104,7 +105,7 @@ class HMCCollectorBase(object):
                     # q_mid = q_last + 0.5*(q-q_last)
                     new_factor = factor * 0.3
                     new_max_iter = int(
-                        1
+                        10
                         + max_iter
                         * math.log(1.0 - min(0.9, factor))
                         / math.log(1.0 - new_factor)
