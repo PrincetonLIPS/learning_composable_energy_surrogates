@@ -358,3 +358,24 @@ parser.add_argument(
     type=s2b,
     default=False,
 )
+
+parser.add_argument(
+    "--load_ckpt_dir",
+    help="Dir under data_dir to load ckpt from.",
+    type=str,
+    default=None,
+)
+
+parser.add_argument(
+    "--load_net_state",
+    help="Reload net state.",
+    type=s2b,
+    default=False,
+)
+
+parser.add_argument(
+    "--load_opt_state",
+    help="Reload optimizer state",
+    type=s2b,
+    default=False,
+)

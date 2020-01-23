@@ -99,172 +99,201 @@ if __name__ == "__main__":
         surrogate = SurrogateEnergyModel(args, net, fsm)
 
         tflogger = TFLogger(out_dir)
-        if args.reload_data and os.path.exists(
-            os.path.join(data_dir, "initial_datasets.pt")
-        ):
-            print("Reloading initial data")
-            datasets = torch.load(os.path.join(data_dir, "initial_datasets.pt"))
 
-            train_data = datasets["train_data"]
-            train_data.data = train_data.data[:args.train_size]
-            train_data.memory_size = args.train_size
-            train_data.safe_idx = args.n_safe
-            val_data = datasets["val_data"]
-            val_data.data = val_data.data[:args.val_size]
-            val_data.memory_size = args.val_size
 
-            print(
-                "Require initial data with sizes: train {}, val {}".format(
-                    args.train_size, args.val_size
-                )
-            )
 
-            print(
-                "Found initial data with sizes: train {}, val {}".format(
-                    train_data.size(), val_data.size()
-                )
-            )
-
-            # if necessary fill Guesses
-            small_V_dim = len(fa.Function(fsm.small_V).vector())
-            for i in range(len(train_data.data)):
-                if len(train_data.data[i]) == 5:
-                    train_data.data[i] = (*train_data.data[i], None)
-                if train_data.data[i][-1] is None:
-                    train_data.data[i] = (*train_data.data[i][:-1], torch.zeros(small_V_dim))
-            for i in range(len(val_data.data)):
-                if len(val_data.data[i]) == 5:
-                    val_data.data[i] = (*val_data.data[i], None)
-                if val_data.data[i][-1] is None:
-                    val_data.data[i] = (*val_data.data[i][:-1], torch.zeros(small_V_dim))
+        if args.load_ckpt_dir is not None:
+            print("Reloading checkpoint")
+            ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
+                                           'ckpt.pt'))
+            trainer.train_data = ckpt['traindata']
+            trainer.val_data = ckpt['valdata']
+            if args.load_net_state:
+                net.load_state_dict(ckpt['model_state_dict'])
 
         else:
-            print("Gathering initial data from scratch")
-            # ---------- Start data collection
-            train_data = DataBuffer(args.train_size, args.n_safe)
-            val_data = DataBuffer(args.val_size)
+            if args.reload_data and os.path.exists(
+                os.path.join(data_dir, "initial_datasets.pt")
+            ):
+                print("Reloading initial data")
+                datasets = torch.load(os.path.join(data_dir, "initial_datasets.pt"))
 
-        if train_data.size() < args.train_size or val_data.size() < args.val_size:
-            print("Gathering data to fill train and val buffers")
-            val_frac = float(args.val_size) / (args.train_size + args.val_size)
+                train_data = datasets["train_data"]
+                train_data.data = train_data.data[:args.train_size]
+                train_data.memory_size = args.train_size
+                train_data.safe_idx = args.n_safe
+                val_data = datasets["val_data"]
+                val_data.data = val_data.data[:args.val_size]
+                val_data.memory_size = args.val_size
 
-            # Collect initial data
-            train_harvester = Harvester(
-                args,
-                lambda x: train_data.feed(x),
-                Collector,
-                int(args.max_collectors * (1.0 - val_frac)),
-            )
-            print("Train harvester size ", train_harvester.max_workers)
-            val_harvester = Harvester(
-                args,
-                lambda x: val_data.feed(x),
-                Collector,
-                int(args.max_collectors * val_frac),
-            )
-            print("Val harvester size ", val_harvester.max_workers)
-            harvested = train_data.size() + val_data.size()
-            failed = 0
-            with Timer() as htimer:
-                last_save_time = time.time()
-                last_msg_time = time.time()
-                while train_data.size() < len(train_data) or val_data.size() < len(
-                    val_data
-                ):
-                    if train_data.size() < len(train_data):
-                        train_harvester.step()
-                    if val_data.size() < len(val_data):
-                        val_harvester.step()
-                    if time.time() > last_msg_time + 5:
-                        last_msg_time = time.time()
-                        harvested = train_data.size() + val_data.size()
-                        failed = train_harvester.n_death + val_harvester.n_death
-                        # print("Nodes: ", ray.nodes())
-                        print("Resources: ", ray.cluster_resources())
-                        if args.verbose:
-                            time.sleep(0.1)
-                            print("Available resources: ", ray.available_resources())
-                        print("{} nodes".format(len(ray.nodes())))
-                        print(
-                            "{} train collectors, {} val collectors".format(
-                                len(train_harvester.ids_to_workers),
-                                len(val_harvester.ids_to_workers),
-                            )
-                        )
-                        print(
-                            "Harvested {} of {} with {} deaths at time={}s".format(
-                                harvested,
-                                len(train_data) + len(val_data),
-                                failed,
-                                htimer.interval,
-                            )
-                        )
-                        last_error_msg = str(train_harvester.last_error)
-                        if len(last_error_msg.split("\n")) > 10:
-                            last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
-                        print(
-                            "Last error {}s ago: {}".format(
-                                time.time() - train_harvester.last_error_time,
-                                last_error_msg,
-                            )
-                        )
-                        if time.time() > last_save_time + 300:  # Save every 5min
-                            print("Saving intermediate data...")
-                            last_save_time = time.time()
-                            torch.save(
-                                {"train_data": train_data, "val_data": val_data},
-                                os.path.join(data_dir, "initial_datasets.pt"),
-                            )
-                            print("Saved intermediate data.")
-
-            print(
-                "Initial harvest took {}s: tsuccess {}, tdeath {}, "
-                "vsuccess {}, vdeath {}".format(
-                    htimer.interval,
-                    train_harvester.n_success,
-                    train_harvester.n_death,
-                    val_harvester.n_success,
-                    val_harvester.n_death,
+                print(
+                    "Require initial data with sizes: train {}, val {}".format(
+                        args.train_size, args.val_size
+                    )
                 )
-            )
 
-            # Garbage collect these harvesters and their workers
-            del train_harvester
-            del val_harvester
-            print("Saving collected data...")
-            torch.save(
-                {"train_data": train_data, "val_data": val_data},
-                os.path.join(data_dir, "initial_datasets.pt"),
-            )
-            print("Saved collected data.")
+                print(
+                    "Found initial data with sizes: train {}, val {}".format(
+                        train_data.size(), val_data.size()
+                    )
+                )
 
-            time.sleep(0.1)
+                # if necessary fill Guesses
+                small_V_dim = len(fa.Function(fsm.small_V).vector())
+                for i in range(len(train_data.data)):
+                    if len(train_data.data[i]) == 5:
+                        train_data.data[i] = (*train_data.data[i], None)
+                    if train_data.data[i][-1] is None:
+                        train_data.data[i] = (*train_data.data[i][:-1], torch.zeros(small_V_dim))
+                for i in range(len(val_data.data)):
+                    if len(val_data.data[i]) == 5:
+                        val_data.data[i] = (*val_data.data[i], None)
+                    if val_data.data[i][-1] is None:
+                        val_data.data[i] = (*val_data.data[i][:-1], torch.zeros(small_V_dim))
+
+            else:
+                print("Gathering initial data from scratch")
+                # ---------- Start data collection
+                train_data = DataBuffer(args.train_size, args.n_safe)
+                val_data = DataBuffer(args.val_size)
+
+            if train_data.size() < args.train_size or val_data.size() < args.val_size:
+                print("Gathering data to fill train and val buffers")
+                val_frac = float(args.val_size) / (args.train_size + args.val_size)
+
+                # Collect initial data
+                train_harvester = Harvester(
+                    args,
+                    lambda x: train_data.feed(x),
+                    Collector,
+                    int(args.max_collectors * (1.0 - val_frac)),
+                )
+                print("Train harvester size ", train_harvester.max_workers)
+                val_harvester = Harvester(
+                    args,
+                    lambda x: val_data.feed(x),
+                    Collector,
+                    int(args.max_collectors * val_frac),
+                )
+                print("Val harvester size ", val_harvester.max_workers)
+                harvested = train_data.size() + val_data.size()
+                failed = 0
+                with Timer() as htimer:
+                    last_save_time = time.time()
+                    last_msg_time = time.time()
+                    while train_data.size() < len(train_data) or val_data.size() < len(
+                        val_data
+                    ):
+                        if train_data.size() < len(train_data):
+                            train_harvester.step()
+                        if val_data.size() < len(val_data):
+                            val_harvester.step()
+                        if time.time() > last_msg_time + 5:
+                            last_msg_time = time.time()
+                            harvested = train_data.size() + val_data.size()
+                            failed = train_harvester.n_death + val_harvester.n_death
+                            # print("Nodes: ", ray.nodes())
+                            print("Resources: ", ray.cluster_resources())
+                            if args.verbose:
+                                time.sleep(0.1)
+                                print("Available resources: ", ray.available_resources())
+                            print("{} nodes".format(len(ray.nodes())))
+                            print(
+                                "{} train collectors, {} val collectors".format(
+                                    len(train_harvester.ids_to_workers),
+                                    len(val_harvester.ids_to_workers),
+                                )
+                            )
+                            print(
+                                "Harvested {} of {} with {} deaths at time={}s".format(
+                                    harvested,
+                                    len(train_data) + len(val_data),
+                                    failed,
+                                    htimer.interval,
+                                )
+                            )
+                            last_error_msg = str(train_harvester.last_error)
+                            if len(last_error_msg.split("\n")) > 10:
+                                last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
+                            print(
+                                "Last error {}s ago: {}".format(
+                                    time.time() - train_harvester.last_error_time,
+                                    last_error_msg,
+                                )
+                            )
+                            if time.time() > last_save_time + 300:  # Save every 5min
+                                print("Saving intermediate data...")
+                                last_save_time = time.time()
+                                torch.save(
+                                    {"train_data": train_data, "val_data": val_data},
+                                    os.path.join(data_dir, "initial_datasets.pt"),
+                                )
+                                print("Saved intermediate data.")
+
+                print(
+                    "Initial harvest took {}s: tsuccess {}, tdeath {}, "
+                    "vsuccess {}, vdeath {}".format(
+                        htimer.interval,
+                        train_harvester.n_success,
+                        train_harvester.n_death,
+                        val_harvester.n_success,
+                        val_harvester.n_death,
+                    )
+                )
+
+                # Garbage collect these harvesters and their workers
+                del train_harvester
+                del val_harvester
+                print("Saving collected data...")
+                torch.save(
+                    {"train_data": train_data, "val_data": val_data},
+                    os.path.join(data_dir, "initial_datasets.pt"),
+                )
+                print("Saved collected data.")
+
+                time.sleep(0.1)
 
 
-        # ---------- Finish data collection
+            # ---------- Finish data collection
 
 
-        if args.adv_collect:
-            train_data.memory_size = train_data.memory_size * 5
+            if args.adv_collect:
+                train_data.memory_size = train_data.memory_size * 5
+
+
+        def is_valid(example):
+            if (
+                any([not torch.isfinite(x) for x in example])
+                or example.f <= 0
+                or example.J.mean().norm() > 1e-7
+            ):
+                return False
+            else:
+                return True
 
         # Filter invalid data
-        train_data.data = [d for d in train_data.data if d[2] > 0]
-        val_data.data = [d for d in val_data.data if d[2] > 0]
+        train_data.data = [d for d in train_data.data if is_valid(d)]
+        val_data.data = [d for d in val_data.data if is_valid(d)]
 
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 
-        # Init whitening module
-        preprocd_u = surrogate.net.preproc(
-            torch.stack([u for u, _, _, _, _, _ in trainer.train_data.data])
-        )
+        if args.load_ckpt_dir is not None and args.load_net_state:
+            if args.load_opt_state:
+                trainer.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
 
-        # surrogate.net.normalizer.mean.data = torch.mean(
-        #    preprocd_u, dim=0, keepdims=True
-        # ).data
+        else:
+            # Init whitening module
+            preprocd_u = surrogate.net.preproc(
+                torch.stack([u for u, _, _, _, _, _ in trainer.train_data.data])
+            )
 
-        surrogate.net.normalizer.var.data = (
-            torch.std(preprocd_u, dim=0, keepdims=True) ** 2
-        ).data
+            # surrogate.net.normalizer.mean.data = torch.mean(
+            #    preprocd_u, dim=0, keepdims=True
+            # ).data
+
+            surrogate.net.normalizer.var.data = (
+                torch.std(preprocd_u, dim=0, keepdims=True) ** 2
+            ).data
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
@@ -300,14 +329,14 @@ if __name__ == "__main__":
             # pdb.set_trace()
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(7)
-        
+
             last_state_dict = state_dict
             state_dict = surrogate.net.state_dict()
             state_dict = {
                 k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
                 for k, v in state_dict.items()
             }
-            
+
             if last_state_dict is not None:
                 broadcast_net_state = ray.put(last_state_dict)
 
@@ -323,7 +352,7 @@ if __name__ == "__main__":
                     if args.cd and (bidx - 1) % args.cd_sgld_steps == 0:
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
-                
+
                 if bidx % 10 == 0 and last_state_dict is not None:
                     if args.adv_collect:
                         adv_harvester.step(init_args=(broadcast_net_state,),
