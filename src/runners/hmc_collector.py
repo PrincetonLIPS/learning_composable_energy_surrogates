@@ -58,7 +58,7 @@ class HMCCollectorBase(object):
             mu = self.macro.view(-1)
             Sigma_inv = mu**2
             #print("x_macro: {}, residual: {}, scaled_res: {}".format(
-            x.data.cpu().numpy(), (x-mu).data.cpu().numpy(), (Sigma_inv*(x-mu)**2).data.cpu().numpy()))
+            # x.data.cpu().numpy(), (x-mu).data.cpu().numpy(), (Sigma_inv*(x-mu)**2).data.cpu().numpy()))
             # pdb.set_trace()
             return 100*(Sigma_inv*(x-mu)**2).sum()
 
