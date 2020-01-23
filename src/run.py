@@ -30,6 +30,7 @@ from .runners.trainer import Trainer
 from .runners.collector import PolicyCollector
 from .runners.hmc_collector import HMCCollector as Collector
 from .runners.nmc_collector import AdversarialCollector
+from .runners.deploy_collector import DeployCollector
 
 from .runners.evaluator import Evaluator
 from .runners.harvester import Harvester
@@ -261,8 +262,9 @@ if __name__ == "__main__":
             # ---------- Finish data collection
 
 
-            if args.adv_collect:
+            if args.adv_collect or args.deploy_collect:
                 train_data.memory_size = train_data.memory_size * 5
+
 
 
         def is_valid(example):
@@ -301,11 +303,13 @@ if __name__ == "__main__":
 
         deploy_ems = ExponentialMovingStats(args.deploy_error_alpha)
 
-        adv_harvester = Harvester(
+        if args.adv_collect and args.deploy_collect:
+            raise Exception("Only one of adv_collect and deploy_collect allowed")
+        online_harvester = Harvester(
             args,
             lambda x: train_data.feed(x),
-            AdversarialCollector,
-            args.max_collectors if args.adv_collect else 0,
+            AdversarialCollector if args.adv_collect else DeployCollector,
+            args.max_collectors if (args.adv_collect or args.deploy_collect) else 0,
         )
 
         def deploy_feed(x):
@@ -359,8 +363,11 @@ if __name__ == "__main__":
 
                 if bidx % 10 == 0 and last_state_dict is not None:
                     if args.adv_collect:
-                        adv_harvester.step(init_args=(broadcast_net_state,),
-                                           step_args=(batch,))
+                        online_harvester.step(init_args=(broadcast_net_state,),
+                                              step_args=(batch,))
+                    if args.deploy_collect:
+                        online_harvester.step(init_args=(broadcast_net_state,),
+                                              step_args=())
                     if args.deploy:
                         deploy_harvester.step(step_args=(broadcast_net_state, step))
 
@@ -429,10 +436,10 @@ if __name__ == "__main__":
                 lossfile.write(msg)
 
             print(
-                "Harvest stats: advsuccess {}, advdeath {}, "
+                "Harvest stats: onlinesuccess {}, onlinedeath {}, "
                 "depsuccess {}, depdeath {}".format(
-                    adv_harvester.n_success,
-                    adv_harvester.n_death,
+                    online_harvester.n_success,
+                    online_harvester.n_death,
                     deploy_harvester.n_success,
                     deploy_harvester.n_death,
                 )
@@ -443,12 +450,12 @@ if __name__ == "__main__":
             #        deploy_harvester.last_error,
             #    )
             #)
-            last_error_msg = str(adv_harvester.last_error)
+            last_error_msg = str(_harvester.last_error)
             if len(last_error_msg.split("\n")) > 10:
                 last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
             print(
-                "Adv harvester last error {}s ago: {}".format(
-                    time.time() - adv_harvester.last_error_time,
+                " harvester last error {}s ago: {}".format(
+                    time.time() - _harvester.last_error_time,
                     last_error_msg,
                 )
             )

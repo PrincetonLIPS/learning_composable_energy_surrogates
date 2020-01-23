@@ -18,7 +18,7 @@ from .collector import CollectorBase
 
 
 class DeployCollectorBase(CollectorBase):
-    def __init__(self, args, seed):
+    def __init__(self, args, seed, state_dict):
         self.args = args
         np.random.seed(seed)
         make_p(args)
@@ -26,6 +26,7 @@ class DeployCollectorBase(CollectorBase):
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         net = FeedForwardNet(args, self.fsm)
+        net.load_state_dict(state_dict)
         sem = SurrogateEnergyModel(args, net, self.fsm)
         cem = ComposedEnergyModel(args, sem,
                                   args.n_high, args.n_wide)
@@ -59,7 +60,9 @@ if __name__ == '__main__':
     from ..arguments import parser
     import pdb
     args = parser.parse_args()
-
-    dcollector = DeployCollectorBase(args, 0)
+    pde = Metamaterial(args)
+    fsm = FunctionSpaceMap(pde.V, args.bV_dim, args=args)
+    net = FeedForwardNet(args, fsm)
+    dcollector = DeployCollectorBase(args, 0, net.state_dict())
     collector = CollectorBase(args, 0)
     pdb.set_trace()
