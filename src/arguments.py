@@ -379,3 +379,17 @@ parser.add_argument(
     type=s2b,
     default=False,
 )
+
+parser.add_argument(
+    "--n_high",
+    help="n_high for deployment / deploy_collect",
+    type=int,
+    default=4,
+)
+
+parser.add_argument(
+    "--n_wide",
+    help="n_wide for deployment / deploy_collect",
+    type=int,
+    default=4,
+)

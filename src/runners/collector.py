@@ -78,9 +78,9 @@ class CollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
-        new_usmall_guess = torch.Tensor(fa.interpolate(solution, self.fsm.small_V).vector())
+        # new_usmall_guess = torch.Tensor(fa.interpolate(solution, self.fsm.small_V).vector())
 
-        return Example(u, p, f, J, H, new_usmall_guess)
+        return Example(u, p, f, J, H, None)
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
