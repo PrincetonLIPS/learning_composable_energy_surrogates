@@ -595,6 +595,7 @@ class AdversarialCollectorBase(object):
                     else:
                         f, JV = self.fem.f_J(u, initial_guess=guess)
                         J = self.fsm.to_torch(JV)
+                    success = True
                 except Exception as e:
                     print("reducing size of u for time ", tries)
                     tries += 1
