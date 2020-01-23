@@ -31,7 +31,7 @@ class Harvester(object):
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
-            [id for id in self.ids_to_workers.keys()], timeout=0.0001
+            [id for id in self.ids_to_workers.keys()], timeout=1e-9
         )
         results = {id: carefully_get(id) for id in ready_ids}
         valid_results = []

@@ -361,7 +361,7 @@ if __name__ == "__main__":
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
-                if bidx % 10 == 0 and last_state_dict is not None:
+                if last_state_dict is not None:
                     if args.adv_collect:
                         online_harvester.step(init_args=(broadcast_net_state,),
                                               step_args=(batch,))
