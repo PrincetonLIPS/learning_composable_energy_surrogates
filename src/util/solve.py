@@ -36,7 +36,7 @@ def solve(
         return u.vector()
     except Exception as e:
         if q_last is None and recursion_depth == 0:
-            return solve(q, guess, q_last, max_iter, factor=0.01)
+            return solve(fem, args, q, guess, q_last, max_iter, factor=0.1, recursion_depth=1)
         elif q_last is None:
             raise e
         elif recursion_depth >= 8:
@@ -58,7 +58,7 @@ def solve(
             # guess = solve(q_mid, guess, q_last, max_iter=new_max_iter,
             #               factor=new_factor, recursion_depth=recursion_depth+1)
             # print("first half of recursion {}".format(recursion_depth+1))
-            guess = solve(
+            guess = solve(fem, args,
                 (q+q_last)/2,
                 guess,
                 q_last,
@@ -67,7 +67,7 @@ def solve(
                 recursion_depth=recursion_depth + 1,
             )
             # print("second half of recursion {}".format(recursion_depth+1))
-            return solve(
+            return solve(fem, args,
                 q,
                 guess,
                 (q+q_last)/2,
