@@ -330,7 +330,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--adv_collector_stepsize", help="stepsize for adv collector", type=float,
-    default=1e-4
+    default=1e-5
 )
 
 parser.add_argument(

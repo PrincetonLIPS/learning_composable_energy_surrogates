@@ -83,6 +83,7 @@ class NMCCollectorBase(object):
         factor=None,
         recursion_depth=0,
     ):
+        # fa.set_log_level(20)
         if max_iter is None:
             max_iter = self.BASE_ITER
         if factor is None:
@@ -99,8 +100,11 @@ class NMCCollectorBase(object):
                 new_args.atol = (
                     self.args.atol
                 )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
-                new_args.rtol = 10 ** (math.log10(args.rtol) * 2 ** i / Z)
+                new_args.rtol = 10 ** (math.log10(self.args.rtol) * 2 ** i / Z)
                 new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
+                print("solve with rtol {} atol {} iter {} factor {} u_norm {} guess_norm {}".format(
+                    new_args.atol, new_args.rtol, new_args.max_newton_iter, new_args.relaxation_parameter, q.norm().item(),
+                    torch.Tensor(guess).norm().item()))
                 f, u = self.fem.f(q, initial_guess=guess, return_u=True, args=new_args)
                 guess = u.vector()
             # print("energy: {:.3e}, sq(q): {:.3e},  f/sq(q): {:.3e}".format(f, sq(q), (f+EPS)/sq(q)))
@@ -108,21 +112,21 @@ class NMCCollectorBase(object):
         except Exception as e:
             if q_last is None:
                 raise e
-            elif recursion_depth >= 25:
+            elif recursion_depth >= 50:
                 print("Maximum recursion depth exceeded! giving up.")
                 raise e
             else:
                 print("recursing due to error, depth {}:".format(recursion_depth+1))
                 print(e)
                 # q_mid = q_last + 0.5*(q-q_last)
-                new_factor = max(factor*0.5, 0.05)
+                new_factor = 0.1 # max(factor*0.5, 0.1)
                 new_max_iter = int(
-                    10
+                    1
                     + max_iter
                     * math.log(1.0 - min(0.9, factor))
                     / math.log(1.0 - new_factor)
                 )
-                print("new factor {}".format(new_factor))
+                print("new factor {}, new max iter {}".format(new_factor, new_max_iter))
 
                 # guess = solve(q_mid, guess, q_last, max_iter=new_max_iter,
                 #               factor=new_factor, recursion_depth=recursion_depth+1)
@@ -286,7 +290,7 @@ class NMCOnlineCollectorBase(NMCCollectorBase):
         self.net.load_state_dict(state_dict)
         self.net.eval()
 
-        self.sem = SurrogateEnergyModel(args, net, self.fsm)
+        self.sem = SurrogateEnergyModel(args, self.net, self.fsm)
 
         self.params = torch.Tensor([self.args.c1, self.args.c2])
         self.stepsize = self.args.nmc_online_stepsize
@@ -360,7 +364,7 @@ class NMCOnlineCollectorBase(NMCCollectorBase):
         return NMCCollectorBase.step(self, *args, **kwargs)
 
 
-class AdversarialCollectorBase(NMCCollectorBase):
+class AdversarialCollectorBase(object):
     def __init__(self, args, seed, state_dict):
         self.args = args
         np.random.seed(seed)
@@ -374,11 +378,11 @@ class AdversarialCollectorBase(NMCCollectorBase):
         self.net.load_state_dict(state_dict)
         self.net.eval()
 
-        self.sem = SurrogateEnergyModel(args, net, self.fsm)
+        self.sem = SurrogateEnergyModel(args, self.net, self.fsm)
 
         self.n = 0
         self.BASE_ITER = 50
-        self.BASE_FACTOR = 1.0
+        self.BASE_FACTOR = 0.99
         self.rigid_remover = RigidRemover(self.fsm)
 
     def damped_error(self, u, u0, p, f, J, H):
@@ -403,8 +407,88 @@ class AdversarialCollectorBase(NMCCollectorBase):
         return torch.nn.functional.mse_loss(torch.log(f), torch.log(fhat)) - 1e-9 * (u**2).sum(dim=1)
 
 
-    def step(self, batch):
+    def solve(
+        self,
+        q,
+        guess,
+        q_last=None,
+        max_iter=None,
+        factor=None,
+        recursion_depth=0,
+    ):
+        # fa.set_log_level(20)
+        if max_iter is None:
+            max_iter = self.BASE_ITER
+        if factor is None:
+            factor = self.BASE_FACTOR
+        try:
+            # print("recursion {}, iter {}, factor {}".format(recursion_depth, max_iter, factor))
+            new_args = copy.deepcopy(self.args)
+            new_args = new_args
+            new_args.max_newton_iter = max_iter
+            new_args.relaxation_parameter = factor
+            T = 10
+            Z = sum([2 ** i for i in range(T)])
+            new_guess = guess
+            for i in range(T):
+                new_args.atol = (
+                    self.args.atol
+                )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
+                new_args.rtol = 10 ** (math.log10(self.args.rtol) * 2 ** i / Z)
+                new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
+                # print("solve with rtol {} atol {} iter {} factor {} u_norm {} guess_norm {}".format(
+                #    new_args.atol, new_args.rtol, new_args.max_newton_iter, new_args.relaxation_parameter, q.norm().item(),
+                #    torch.Tensor(guess).norm().item()))
+                f, u = self.fem.f(q, initial_guess=new_guess, return_u=True, args=new_args)
+                new_guess = u.vector()
+            # print("energy: {:.3e}, sq(q): {:.3e},  f/sq(q): {:.3e}".format(f, sq(q), (f+EPS)/sq(q)))
+            return u.vector()
+        except Exception as e:
+            if q_last is None:
+                raise e
+            elif recursion_depth >= 5:
+                print("Maximum recursion depth exceeded! giving up.")
+                raise e
+            else:
+                # print("recursing due to error, depth {}:".format(recursion_depth+1))
+                # print(e)
+                # q_mid = q_last + 0.5*(q-q_last)
+                new_factor = 0.1 # max(factor*0.5, 0.05)
+                new_max_iter = int(
+                    5
+                    + max_iter
+                    * math.log(1.0 - min(0.9, factor))
+                    / math.log(1.0 - new_factor)
+                )
+                # print("new factor {}, new max iter {}".format(new_factor, new_max_iter))
 
+                # guess = solve(q_mid, guess, q_last, max_iter=new_max_iter,
+                #               factor=new_factor, recursion_depth=recursion_depth+1)
+                if q_last is None:
+                    uV = fa.Function(self.fsm.V)
+                    uV.vector().set_local(guess)
+                    q_last = self.fsm.to_torch(uV)
+                # print("first half of recursion {}".format(recursion_depth+1))
+                guess = self.solve(
+                    (q+q_last)/2,
+                    guess,
+                    q_last,
+                    max_iter=new_max_iter,
+                    factor=new_factor,
+                    recursion_depth=recursion_depth + 1,
+                )
+                # print("second half of recursion {}".format(recursion_depth+1))
+                return self.solve(
+                    q,
+                    guess,
+                    (q+q_last)/2,
+                    max_iter=new_max_iter,
+                    factor=new_factor,
+                    recursion_depth=recursion_depth + 1,
+                )
+
+    def step(self, batch):
+        
         u, p, f, J, H, Vsmall_guess = batch
 
         i = np.random.randint(len(u))
@@ -421,15 +505,21 @@ class AdversarialCollectorBase(NMCCollectorBase):
         p = p.view(-1)
         self.args.c1 = p[0].item()
         self.args.c2 = p[1].item()
-        self.pde = Metamaterial(args)
-        self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
+        self.pde = Metamaterial(self.args)
+        self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, args=self.args)
         self.sem.fsm = self.fsm
         self.net.fsm = self.fsm
 
+        self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
+        
         if Vsmall_guess is None or np.all(np.isclose(Vsmall_guess[i].numpy(), 0.)):
+            print("starting solve from scratch")
             guess = fa.Function(self.fsm.V).vector() # self.fsm.to_V(u).vector()
             last_u = torch.zeros_like(u)
+            guess = self.solve(u, guess, last_u)
+            last_u = u
         else:
+            print("using previous guess")
             uVsmall_guess = fa.Function(self.fsm.small_V)
             # pdb.set_trace()
             uVsmall_guess.vector().set_local(Vsmall_guess[i].numpy())
@@ -437,12 +527,12 @@ class AdversarialCollectorBase(NMCCollectorBase):
             guess = fa.interpolate(uVsmall_guess, self.fsm.V).vector()
             last_u = u
 
-        self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
+        # print("guess norm {}".format(torch.Tensor(guess).norm().item()))
 
         u0 = u.clone().detach()
 
         obj = - self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
-        print("error: {:.5e}".format(-obj.mean().item()))
+        # print("error: {:.5e}".format(-obj.mean().item()))
 
         for i in range(1 if self.args.adv_newton else self.args.adv_gd_steps):
             if self.args.adv_newton:
@@ -489,11 +579,20 @@ class AdversarialCollectorBase(NMCCollectorBase):
 
             u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
 
-        print("error: {:.5e}".format(-obj.mean().item()))
+        # print("error: {:.5e}".format(-obj.mean().item()))
 
-        new_guess = self.solve(u, guess, last_u)
-
-        f, JV, H = self.fem.f_J_H(u, initial_guess=new_guess)
+        # print("guess norm {}".format(torch.Tensor(guess).norm().item()))
+        
+        success = False
+        while not success:
+            try:
+                new_guess = self.solve(u, guess, last_u)
+                f, JV, H = self.fem.f_J_H(u, initial_guess=new_guess)
+                success = True
+            except Exception as e:
+                # Reduce the size of u
+                u = (u + batch[0]) / 2
+        
         J = self.fsm.to_torch(JV)
 
         new_uV = fa.Function(self.fsm.V)

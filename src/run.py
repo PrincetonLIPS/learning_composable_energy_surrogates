@@ -20,6 +20,7 @@ import pdb
 from .arguments import parser
 
 # from ..runners.online_trainer import OnlineTrainer
+from . import fa_combined as fa
 from .pde.metamaterial import Metamaterial
 from .nets.feed_forward_net import FeedForwardNet
 from .maps.function_space_map import FunctionSpaceMap
@@ -27,7 +28,7 @@ from .energy_model.surrogate_energy_model import SurrogateEnergyModel
 from .logging.tensorboard_logger import Logger as TFLogger
 from .runners.trainer import Trainer
 from .runners.collector import PolicyCollector
-from .runners.nmc_collector import NMCCollector as Collector
+from .runners.hmc_collector import HMCCollector as Collector
 from .runners.nmc_collector import AdversarialCollector
 
 from .runners.evaluator import Evaluator
@@ -105,9 +106,11 @@ if __name__ == "__main__":
             datasets = torch.load(os.path.join(data_dir, "initial_datasets.pt"))
 
             train_data = datasets["train_data"]
+            train_data.data = train_data.data[:args.train_size]
             train_data.memory_size = args.train_size
             train_data.safe_idx = args.n_safe
             val_data = datasets["val_data"]
+            val_data.data = val_data.data[:args.val_size]
             val_data.memory_size = args.val_size
 
             print(
@@ -123,13 +126,17 @@ if __name__ == "__main__":
             )
 
             # if necessary fill Guesses
-            small_V_dim = len(fa.Function(self.fsm.small_V).vector())
+            small_V_dim = len(fa.Function(fsm.small_V).vector())
             for i in range(len(train_data.data)):
+                if len(train_data.data[i]) == 5:
+                    train_data.data[i] = (*train_data.data[i], None)
                 if train_data.data[i][-1] is None:
-                    train_data.data[i][-1] = torch.zeros(small_V_dim)
+                    train_data.data[i] = (*train_data.data[i][:-1], torch.zeros(small_V_dim))
             for i in range(len(val_data.data)):
+                if len(val_data.data[i]) == 5:
+                    val_data.data[i] = (*val_data.data[i], None)
                 if val_data.data[i][-1] is None:
-                    val_data.data[i][-1] = torch.zeros(small_V_dim)
+                    val_data.data[i] = (*val_data.data[i][:-1], torch.zeros(small_V_dim))
 
         else:
             print("Gathering initial data from scratch")
@@ -237,12 +244,18 @@ if __name__ == "__main__":
         # ---------- Finish data collection
 
 
+        if args.adv_collect:
+            train_data.memory_size = train_data.memory_size * 5
+
+        # Filter invalid data
+        train_data.data = [d for d in train_data.data if d[2] > 0]
+        val_data.data = [d for d in val_data.data if d[2] > 0]
 
         trainer = Trainer(args, surrogate, train_data, val_data, tflogger, pde)
 
         # Init whitening module
         preprocd_u = surrogate.net.preproc(
-            torch.stack([u for u, _, _, _, _ in trainer.train_data.data])
+            torch.stack([u for u, _, _, _, _, _ in trainer.train_data.data])
         )
 
         # surrogate.net.normalizer.mean.data = torch.mean(
@@ -281,32 +294,42 @@ if __name__ == "__main__":
 
         last_viz_time = time.time()
 
+        last_state_dict = None
+        state_dict = None
         while step < args.max_train_steps:
             # pdb.set_trace()
             # [f_loss, f_pce, J_loss, J_cossim, loss]
             t_losses = np.zeros(7)
-
+        
+            last_state_dict = state_dict
             state_dict = surrogate.net.state_dict()
             state_dict = {
                 k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
                 for k, v in state_dict.items()
             }
-            broadcast_net_state = ray.put(state_dict)
+            
+            if last_state_dict is not None:
+                broadcast_net_state = ray.put(last_state_dict)
 
             surrogate.net.train()
             train_step_time = 0.0
             for bidx, batch in enumerate(trainer.train_loader):
+                if step % 100 == 0:
+                    print("step {}, tsize {}".format(step, len(trainer.train_data.data)))
+                # if step % 100 == 0:
+                #     pdb.set_trace()
                 with Timer() as train_step_timer:
                     t_losses += np.array(trainer.train_step(step, batch)) / n_batches
                     if args.cd and (bidx - 1) % args.cd_sgld_steps == 0:
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
-
-                if not args.run_local and args.adv_collect:
-                    adv_harvester.step(init_args=(broadcast_net_state,),
-                                       step_args=(batch,))
-                if args.deploy:
-                    deploy_harvester.step(step_args=(broadcast_net_state, step))
+                
+                if bidx % 10 == 0 and last_state_dict is not None:
+                    if args.adv_collect:
+                        adv_harvester.step(init_args=(broadcast_net_state,),
+                                           step_args=(batch,))
+                    if args.deploy:
+                        deploy_harvester.step(step_args=(broadcast_net_state, step))
 
                 step += 1
             # pdb.set_trace()
@@ -373,10 +396,10 @@ if __name__ == "__main__":
                 lossfile.write(msg)
 
             print(
-                "Harvest stats: dagsuccess {}, dagdeath {}, "
+                "Harvest stats: advsuccess {}, advdeath {}, "
                 "depsuccess {}, depdeath {}".format(
-                    dagger_harvester.n_success,
-                    dagger_harvester.n_death,
+                    adv_harvester.n_success,
+                    adv_harvester.n_death,
                     deploy_harvester.n_success,
                     deploy_harvester.n_death,
                 )
@@ -387,14 +410,17 @@ if __name__ == "__main__":
             #        deploy_harvester.last_error,
             #    )
             #)
-            #print(
-            #    "Dagger harvester last error {}s ago: {}".format(
-            #        time.time() - dagger_harvester.last_error_time,
-            #        dagger_harvester.last_error,
-            #    )
-            #)
+            last_error_msg = str(adv_harvester.last_error)
+            if len(last_error_msg.split("\n")) > 10:
+                last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
+            print(
+                "Adv harvester last error {}s ago: {}".format(
+                    time.time() - adv_harvester.last_error_time,
+                    last_error_msg,
+                )
+            )
     except Exception as e:
         exc_type, exc_value, exc_tb = sys.exc_info()
         with open(os.path.join(out_dir, "exception.txt"), "w") as efile:
             traceback.print_exception(exc_type, exc_value, exc_tb, file=efile)
-        raise e
+            raise e
