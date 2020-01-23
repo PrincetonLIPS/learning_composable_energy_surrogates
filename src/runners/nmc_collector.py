@@ -427,7 +427,7 @@ class AdversarialCollectorBase(object):
             new_args = new_args
             new_args.max_newton_iter = max_iter
             new_args.relaxation_parameter = factor
-            T = 10
+            T = 2 if factor == self.BASE_FACTOR else 10
             Z = sum([2 ** i for i in range(T)])
             new_guess = guess
             for i in range(T):
