@@ -329,6 +329,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--deploy_collect", help="Do online deployment data collection", type=s2b,
+    default=False
+)
+
+parser.add_argument(
     "--adv_collector_stepsize", help="stepsize for adv collector", type=float,
     default=1e-5
 )
