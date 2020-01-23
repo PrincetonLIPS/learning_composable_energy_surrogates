@@ -43,7 +43,7 @@ class DeployCollectorBase(CollectorBase):
         ).view(cem.n_cells, -1, 2)
         cell_idx = np.random.choice(cem.n_cells)
 
-        self.bc = surr_cell_coords[cell_idx]
+        self.bc = self.fsm.to_torch(surr_cell_coords[cell_idx])
 
         self.stepsize = 1.0 / args.anneal_steps
         self.factor = 0.0

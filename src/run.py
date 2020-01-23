@@ -450,12 +450,12 @@ if __name__ == "__main__":
             #        deploy_harvester.last_error,
             #    )
             #)
-            last_error_msg = str(_harvester.last_error)
+            last_error_msg = str(online_harvester.last_error)
             if len(last_error_msg.split("\n")) > 10:
                 last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
             print(
-                " harvester last error {}s ago: {}".format(
-                    time.time() - _harvester.last_error_time,
+                "online harvester last error {}s ago: {}".format(
+                    time.time() - online_harvester.last_error_time,
                     last_error_msg,
                 )
             )
