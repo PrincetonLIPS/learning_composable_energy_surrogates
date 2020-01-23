@@ -57,7 +57,7 @@ class HMCCollectorBase(object):
             x = torch.stack([vert, horiz]).view(-1)
             mu = self.macro.view(-1)
             Sigma_inv = mu**2
-            print("x_macro: {}, residual: {}, scaled_res: {}".format(
+            #print("x_macro: {}, residual: {}, scaled_res: {}".format(
             x.data.cpu().numpy(), (x-mu).data.cpu().numpy(), (Sigma_inv*(x-mu)**2).data.cpu().numpy()))
             # pdb.set_trace()
             return 100*(Sigma_inv*(x-mu)**2).sum()
@@ -100,8 +100,8 @@ class HMCCollectorBase(object):
                     print("Maximum recursion depth exceeded! giving up.")
                     raise e
                 else:
-                    print("recursing due to error:")
-                    print(e)
+                    #print("recursing due to error:")
+                    #print(e)
                     # q_mid = q_last + 0.5*(q-q_last)
                     new_factor = factor * 0.3
                     new_max_iter = int(
@@ -141,14 +141,14 @@ class HMCCollectorBase(object):
             p = p - step_size * dVdq / (2 * temp)  # half step
             failed = False
             for i in range(int(path_len / step_size) - 1):
-                print("leapfrog step {}/{}".format(i, int(path_len / step_size) - 1))
+                #print("leapfrog step {}/{}".format(i, int(path_len / step_size) - 1))
                 q_last = q
                 try:
                     q = q + step_size * p  # whole step
                     dVdq, guess = make_dVdq(q, guess, q_last=q_last)
                     p = p - step_size * (dVdq / temp)  # whole step
                 except Exception as e:
-                    print("passing leapfrog due to: {}".format(e))
+                    #print("passing leapfrog due to: {}".format(e))
                     q = q_last
                     failed = True
                     break
@@ -160,7 +160,7 @@ class HMCCollectorBase(object):
                 dVdq, guess = make_dVdq(q, guess, q_last=q_last)
                 p = p - step_size * dVdq / (2 * temp)  # half step
             except Exception as e:
-                print("passing final of leapfrog due to: {}".format(e))
+                #print("passing final of leapfrog due to: {}".format(e))
                 q = q_last
 
             # momentum flip at end
