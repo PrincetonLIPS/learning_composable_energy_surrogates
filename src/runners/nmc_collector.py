@@ -583,27 +583,31 @@ class AdversarialCollectorBase(object):
                 delta_u_scaled = delta_u
 
             u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
-
+            
+            success = False
+            tries = 0
+            while not success:
+                try:
+                    guess = self.solve(u, guess, last_u)
+                    if self.args.adv_newton:
+                        f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
+                        J = self.fsm.to_torch(JV)
+                    else:
+                        f, JV = self.fem.f_J(u, initial_guess=guess)
+                        J = self.fsm.to_torch(JV)
+                except Exception as e:
+                    print("reducing size of u for time ", tries)
+                    tries += 1
+                    if tries > 10:
+                        raise e
+                    u = (u + last_u) / 2
         
 
         # print("error: {:.5e}".format(-obj.mean().item()))
 
         # print("guess norm {}".format(torch.Tensor(guess).norm().item()))
         
-        success = False
-        tries = 0
-        while not success:
-            tries += 1
-            try:
-                new_guess = self.solve(u, guess, last_u)
-                f, JV, H = self.fem.f_J_H(u, initial_guess=new_guess)
-                success = True
-            except Exception as e:
-                # Reduce the size of u
-                print("reducing size of u for time ", tries)
-                u = (u + last_u)/2
-                if tries > 10:
-                    raise e
+        f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
         
         J = self.fsm.to_torch(JV)
 
