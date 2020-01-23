@@ -104,8 +104,12 @@ if __name__ == "__main__":
 
         if args.load_ckpt_dir is not None:
             print("Reloading checkpoint")
-            ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
-                                           'ckpt.pt'))
+            try:
+                ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
+                                               'ckpt.pt'))
+            except Exception as e:
+                ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
+                                               'last_ckpt.pt'))
             train_data = ckpt['traindata']
             val_data = ckpt['valdata']
             if args.load_net_state:
