@@ -614,7 +614,7 @@ class AdversarialCollectorBase(object):
         J = self.fsm.to_torch(JV)
 
         new_uV = fa.Function(self.fsm.V)
-        new_uV.vector().set_local(new_guess)
+        new_uV.vector().set_local(guess)
         new_uV.set_allow_extrapolation(True)
 
         new_Vsmall_guess = fa.interpolate(new_uV, self.fsm.small_V).vector()
