@@ -68,7 +68,6 @@ class DeployCollectorBase(CollectorBase):
         self.buckets = buckets / buckets[-1]
 
         self.stepsize = 1.0 / args.anneal_steps
-        self.factor = 0.0
         self.steps = 0
         self.base_relax = self.args.relaxation_parameter
         #print("soln: ")
