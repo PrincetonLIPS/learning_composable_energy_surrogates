@@ -10,6 +10,7 @@ from ..nets.feed_forward_net import FeedForwardNet
 from ..energy_model.composed_energy_model import ComposedEnergyModel
 from ..energy_model.composed_fenics_energy_model import ComposedFenicsEnergyModel
 from ..util.solve import solve
+from ..geometry.remove_rigid_body import RigidRemover
 
 import random
 import numpy as np
@@ -31,6 +32,7 @@ class DeployCollectorBase(CollectorBase):
         sem = SurrogateEnergyModel(args, net, self.fsm)
         cem = ComposedEnergyModel(args, sem,
                                   args.n_high, args.n_wide)
+        rr = RigidRemover(self.fsm)
         cem_boundary, constraint_mask = make_compression_deploy_bc(args, cem)
         params = torch.zeros(args.n_high * args.n_wide, 2)
         params[:, 0] = args.c1
@@ -42,16 +44,26 @@ class DeployCollectorBase(CollectorBase):
                       return_intermediate=True)
         cell_idx = np.random.choice(cem.n_cells)
 
-        self.traj_u = [self.fsm.to_torch(torch.matmul(
+        self.traj_u = [self.fsm.to_torch(rr(torch.matmul(
             cem.cell_maps.view(-1, cem.cell_maps.size(2)), u_i
-        ).view(cem.n_cells, -1, 2)[cell_idx]) for u_i in traj_u]
+        ).view(cem.n_cells, -1, 2)[cell_idx])) for u_i in traj_u]
+    
+        self.initial = self.fsm.to_torch(rr(torch.matmul(
+            cem.cell_maps.view(-1, cem.cell_maps.size(2)), cem_boundary).view(
+                cem.n_cells, -1, 2)[cell_idx]))
 
+        self.final = self.fsm.to_torch(rr(torch.matmul(
+            cem.cell_maps.view(-1, cem.cell_maps.size(2)), surr_soln).view(
+                cem.n_cells, -1, 2)[cell_idx]))
+       
+        self.traj_u.append(self.final)
         deltas = [
-            torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.cpu().numpy()
+            torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.item()
             for i in range(1, len(self.traj_u))
         ]
 
         deltas = [0.0] + deltas
+        self.deltas = deltas
         buckets = np.cumsum(deltas)
         self.buckets = buckets / buckets[-1]
 
@@ -59,9 +71,13 @@ class DeployCollectorBase(CollectorBase):
         self.factor = 0.0
         self.steps = 0
         self.base_relax = self.args.relaxation_parameter
+        #print("soln: ")
+        # print(self.final)
+        #print("deltas {}, buckets {}".format(deltas, self.buckets))
         self.guess = solve(self.fem, args,
                            self.traj_u[0], fa.Function(self.fsm.V).vector(),
-                           torch.zeros_like(self.traj_u[0]), 50, 0.9)
+                           torch.zeros_like(self.traj_u[0]), 50, 0.99)
+        self.last_u = torch.zeros_like(self.traj_u[0])
 
 
     def get_weighted_data(self, factor):
@@ -72,8 +88,15 @@ class DeployCollectorBase(CollectorBase):
         residual = factor - self.buckets[idx]
 
         alpha = residual / (self.buckets[idx + 1] - self.buckets[idx] + 1e-7)
-
+        
         u = alpha * u2 + (1.0 - alpha) * u1
+        
+        #print("factor {:.3e}, idx {}, residual {:.3e}, alpha {:.3e},  u-u0 {:.3e}, u-init {:.3e}, fin-init {:.3e}".format(factor, idx, residual, alpha, (u-self.traj_u[0]).norm().item(), (u-self.initial).norm().item(), (self.final-self.initial).norm().item())) 
+        self.guess = solve(self.fem, self.args,
+                    u, self.guess,
+                    self.last_u, 50, 0.99)
+        self.last_u = u
+
         return torch.Tensor(u.data)
 
 

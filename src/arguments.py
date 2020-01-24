@@ -156,7 +156,7 @@ parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=20,
+    default=10,
 )
 parser.add_argument(
     "--rtol", type=float, help="Newton relative tolerance", default=1e-5,
