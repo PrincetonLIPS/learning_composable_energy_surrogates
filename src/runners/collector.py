@@ -23,7 +23,6 @@ class CollectorBase(object):
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.bc, _, _, self.constraint_mask = make_bc(args, self.fsm)
         self.stepsize = 1.0 / args.anneal_steps
-        self.factor = 0.0
         self.guess = fa.Function(self.fsm.V).vector()
         self.steps = 0
         self.base_relax = self.args.relaxation_parameter

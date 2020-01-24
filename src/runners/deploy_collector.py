@@ -44,7 +44,7 @@ class DeployCollectorBase(CollectorBase):
 
         self.traj_u = [self.fsm.to_torch(torch.matmul(
             cem.cell_maps.view(-1, cem.cell_maps.size(2)), u_i
-        ).view(cem.n_cells, -1, 2)[cell_idx]) for u_i in traj_u]
+        ).view(cem.n_cells, -1, 2)[cell_idx]) for u_i in traj_u[1:]]
 
         deltas = [
             torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.cpu().numpy()
@@ -56,7 +56,6 @@ class DeployCollectorBase(CollectorBase):
         self.buckets = buckets / buckets[-1]
 
         self.stepsize = 1.0 / args.anneal_steps
-        self.factor = 0.0
         self.steps = 0
         self.base_relax = self.args.relaxation_parameter
         self.guess = solve(self.fem, args,
