@@ -486,8 +486,8 @@ class AdversarialCollectorBase(object):
                 )
 
     def step(self, batch):
-        # fa.set_log_level(20) 
-        
+        # fa.set_log_level(20)
+
         u, p, f, J, H, Vsmall_guess = batch
 
         i = np.random.randint(len(u))
@@ -499,7 +499,7 @@ class AdversarialCollectorBase(object):
 
         if f <= 0.:
             raise Exception("Received too low energy f")
-        
+
         self.n += 1
         if self.n > 25:
             raise Exception("Successfully exiting after 25 iters.")
@@ -513,7 +513,7 @@ class AdversarialCollectorBase(object):
         self.net.fsm = self.fsm
 
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
-        
+
         if True:#Vsmall_guess is None or np.all(np.isclose(Vsmall_guess[i].numpy(), 0., atol=1e-9, rtol=1e-9)):
             # print("starting solve from scratch")
             guess = fa.Function(self.fsm.V).vector() # self.fsm.to_V(u).vector()
@@ -577,13 +577,13 @@ class AdversarialCollectorBase(object):
                 delta_u = grad
 
             # print(delta_u.norm())
-            if delta_u.norm() > 1.0:
-                delta_u_scaled = delta_u / delta_u.norm()
-            else:
-                delta_u_scaled = delta_u
+            # if delta_u.norm() > 1.0:
+            delta_u_scaled = delta_u / delta_u.norm()
+            # else:
+            #    delta_u_scaled = delta_u
 
             u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
-            
+
             success = False
             tries = 0
             while not success:
@@ -603,14 +603,14 @@ class AdversarialCollectorBase(object):
                     if tries > 10:
                         raise e
                     u = (u + last_u) / 2
-        
+
 
         # print("error: {:.5e}".format(-obj.mean().item()))
 
         # print("guess norm {}".format(torch.Tensor(guess).norm().item()))
-        
+
         f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
-        
+
         J = self.fsm.to_torch(JV)
 
         new_uV = fa.Function(self.fsm.V)

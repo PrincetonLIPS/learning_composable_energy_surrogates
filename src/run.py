@@ -344,6 +344,8 @@ if __name__ == "__main__":
                 k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
                 for k, v in state_dict.items()
             }
+            if args.deploy_collect:
+                last_state_dict = state_dict # Use most up to date state_dict
 
             if last_state_dict is not None:
                 broadcast_net_state = ray.put(last_state_dict)

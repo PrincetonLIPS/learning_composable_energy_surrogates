@@ -47,7 +47,7 @@ class DeployCollectorBase(CollectorBase):
         self.traj_u = [self.fsm.to_torch(rr(torch.matmul(
             cem.cell_maps.view(-1, cem.cell_maps.size(2)), u_i
         ).view(cem.n_cells, -1, 2)[cell_idx])) for u_i in traj_u]
-    
+
         self.initial = self.fsm.to_torch(rr(torch.matmul(
             cem.cell_maps.view(-1, cem.cell_maps.size(2)), cem_boundary).view(
                 cem.n_cells, -1, 2)[cell_idx]))
@@ -55,7 +55,7 @@ class DeployCollectorBase(CollectorBase):
         self.final = self.fsm.to_torch(rr(torch.matmul(
             cem.cell_maps.view(-1, cem.cell_maps.size(2)), surr_soln).view(
                 cem.n_cells, -1, 2)[cell_idx]))
-       
+
         self.traj_u.append(self.final)
         deltas = [
             torch.norm(self.traj_u[i] - self.traj_u[i - 1]).data.item()
@@ -82,15 +82,15 @@ class DeployCollectorBase(CollectorBase):
     def get_weighted_data(self, factor):
         idx = np.searchsorted(self.buckets, factor) - 1
         u1 = self.traj_u[idx]
-        u2 = self.traj_u[idx + 1]
+        u2 = self.traj_u[min(idx + 1, len(self.traj_u)-1)]
 
         residual = factor - self.buckets[idx]
 
         alpha = residual / (self.buckets[idx + 1] - self.buckets[idx] + 1e-7)
-        
+
         u = alpha * u2 + (1.0 - alpha) * u1
-        
-        #print("factor {:.3e}, idx {}, residual {:.3e}, alpha {:.3e},  u-u0 {:.3e}, u-init {:.3e}, fin-init {:.3e}".format(factor, idx, residual, alpha, (u-self.traj_u[0]).norm().item(), (u-self.initial).norm().item(), (self.final-self.initial).norm().item())) 
+
+        #print("factor {:.3e}, idx {}, residual {:.3e}, alpha {:.3e},  u-u0 {:.3e}, u-init {:.3e}, fin-init {:.3e}".format(factor, idx, residual, alpha, (u-self.traj_u[0]).norm().item(), (u-self.initial).norm().item(), (self.final-self.initial).norm().item()))
         self.guess = solve(self.fem, self.args,
                     u, self.guess,
                     self.last_u, 50, 0.99)
