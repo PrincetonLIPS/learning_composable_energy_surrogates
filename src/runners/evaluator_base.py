@@ -174,9 +174,10 @@ class CompressionEvaluatorBase(object):
         self.sem = SurrogateEnergyModel(self.args, self.net, self.fsm)
         self.cem = ComposedEnergyModel(self.args, self.sem, RVES_WIDTH, RVES_WIDTH)
 
+        c1s = np.ones(RVES_WIDTH*RVES_WIDTH) * self.args.c1
+        c2s = np.ones(RVES_WIDTH*RVES_WIDTH) * self.args.c2
         cfem = ComposedFenicsEnergyModel(args, RVES_WIDTH, RVES_WIDTH,
-                                         np.zeros(RVES_WIDTH*RVES_WIDTH),
-                                         np.zeros(RVES_WIDTH*RVES_WIDTH))
+                                         c1s, c2s)
 
         constrained_sides = [True, False, True, False]
 
