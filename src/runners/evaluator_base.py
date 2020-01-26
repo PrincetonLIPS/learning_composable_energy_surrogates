@@ -185,6 +185,7 @@ class CompressionEvaluatorBase(object):
         cfem = ComposedFenicsEnergyModel(args, RVES_WIDTH, RVES_WIDTH,
                                          c1s, c2s)
 
+        print("Built energy models for compression evaluator")
         constrained_sides = [True, False, True, False]
 
         MAX_DISP = args.deploy_disp
@@ -192,6 +193,7 @@ class CompressionEvaluatorBase(object):
         init_guess = fa.Function(cfem.pde.V).vector()
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
+            print("Compression evaluator anneal step {}/{}".format(i, ANNEAL_STEPS))
             fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
                                            element=self.pde.V.ufl_element(),
                                             X=MAX_DISP*(i+1)/ANNEAL_STEPS)
@@ -220,6 +222,7 @@ class CompressionEvaluatorBase(object):
         self.cem_constraint_mask[self.cem.bot_idxs()] = 1.0
         self.cem_constraint_mask[self.cem.top_idxs()] = 1.0
         self.force_data = torch.zeros(len(self.cem.global_coords), 2)
+        print("Finished building CompressionEvaluator")
 
     def step(self, state_dict, step):
         if state_dict is not None:
