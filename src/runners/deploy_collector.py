@@ -1,6 +1,6 @@
 import torch
 from .. import fa_combined as fa
-from ..pde.metamaterial import Metamaterial
+from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
@@ -24,7 +24,7 @@ class DeployCollectorBase(CollectorBase):
         self.args = args
         np.random.seed(seed)
         make_p(args)
-        self.pde = Metamaterial(args)
+        self.pde = make_metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         net = FeedForwardNet(args, self.fsm)
@@ -86,7 +86,8 @@ class DeployCollectorBase(CollectorBase):
 
         residual = factor - self.buckets[idx]
 
-        alpha = residual / (self.buckets[idx + 1] - self.buckets[idx] + 1e-7)
+        alpha = residual / (self.buckets[max(idx + 1, len(self.buckets)-1)] -
+                                         self.buckets[idx] + 1e-7)
 
         u = alpha * u2 + (1.0 - alpha) * u1
 
@@ -108,7 +109,7 @@ if __name__ == '__main__':
     from ..arguments import parser
     import pdb
     args = parser.parse_args()
-    pde = Metamaterial(args)
+    pde = make_metamaterial(args)
     fsm = FunctionSpaceMap(pde.V, args.bV_dim, args=args)
     net = FeedForwardNet(args, fsm)
     dcollector = DeployCollectorBase(args, 0, net.state_dict())

@@ -20,20 +20,21 @@ class FunctionSpaceMap(object):
 
     def __init__(self, V, bV_dim, cuda=False, args=None):
         self.V = V
+        self.udim = V.ufl_element().value_size()
         if V.mesh().geometric_dimension() == 2:
             self.mesh = fa.UnitSquareMesh(bV_dim - 1, bV_dim - 1)
             self.bmesh = fa.BoundaryMesh(self.mesh, "exterior")
         else:
             raise Exception("Invalid geometric dimension")
-        if V.ufl_element().value_size() == 1:
+        if self.udim == 1:
             self.small_V = fa.FunctionSpace(self.mesh, "P", 1)
             self.bV = fa.FunctionSpace(self.bmesh, "P", 1)
         else:
             self.small_V = fa.VectorFunctionSpace(
-                self.mesh, "P", 1, dim=V.ufl_element().value_size()
+                self.mesh, "P", 1, dim=self.udim
             )
             self.bV = fa.VectorFunctionSpace(
-                self.bmesh, "P", 1, dim=V.ufl_element().value_size()
+                self.bmesh, "P", 1, dim=self.udim
             )
         self.bV_dim = bV_dim
         self.elems_along_edge = self.bV_dim - 1
@@ -56,7 +57,7 @@ class FunctionSpaceMap(object):
             self.small_pde = Metamaterial(args, self.mesh)
 
     def init_ring(self, V):
-        self.channels = V.ufl_element().value_size()
+        self.channels = self.udim
 
         self.ring_coords = torch.zeros(4 * self.elems_along_edge, 2)
 
@@ -71,7 +72,7 @@ class FunctionSpaceMap(object):
             self.ring_coords.data[s, 1] = x2
 
         self.vec_to_ring_map_cpu = torch.zeros(
-            self.vector_dim, 4 * self.elems_along_edge, 2
+            self.vector_dim, 4 * self.elems_along_edge, self.udim
         )
         for c in range(self.channels):
             for idx in (
@@ -318,7 +319,7 @@ class FunctionSpaceMap(object):
             return False
         elif fn_or_vec.size()[-2] != 4 * self.elems_along_edge:
             return False
-        elif fn_or_vec.size()[-1] != self.V.ufl_element().value_size():
+        elif fn_or_vec.size()[-1] != self.udim:
             return False
         else:
             return True
@@ -353,9 +354,13 @@ class FunctionSpaceMap(object):
             x = self.to_ring(torch.zeros([self.vector_dim]))
             for i, xloc in enumerate(self.ring_coords):
                 x1, x2 = xloc.data.cpu().numpy()
-                y1, y2 = fn_V([x1, x2])
-                x[i, 0] = y1
-                x[i, 1] = y2
+                ys = fn_V([x1, x2])  # Scalar if self.udim is 1, else vec
+                if self.udim > 1:
+                    assert len(ys) == len(self.udim)
+                    for j in range(self.udim):
+                        x[i, j] = ys[j]
+                else:
+                    x[i, 0] = ys
             return x
 
         if getattr(fn_V, "is_fa_gradient", False):
@@ -369,7 +374,7 @@ class FunctionSpaceMap(object):
 
     def V_gradient_to_ring(self, fn_V):
         uvec = self._cuda(torch.Tensor(np.array(fn_V.vector())))  # (|Y|xD)
-        uvec = torch.stack(de_interleave(uvec))  # D x |Y|
+        uvec = de_interleave(uvec, self.udim)  # D x |Y|
         grad_ring = torch.matmul(uvec, self.A)  # D x |y|
         grad_ring = grad_ring.transpose(1, 0)  # |y| x D
         return grad_ring
@@ -381,7 +386,7 @@ class FunctionSpaceMap(object):
             assert fn_ring.size(0) == 1
             fn_ring = fn_ring.squeeze(0)
         uvec = torch.matmul(self.A, fn_ring)  # |Y| x D
-        uvec = interleave(uvec[:, 0], uvec[:, 1])  # (|Y|xD)
+        uvec = interleave(uvec)  # (|Y|xD)
         uvec = uvec.data.cpu().numpy()
         fn_V = fa.Function(self.V)
         fn_V.vector().set_local(uvec)
@@ -394,7 +399,7 @@ class FunctionSpaceMap(object):
             assert fn_ring.size(0) == 1
             fn_ring = fn_ring.squeeze(0)
         uvec = torch.matmul(self.small_A, fn_ring)  # |Y| x D
-        uvec = interleave(uvec[:, 0], uvec[:, 1])  # (|Y|xD)
+        uvec = interleave(uvec)  # (|Y|xD)
         uvec = uvec.data.cpu().numpy()
         fn_sV = fa.Function(self.small_V)
         fn_sV.vector().set_local(uvec)
@@ -415,7 +420,7 @@ class FunctionSpaceMap(object):
             ring = ret.squeeze(0)
         else:
             ringvec = torch.matmul(fn_or_vec, self.vec_to_ring_map)
-            ring = ringvec.view(-1, 4 * self.elems_along_edge, 2)
+            ring = ringvec.view(-1, 4 * self.elems_along_edge, self.udim)
         if not keep_grad:
             ring = self.proc_torch(ring)
         return ring
@@ -459,14 +464,28 @@ class FunctionSpaceMap(object):
         )
 
 
-def interleave(a, b):
-    c = torch.empty(len(a) + len(b)).to(a.device)
-    c[0::2] = a
-    c[1::2] = b
-    return c
+def interleave(c):
+    assert len(c.size()) == 2
+    if c.size(-1) == 1:
+        return c.squeeze(-1)
+    elif c.size(-1) == 2:
+        a = c[:, 0]
+        b = c[:, 1]
+        c = torch.empty(len(a) + len(b)).to(a.device)
+        c[0::2] = a
+        c[1::2] = b
+        return c
+    else:
+        raise Exception("Unsupported")
 
 
-def de_interleave(c):
-    a = c[0::2]
-    b = c[1::2]
-    return a, b
+
+def de_interleave(c, n):
+    if n == 2:
+        a = c[0::2]
+        b = c[1::2]
+        return torch.stack(a, b)
+    elif n == 1:
+        return c
+    else:
+        raise Exception("Unsupported")

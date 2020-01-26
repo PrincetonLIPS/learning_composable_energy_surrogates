@@ -21,7 +21,7 @@ from .arguments import parser
 
 # from ..runners.online_trainer import OnlineTrainer
 from . import fa_combined as fa
-from .pde.metamaterial import Metamaterial
+from .pde.metamaterial import make_metamaterial
 from .nets.feed_forward_net import FeedForwardNet
 from .maps.function_space_map import FunctionSpaceMap
 from .energy_model.surrogate_energy_model import SurrogateEnergyModel
@@ -40,6 +40,7 @@ from .util.exponential_moving_stats import ExponentialMovingStats
 from .util.timer import Timer
 import time
 import io
+
 
 
 def _cuda(x):
@@ -67,7 +68,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
 
-    pde = Metamaterial(args)
+    pde = make_metamaterial(args)
 
     if not os.path.exists(args.results_dir):
         os.mkdir(args.results_dir)

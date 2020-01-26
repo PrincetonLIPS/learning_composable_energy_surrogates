@@ -79,22 +79,22 @@ class ComposedEnergyModel(object):
     def interpolate(self, fn):
         data = np.zeros_like(self.global_coords)
         for i, (x1, x2) in enumerate(self.global_coords):
-            u1, u2 = fn(x1, x2)
-            data[i][0] = u1
-            data[i][1] = u2
+            us = fn(x1, x2)
+            data[i, :] = us
         return data
 
     def energy(self, global_coords, params, force_data):
         cell_coords = torch.matmul(
             self.cell_maps.view(-1, self.cell_maps.size(2)), global_coords
         )
-        cell_coords = cell_coords.view(self.n_cells, -1, 2)
+        cell_coords = cell_coords.view(self.n_cells, -1, self.fsm.udim)
 
         if force_data is not None:
             cell_force_data = torch.matmul(
                 self.cell_maps.view(-1, self.cell_maps.size(2)), force_data
             )
-            cell_force_data = cell_force_data.view(self.n_cells, -1, 2)
+            cell_force_data = cell_force_data.view(self.n_cells, -1,
+                                                   self.fsm.udim)
 
         else:
             cell_force_data = torch.zeros_like(cell_coords)

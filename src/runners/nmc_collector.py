@@ -1,6 +1,6 @@
 import torch
 from .. import fa_combined as fa
-from ..pde.metamaterial import Metamaterial
+from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
@@ -25,7 +25,7 @@ class NMCCollectorBase(object):
         np.random.seed(seed)
         torch.manual_seed(np.random.randint(2**32))
         make_p(args)
-        self.pde = Metamaterial(args)
+        self.pde = make_metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.guess = fa.Function(self.fsm.V).vector()
@@ -372,7 +372,7 @@ class AdversarialCollectorBase(object):
         make_p(args)
         # self.last_sample = torch.zeros(self.fsm.vector_dim)
 
-        self.pde = Metamaterial(args)
+        self.pde = make_metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.net = FeedForwardNet(args, self.fsm)
         self.net.load_state_dict(state_dict)
@@ -507,7 +507,7 @@ class AdversarialCollectorBase(object):
         p = p.view(-1)
         self.args.c1 = p[0].item()
         self.args.c2 = p[1].item()
-        self.pde = Metamaterial(self.args)
+        self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, args=self.args)
         self.sem.fsm = self.fsm
         self.net.fsm = self.fsm
@@ -643,12 +643,12 @@ class AdversarialCollector(AdversarialCollectorBase):
 if __name__ == '__main__':
     from ..arguments import parser
     import pdb
-    from ..pde.metamaterial import Metamaterial
+    from ..pde.metamaterial import make_metamaterial
     args = parser.parse_args()
     args.c1 = 0.
     args.c2 = 0.
     fa.set_log_level(20)
-    pde = Metamaterial(args)
+    pde = make_metamaterial(args)
     fsm = FunctionSpaceMap(pde.V, args.bV_dim)
     fem = FenicsEnergyModel(args, pde, fsm)
     net = FeedForwardNet(args, fsm)

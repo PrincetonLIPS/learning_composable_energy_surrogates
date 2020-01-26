@@ -1,6 +1,6 @@
 import torch
 from .. import fa_combined as fa
-from ..pde.metamaterial import Metamaterial
+from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
@@ -27,7 +27,7 @@ class EvaluatorBase(object):
         self.args = args
         np.random.seed(seed)
         self.p = make_p(self.args)
-        self.pde = Metamaterial(self.args)
+        self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
@@ -165,7 +165,7 @@ class CompressionEvaluatorBase(object):
             np.random.seed(seed)
             make_p(self.args)
 
-        self.pde = Metamaterial(self.args)
+        self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 

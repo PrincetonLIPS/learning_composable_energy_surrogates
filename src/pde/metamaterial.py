@@ -203,3 +203,10 @@ class PoissonMetamaterial(Metamaterial):
         udim0 = fa.inner(u, fa.Constant((1.0, 0.0)))
         f = udim0 - fa.exp(udim0)
         return 0.5 * fa.inner(fa.grad(udim0), fa.grad(udim0)) - f
+
+
+def make_metamaterial(args, mesh=None):
+    if args.poisson:
+        return PoissonMetamaterial(args, mesh)
+    else:
+        return Metamaterial(args, mesh)

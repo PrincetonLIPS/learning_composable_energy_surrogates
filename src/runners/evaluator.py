@@ -1,6 +1,6 @@
 import torch
 from .. import fa_combined as fa
-from ..pde.metamaterial import Metamaterial
+from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel

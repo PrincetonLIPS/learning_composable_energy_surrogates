@@ -17,6 +17,8 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--run_local", help="Run locally", type=s2b, default=True)
 
+parser.add_argument("--poisson", help="Use nonlinear Poisson instead of elasticity", type=s2b, default=False)
+
 parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
 parser.add_argument("--deploy", help="Deploy", type=s2b, default=True)
