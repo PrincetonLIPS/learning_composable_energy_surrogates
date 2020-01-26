@@ -229,6 +229,22 @@ class CompressionEvaluatorBase(object):
                               self.cem_constraint_mask, self.force_data,
                               step_size=0.1, opt_steps=500, return_intermediate=True)
 
+        traj_u_interp = [traj_u[0]]
+        traj_f_interp = [traj_f[0]]
+        traj_g_interp = [traj_g[0]]
+        T = len(traj_u)
+        L = 12
+        for i in range(1, L):
+            t = T * i/L
+            idx = int(math.floor(t))
+            rem = t - idx
+            traj_u_interp.append((1.-rem) * traj_u[idx] + rem * traj_u[idx+1])
+            traj_f_interp.append((1.-rem) * traj_f[idx] + rem * traj_f[idx+1])
+            traj_g_interp.append((1.-rem) * traj_g[idx] + rem * traj_g[idx+1])
+
+        traj_u_interp.append(traj_u[-1])
+        traj_f_interp.append(traj_f[-1])
+        traj_g_interp.append(traj_g[-1])
 
         img_buf = self.visualize_trajectory(
             traj_u, traj_f, traj_g
@@ -249,10 +265,11 @@ class CompressionEvaluatorBase(object):
     ):
         nrows = int(len(traj_u))
         assert len(traj_u) == len(traj_f)
+        assert len(traj_g) == len(traj_u)
 
         # traj_u = surrogate.fsm.to_ring(torch.cat(traj_u, dim=0))
 
-        fig, axes = plt.subplots(nrows, 1, figsize=(10, 10 * nrows))
+        fig, axes = plt.subplots(nrows, 1, figsize=(8, 8 * nrows))
 
         # if nrows > 1:
         #     axes = [ax for axs in axes for ax in axs]
@@ -271,22 +288,22 @@ class CompressionEvaluatorBase(object):
             if i >= len(traj_u):
                 break
             plt.sca(ax)
-            ax.scatter(initial_coords[:, 0], initial_coords[:, 1], color='k',
-                        label='rest')
+            ax.scatter(initial_coords[:, 0], initial_coords[:, 1], color='silver',
+                        label='rest', alpha=0.2)
             ax.scatter(initial_coords[:, 0] + self.init_boundary_data[:, 0].data.numpy(),
                         initial_coords[:, 1] + self.init_boundary_data[:, 1].data.numpy(),
-                        color='silver', label='scaled, f={:.3e}, fhat={:.3e}'.format(
+                        color='k', label='scaled, f={:.2e}, fhat={:.2e}'.format(
                             self.true_scaled_f, fhat_on_scaled
                         ))
             ax.scatter(initial_coords[:, 0] + self.true_soln_points[:, 0].data.numpy(),
                         initial_coords[:, 1] + self.true_soln_points[:, 1].data.numpy(),
-                        color='blue', label='true solution, f={:.3e}, fhat={:.3e}'.format(
+                        color='blue', label='true solution, f={:.2e}, fhat={:.2e}'.format(
                             self.true_f, fhat_on_true
                         ))
             ax.scatter(initial_coords[:, 0] + traj_u[i][:, 0].data.numpy(),
                         initial_coords[:, 1] + traj_u[i][:, 1].data.numpy(),
-                        color='red', label='surrogate solution, fhat={:.3e}'.format(
-                            traj_f[i]
+                        color='red', label='surrogate solution, fhat={:.2e}, ||ghat||={:.2e}'.format(
+                            traj_f[i], traj_g[i].norm()
                         ))
 
             fa.plot(self.true_soln, mode='displacement', alpha=0.2)
