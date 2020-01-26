@@ -333,6 +333,7 @@ if __name__ == "__main__":
 
         last_state_dict = None
         state_dict = None
+        broadcast_net_state = None
         while step < args.max_train_steps:
             # pdb.set_trace()
             # [f_loss, f_pce, J_loss, J_cossim, loss]
@@ -363,14 +364,14 @@ if __name__ == "__main__":
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
-                if last_state_dict is not None and step > 2500:
+                if broadcast_net_state is not None and step > 2500:
                     if args.adv_collect:
                         online_harvester.step(init_args=(broadcast_net_state,),
                                               step_args=(batch,))
                     if args.deploy_collect:
                         online_harvester.step(init_args=(broadcast_net_state,),
                                               step_args=())
-                if args.deploy:
+                if args.deploy and broadcast_net_state is not None:
                     deploy_harvester.step(step_args=(broadcast_net_state, step))
 
                 step += 1
