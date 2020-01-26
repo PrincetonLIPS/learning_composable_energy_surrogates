@@ -398,3 +398,10 @@ parser.add_argument(
     type=int,
     default=4,
 )
+
+parser.add_argument(
+    "--deploy_disp",
+    help="displacement for deployment evaluation",
+    type=float,
+    default=-0.125, # Compression from Overvelde and Bertoldi
+)

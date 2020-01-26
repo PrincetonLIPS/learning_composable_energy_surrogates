@@ -7,6 +7,8 @@ from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
 from ..data.sample_params import make_p, make_bc, make_force
 from ..nets.feed_forward_net import FeedForwardNet
 from ..viz.plotting import plot_boundary
+from ..energy_model.composed_energy_model import ComposedEnergyModel
+from ..energy_model.composed_fenics_energy_model import ComposedFenicsEnergyModel
 
 import math
 import matplotlib.pyplot as plt
@@ -14,12 +16,15 @@ import io
 from PIL import Image
 
 import numpy as np
+import pdb
 
 import ray
 
 
-@ray.remote(resources={"WorkerFlags": 0.5})
-class Evaluator(object):
+RVES_WIDTH = 4
+
+
+class EvaluatorBase(object):
     def __init__(self, args, seed):
         self.args = args
         np.random.seed(seed)
@@ -153,3 +158,156 @@ class Evaluator(object):
         buf.seek(0)
         plt.close()
         return buf.getvalue()
+
+
+@ray.remote(resources={"WorkerFlags": 0.5})
+class Evaluator(object):
+    pass
+
+
+class CompressionEvaluatorBase(object):
+    def __init__(self, args, seed):
+        self.args = args
+        if seed != 0:
+            np.random.seed(seed)
+            make_p(self.args)
+
+        self.pde = Metamaterial(self.args)
+        self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
+        self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
+
+        self.net = FeedForwardNet(self.args, self.fsm)
+
+        self.sem = SurrogateEnergyModel(self.args, self.net, self.fsm)
+        self.cem = ComposedEnergyModel(self.args, self.sem, RVES_WIDTH, RVES_WIDTH)
+
+        cfem = ComposedFenicsEnergyModel(args, RVES_WIDTH, RVES_WIDTH,
+                                         np.zeros(RVES_WIDTH*RVES_WIDTH),
+                                         np.zeros(RVES_WIDTH*RVES_WIDTH))
+
+        constrained_sides = [True, False, True, False]
+
+        MAX_DISP = args.deploy_disp
+        ANNEAL_STEPS = args.anneal_steps
+        init_guess = fa.Function(cfem.pde.V).vector()
+        for i in range(ANNEAL_STEPS):
+            # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
+            fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
+                                           element=self.pde.V.ufl_element(),
+                                            X=MAX_DISP*(i+1)/ANNEAL_STEPS)
+
+            true_soln = cfem.solve(args=args, boundary_fn=fenics_boundary_fn,
+                                   constrained_sides=constrained_sides,
+                                   initial_guess=init_guess)
+            init_guess = true_soln.vector()
+
+        self.true_soln = true_soln
+        self.true_f = cfem.pde.energy(true_soln)
+        self.true_scaled_f = cfem.pde.energy(fa.project(fenics_boundary_fn,
+                                             cfem.pde.V))
+
+        self.init_boundary_data = torch.zeros(len(self.cem.global_coords), 2)
+        self.init_boundary_data[:, 1] = MAX_DISP * torch.Tensor(self.cem.global_coords)[:, 1]
+
+        self.true_soln_points = torch.Tensor([
+            self.true_soln(*x)
+            for x in self.cem.global_coords
+        ])
+        self.params = torch.zeros(RVES_WIDTH*RVES_WIDTH, 2)
+        self.params[:, 0] = self.args.c1
+        self.params[:, 1] = self.args.c2
+        self.cem_constraint_mask = torch.zeros(len(self.cem.global_coords))
+        self.cem_constraint_mask[self.cem.bot_idxs()] = 1.0
+        self.cem_constraint_mask[self.cem.top_idxs()] = 1.0
+        self.force_data = torch.zeros(len(self.cem.global_coords), 2)
+
+    def step(self, state_dict, step):
+        if state_dict is not None:
+            self.cem.sem.net.load_state_dict(state_dict)
+
+        surr_soln, traj_u, traj_f, traj_g = self.cem.solve(self.params, self.init_boundary_data,
+                              self.cem_constraint_mask, self.force_data,
+                              step_size=0.1, opt_steps=500, return_intermediate=True)
+
+
+        img_buf = self.visualize_trajectory(
+            traj_u, traj_f, traj_g
+        )
+
+        assert all(i==j for i, j in zip(self.true_soln_points.size(),
+                                        surr_soln.size()))
+
+        err = ((surr_soln-self.true_soln_points)**2).sum().item()
+
+        return err, img_buf, step
+
+    def visualize_trajectory(
+        self,
+        traj_u,
+        traj_f,
+        traj_g
+    ):
+        nrows = int(len(traj_u))
+        assert len(traj_u) == len(traj_f)
+
+        # traj_u = surrogate.fsm.to_ring(torch.cat(traj_u, dim=0))
+
+        fig, axes = plt.subplots(nrows, 1, figsize=(10, 10 * nrows))
+
+        # if nrows > 1:
+        #     axes = [ax for axs in axes for ax in axs]
+        # else:
+        #     axes = [ax for ax in axes]
+        # true_solution_fn = surrogate.fsm.get_query_fn(true_solution)
+        # proj_true_soln_fn = surrogate.fsm.get_query_fn(surrogate.fsm.to_ring(true_solution))
+        initial_coords = np.array(self.cem.global_coords)
+
+        fhat_on_true = self.cem.energy(self.true_soln_points, self.params, None).item()
+
+        fhat_on_scaled = self.cem.energy(self.init_boundary_data, self.params, None).item()
+
+
+        for i, ax in enumerate(axes):
+            if i >= len(traj_u):
+                break
+            plt.sca(ax)
+            ax.scatter(initial_coords[:, 0], initial_coords[:, 1], color='k',
+                        label='rest')
+            ax.scatter(initial_coords[:, 0] + self.init_boundary_data[:, 0].data.numpy(),
+                        initial_coords[:, 1] + self.init_boundary_data[:, 1].data.numpy(),
+                        color='silver', label='scaled, f={:.3e}, fhat={:.3e}'.format(
+                            self.true_scaled_f, fhat_on_scaled
+                        ))
+            ax.scatter(initial_coords[:, 0] + self.true_soln_points[:, 0].data.numpy(),
+                        initial_coords[:, 1] + self.true_soln_points[:, 1].data.numpy(),
+                        color='blue', label='true solution, f={:.3e}, fhat={:.3e}'.format(
+                            self.true_f, fhat_on_true
+                        ))
+            ax.scatter(initial_coords[:, 0] + traj_u[i][:, 0].data.numpy(),
+                        initial_coords[:, 1] + traj_u[i][:, 1].data.numpy(),
+                        color='red', label='surrogate solution, fhat={:.3e}'.format(
+                            traj_f[i]
+                        ))
+
+            fa.plot(self.true_soln, mode='displacement', alpha=0.2)
+
+            ax.legend()
+        # plt.show()
+        fig.canvas.draw()
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png")
+        buf.seek(0)
+        plt.close()
+        return buf.getvalue()
+
+@ray.remote(resources={"WorkerFlags": 1.0})
+class CompressionEvaluator(object):
+    pass
+
+
+if __name__ == '__main__':
+    from ..arguments import parser
+    args = parser.parse_args()
+    fa.set_log_level(20)
+    ce = CompressionEvaluatorBase(args, 0)
+    ce.step(None, 0)

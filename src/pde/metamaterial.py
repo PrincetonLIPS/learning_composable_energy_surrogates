@@ -117,7 +117,8 @@ class Metamaterial(PDE):
 
 
 def make_metamaterial_mesh(
-    L0, c1, c2, pore_radial_resolution, min_feature_size, resolution, n_cells, porosity
+    L0, c1, c2, pore_radial_resolution, min_feature_size,
+    resolution, n_cells, porosity,
 ):
 
     material_domain = None
@@ -194,3 +195,11 @@ def verify_params(pore_points, radii, L0, min_feature_size):
             "satisfy (our stricter version of) Constraint B "
             "from Overvelde & Bertoldi"
         )
+
+
+class PoissonMetamaterial(Metamaterial):
+    def _energy_density(self, u):
+        """Energy density is NeoHookean strain energy. See strain.py for def."""
+        udim0 = fa.inner(u, fa.Constant((1.0, 0.0)))
+        f = udim0 - fa.exp(udim0)
+        return 0.5 * fa.inner(fa.grad(udim0), fa.grad(udim0)) - f
