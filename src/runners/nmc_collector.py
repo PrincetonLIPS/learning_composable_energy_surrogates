@@ -540,70 +540,75 @@ class AdversarialCollectorBase(object):
         # print("error: {:.5e}".format(-obj.mean().item()))
 
         for i in range(1 if self.args.adv_newton else self.args.adv_gd_steps):
-            if self.args.adv_newton:
-                stack_u = torch.autograd.Variable(
-                    torch.stack([u.data for _ in range(len(u))], dim=0),
-                                            requires_grad=True)
+            try:
+                if self.args.adv_newton:
+                    stack_u = torch.autograd.Variable(
+                        torch.stack([u.data for _ in range(len(u))], dim=0),
+                                                requires_grad=True)
 
-                # pdb.set_trace()
+                    # pdb.set_trace()
 
-                # objective to minimize is the negative of the error
-                obj = - self.damped_error(stack_u, u0, p, f, J, H)
+                    # objective to minimize is the negative of the error
+                    obj = - self.damped_error(stack_u, u0, p, f, J, H)
 
-                # print("error: {:.5e}".format(-obj.mean().item()))
+                    # print("error: {:.5e}".format(-obj.mean().item()))
 
-                stack_grad = torch.autograd.grad(obj.sum(), stack_u,
-                                           create_graph=True,
-                                           retain_graph=True)[0]
-                grad = stack_grad[0]
+                    stack_grad = torch.autograd.grad(obj.sum(), stack_u,
+                                               create_graph=True,
+                                               retain_graph=True)[0]
+                    grad = stack_grad[0]
 
-                hess = torch.autograd.grad(torch.trace(stack_grad), stack_u)[0]
-                hess = hess.view(len(u), len(u))
+                    hess = torch.autograd.grad(torch.trace(stack_grad), stack_u)[0]
+                    hess = hess.view(len(u), len(u))
 
-                eig = torch.symeig(hess).eigenvalues
-                min_eig = torch.min(eig)
-                # print(min_eig)
-                # print(torch.max(eig))
-                if min_eig < 1e-9:
-                    hess = hess + (1e-9 - min_eig) * torch.eye(len(u))
-                hinv = torch.cholesky_inverse(hess)
-                delta_u = torch.matmul(hinv, grad.view(-1, 1)).view(-1)
-            else:
-                stack_u = torch.autograd.Variable(u.unsqueeze(0).data,
-                                                  requires_grad=True)
-                obj = - self.damped_error(stack_u, u0, p, f, J, H)
-                # print("error: {:.5e}".format(-obj.mean().item()))
-                grad = torch.autograd.grad(obj.sum(), stack_u)[0][0]
-                delta_u = grad
+                    eig = torch.symeig(hess).eigenvalues
+                    min_eig = torch.min(eig)
+                    # print(min_eig)
+                    # print(torch.max(eig))
+                    if min_eig < 1e-9:
+                        hess = hess + (1e-9 - min_eig) * torch.eye(len(u))
+                    hinv = torch.cholesky_inverse(hess)
+                    delta_u = torch.matmul(hinv, grad.view(-1, 1)).view(-1)
+                else:
+                    stack_u = torch.autograd.Variable(u.unsqueeze(0).data,
+                                                      requires_grad=True)
+                    obj = - self.damped_error(stack_u, u0, p, f, J, H)
+                    # print("error: {:.5e}".format(-obj.mean().item()))
+                    grad = torch.autograd.grad(obj.sum(), stack_u)[0][0]
+                    delta_u = grad
 
-            # print(delta_u.norm())
-            # if delta_u.norm() > 1.0:
-            delta_u_scaled = delta_u / delta_u.norm()
-            # else:
-            #    delta_u_scaled = delta_u
+                # print(delta_u.norm())
+                # if delta_u.norm() > 1.0:
+                delta_u_scaled = delta_u / delta_u.norm()
+                # else:
+                #    delta_u_scaled = delta_u
 
-            u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
+                u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
 
-            success = False
-            tries = 0
-            while not success:
-                try:
-                    guess = self.solve(u, guess, last_u)
-                    if self.args.adv_newton:
-                        f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
-                    else:
-                        f, JV = self.fem.f_J(u, initial_guess=guess)
-                    f = torch.Tensor([f])
-                    J = self.fsm.to_torch(JV)
-                    u0 = u.clone().detach()
-                    success = True
-                except Exception as e:
-                    print("reducing size of u for time ", tries)
-                    tries += 1
-                    if tries > 10:
-                        raise e
-                    u = (u + last_u) / 2
-
+                success = False
+                tries = 0
+                while not success:
+                    try:
+                        guess = self.solve(u, guess, last_u)
+                        if self.args.adv_newton:
+                            f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
+                        else:
+                            f, JV = self.fem.f_J(u, initial_guess=guess)
+                        f = torch.Tensor([f])
+                        J = self.fsm.to_torch(JV)
+                        u0 = u.clone().detach()
+                        success = True
+                    except Exception as e:
+                        print("reducing size of u for time ", tries)
+                        tries += 1
+                        if tries > 10:
+                            raise e
+                        u = (u + last_u) / 2
+            except Exception as e:
+                if i == 0:
+                    raise e #  Didn't even get one step
+                else:
+                    u = u0 #  Iterate from last successful step
 
         # print("error: {:.5e}".format(-obj.mean().item()))
 
