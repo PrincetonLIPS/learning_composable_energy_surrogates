@@ -164,7 +164,13 @@ class CompressionEvaluatorBase(object):
         if seed != 0:
             np.random.seed(seed)
             make_p(self.args)
+        else:
+            self.args.c1 = 0.
+            self.args.c2 = 0.
 
+        print("Starting compression evaluator with seed {}, c1 {:.3g}, c2 {:.3g}".format(
+            seed, self.args.c1, self.args.c2
+        ))
         self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)

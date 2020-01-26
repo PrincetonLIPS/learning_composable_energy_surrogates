@@ -21,8 +21,8 @@ def make_p(args):
         if tries >= 100:
             raise Exception("Failed to sample parameters")
     else:
-        args.c1 = (args.c1_low + args.c1_high) / 2.0
-        args.c2 = (args.c2_low + args.c2_high) / 2.0
+        args.c1 = 0.
+        args.c2 = 0.
 
 
 def make_force(args, fsm):
