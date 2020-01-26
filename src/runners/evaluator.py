@@ -247,7 +247,7 @@ class CompressionEvaluatorBase(object):
         traj_g_interp.append(traj_g[-1])
 
         img_buf = self.visualize_trajectory(
-            traj_u, traj_f, traj_g
+            traj_u_interp, traj_f_interp, traj_g_interp
         )
 
         assert all(i==j for i, j in zip(self.true_soln_points.size(),
@@ -269,7 +269,7 @@ class CompressionEvaluatorBase(object):
 
         # traj_u = surrogate.fsm.to_ring(torch.cat(traj_u, dim=0))
 
-        fig, axes = plt.subplots(nrows, 1, figsize=(8, 8 * nrows))
+        fig, axes = plt.subplots(nrows, 1, figsize=(6, 6 * nrows))
 
         # if nrows > 1:
         #     axes = [ax for axs in axes for ax in axs]
