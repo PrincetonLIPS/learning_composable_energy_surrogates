@@ -447,12 +447,15 @@ if __name__ == "__main__":
                     deploy_harvester.n_death,
                 )
             )
-            # print(
-            #    "Deploy harvester last error {}s ago: {}".format(
-            #        time.time() - deploy_harvester.last_error_time,
-            #        deploy_harvester.last_error,
-            #    )
-            #)
+            last_error_msg = str(deploy_harvester.last_error)
+            if len(last_error_msg.split("\n")) > 10:
+                last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
+            print(
+               "Deploy harvester last error {}s ago: {}".format(
+                   time.time() - deploy_harvester.last_error_time,
+                   last_error_msg,
+               )
+            )
             last_error_msg = str(online_harvester.last_error)
             if len(last_error_msg.split("\n")) > 10:
                 last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
