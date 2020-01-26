@@ -301,7 +301,7 @@ class CompressionEvaluatorBase(object):
         return buf.getvalue()
 
 @ray.remote(resources={"WorkerFlags": 1.0})
-class CompressionEvaluator(object):
+class CompressionEvaluator(CompressionEvaluatorBase):
     pass
 
 

@@ -370,8 +370,8 @@ if __name__ == "__main__":
                     if args.deploy_collect:
                         online_harvester.step(init_args=(broadcast_net_state,),
                                               step_args=())
-                    if args.deploy:
-                        deploy_harvester.step(step_args=(broadcast_net_state, step))
+                if args.deploy:
+                    deploy_harvester.step(step_args=(broadcast_net_state, step))
 
                 step += 1
             # pdb.set_trace()
