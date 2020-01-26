@@ -84,7 +84,7 @@ parser.add_argument("--seed", help="Random seed", type=int, default=0)
 
 
 parser.add_argument(
-    "--sample_c", help="sample c1, c2. else take mean", type=s2b, default=False
+    "--sample_c", help="sample c1, c2. else take zero", type=s2b, default=True
 )
 parser.add_argument(
     "--c1_low", help="minimum low-freq param for pore shape", type=float, default=-0.5

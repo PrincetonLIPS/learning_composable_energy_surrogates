@@ -201,7 +201,7 @@ class HMCCollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
-        if f <= 0.:
+        if f <= 0. and not self.args.poisson:
             raise Exception("Invalid data point!")
 
         new_uV = fa.Function(self.fsm.V)

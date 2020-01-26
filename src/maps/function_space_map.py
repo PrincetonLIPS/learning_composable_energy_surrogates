@@ -484,7 +484,7 @@ def de_interleave(c, n):
     if n == 2:
         a = c[0::2]
         b = c[1::2]
-        return torch.stack(a, b)
+        return torch.stack((a, b))
     elif n == 1:
         return c
     else:
