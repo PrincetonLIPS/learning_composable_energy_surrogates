@@ -16,6 +16,7 @@ class Harvester(object):
         self.ids_to_workers = {}
         self.last_error = None
         self.last_error_time = 0
+        self.next_seed = 0
 
     def step(self, init_args=(), step_args=()):
         self.sow(init_args, step_args)
@@ -25,9 +26,10 @@ class Harvester(object):
     def sow(self, init_args, step_args):
         for _ in range(self.max_workers - len(self.ids_to_workers)):
             new_worker = self.WorkerClass.remote(
-                self.args, np.random.randint(MAX_SEED), *init_args
+                self.args, self.next_seed, *init_args
             )
             self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
+            self.next_seed = (self.next_seed + 1) % MAX_SEED
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
