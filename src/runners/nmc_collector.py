@@ -445,7 +445,7 @@ class AdversarialCollectorBase(object):
             return u.vector()
         except Exception as e:
             if q_last is None and recursion_depth == 0:
-                return self.solve(q, guess, q_last, max_iter, factor=0.01)
+                return self.solve(q, guess, q_last, max_iter, factor=0.1)
             elif q_last is None:
                 raise e
             elif recursion_depth >= 8:

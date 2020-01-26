@@ -156,7 +156,7 @@ parser.add_argument(
     "--anneal_steps",
     type=int,
     help="number of anneal steps for data gathering",
-    default=5,
+    default=20,
 )
 parser.add_argument(
     "--rtol", type=float, help="Newton relative tolerance", default=1e-5,
@@ -260,15 +260,15 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--relaxation_parameter", default=0.1, type=float, help="relaxation parameter"
+    "--relaxation_parameter", default=0.05, type=float, help="relaxation parameter"
 )
 parser.add_argument(
-    "--max_newton_iter", default=500, type=int, help="maximum Newton iters"
+    "--max_newton_iter", default=2000, type=int, help="maximum Newton iters"
 )
 
 parser.add_argument(
     "--metamaterial_mesh_size",
-    default=20,
+    default=15,
     type=int,
     help="N points along one dim in each cell. "
     " Overvelde&Bertoldi use about sqrt(1000)",
