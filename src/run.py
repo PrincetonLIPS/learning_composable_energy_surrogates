@@ -32,7 +32,7 @@ from .runners.hmc_collector import HMCCollector as Collector
 from .runners.nmc_collector import AdversarialCollector
 from .runners.deploy_collector import DeployCollector
 
-from .runners.evaluator import Evaluator
+from .runners.evaluator import CompressionEvaluator as Evaluator
 from .runners.harvester import Harvester
 from .data.buffer import DataBuffer
 from .util.exponential_moving_stats import ExponentialMovingStats
