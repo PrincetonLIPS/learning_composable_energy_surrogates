@@ -381,7 +381,7 @@ class AdversarialCollectorBase(object):
         self.sem = SurrogateEnergyModel(args, self.net, self.fsm)
 
         self.n = 0
-        self.BASE_ITER = 50
+        self.BASE_ITER = 80
         self.BASE_FACTOR = 0.99
         self.rigid_remover = RigidRemover(self.fsm)
 
