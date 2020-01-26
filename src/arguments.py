@@ -38,7 +38,7 @@ parser.add_argument(
     "--max_collectors", help="max Collector workers", type=int, default=0
 )
 parser.add_argument(
-    "--max_evaluators", help="max Evaluator workers", type=int, default=4
+    "--max_evaluators", help="max Evaluator workers", type=int, default=3
 )
 
 parser.add_argument(
