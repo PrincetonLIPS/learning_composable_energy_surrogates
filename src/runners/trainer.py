@@ -299,12 +299,13 @@ class Trainer(object):
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
 
-        fhat[f.view(-1)<0] *= 0.
-        Jhat[f.view(-1)<0] *= 0.
-        Hvphat[f.view(-1)<0] *= 0.
-        Hvp[f.view(-1)<0] *= 0.
-        J[f.view(-1)<0] *= 0.
-        f[f.view(-1)<0] *= 0.
+        if not self.args.poisson:
+            fhat[f.view(-1)<0] *= 0.
+            Jhat[f.view(-1)<0] *= 0.
+            Hvphat[f.view(-1)<0] *= 0.
+            Hvp[f.view(-1)<0] *= 0.
+            J[f.view(-1)<0] *= 0.
+            f[f.view(-1)<0] *= 0.
         # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
@@ -367,12 +368,13 @@ class Trainer(object):
                 Hvphat = torch.zeros_like(Jhat)
                 Hvp = torch.zeros_like(Jhat)
 
-            fhat[f.view(-1)<0] *= 0.
-            Jhat[f.view(-1)<0] *= 0.
-            Hvphat[f.view(-1)<0] *= 0.
-            Hvp[f.view(-1)<0] *= 0.
-            J[f.view(-1)<0] *= 0.
-            f[f.view(-1)<0] *= 0.
+            if not self.args.poisson:
+                fhat[f.view(-1)<0] *= 0.
+                Jhat[f.view(-1)<0] *= 0.
+                Hvphat[f.view(-1)<0] *= 0.
+                Hvp[f.view(-1)<0] *= 0.
+                J[f.view(-1)<0] *= 0.
+                f[f.view(-1)<0] *= 0.
 
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data

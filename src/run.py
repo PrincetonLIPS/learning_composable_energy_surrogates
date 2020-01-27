@@ -51,6 +51,7 @@ def _cuda(x):
 
 
 if __name__ == "__main__":
+    torch.autograd.set_detect_anomaly(True)
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
