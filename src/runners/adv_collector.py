@@ -200,6 +200,9 @@ class AdversarialCollectorBase(object):
 
         steps = self.args.adv_newton_steps if self.args.adv_newton else self.args.adv_gd_steps
 
+        # Randomize number of steps : combination of cheap small deltas and expensive big deltas
+        steps = np.random.randint(1, steps)
+
         stepsize = self.args.adv_newton_stepsize if self.args.adv_newton else self.args.adv_gd_stepsize
 
         for i in range(steps):
