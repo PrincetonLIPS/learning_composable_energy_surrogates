@@ -331,6 +331,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--adv_burnin",
+    type=int,
+    help="burnin time for adv collector",
+    default=2500,
+)
+
+parser.add_argument(
     "--deploy_collect", help="Do online deployment data collection", type=s2b,
     default=False
 )

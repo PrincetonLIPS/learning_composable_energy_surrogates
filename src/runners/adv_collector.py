@@ -39,6 +39,7 @@ class AdversarialCollectorBase(object):
         self.BASE_ITER = 100
         self.BASE_FACTOR = 0.99
         self.rigid_remover = RigidRemover(self.fsm)
+        print("Created adv collector, seed {}".format(seed))
 
     def damped_error(self, u, u0, p, f, J, H):
 
@@ -195,11 +196,11 @@ class AdversarialCollectorBase(object):
         obj = - self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
         # print("error: {:.5e}".format(-obj.mean().item()))
 
-        newton_damp = np.random.uniform(0., args.adv_newton_damp)
+        newton_damp = np.random.uniform(0., self.args.adv_newton_damp)
 
-        steps = args.adv_newton_steps if args.adv_newton else args.adv_gd_steps
+        steps = self.args.adv_newton_steps if self.args.adv_newton else self.args.adv_gd_steps
 
-        stepsize = args.adv_newton_stepsize if args.adv_newton else args.adv_gd_stepsize
+        stepsize = self.args.adv_newton_stepsize if self.args.adv_newton else self.args.adv_gd_stepsize
 
         for i in range(steps):
             if self.args.verbose:
@@ -272,7 +273,8 @@ class AdversarialCollectorBase(object):
                         u0 = u.clone().detach()
                         success = True
                     except Exception as e:
-                        print("reducing size of u for time ", tries)
+                        if self.args.verbose:
+                            print("reducing size of u for time ", tries)
                         tries += 1
                         if tries > 10:
                             raise e
