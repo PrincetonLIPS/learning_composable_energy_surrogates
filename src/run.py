@@ -370,7 +370,7 @@ if __name__ == "__main__":
                         trainer.cd_step(step, batch)
                 train_step_time += train_step_timer.interval / n_batches
 
-                if broadcast_net_state is not None and step > 2500:
+                if broadcast_net_state is not None and step > args.adv_burnin:
                     if args.adv_collect:
                         online_harvester.step(init_args=(broadcast_net_state,),
                                               step_args=(batch,))
