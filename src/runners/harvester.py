@@ -14,10 +14,9 @@ class Harvester(object):
         self.n_success = 0
         self.n_death = 0
         self.ids_to_workers = {}
-        self.ids_to_seeds = {}
-        self.seeds = set([])
         self.last_error = None
         self.last_error_time = 0
+        self.next_seed = 0
 
     def step(self, init_args=(), step_args=()):
         self.sow(init_args, step_args)
@@ -26,16 +25,11 @@ class Harvester(object):
 
     def sow(self, init_args, step_args):
         for _ in range(self.max_workers - len(self.ids_to_workers)):
-            seed = 0
-            while i in self.seeds:
-                seed += 1
             new_worker = self.WorkerClass.remote(
-                self.args, seed, *init_args
+                self.args, self.next_seed, *init_args
             )
-            worker_id = new_worker.step.remote(*step_args)
-            self.ids_to_workers[worker_id] = new_worker
-            self.seeds.add(seed)
-            self.ids_to_seeds[worker_id] = seed
+            self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
+            self.next_seed = (self.next_seed + 1) % MAX_SEED
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
@@ -46,18 +40,14 @@ class Harvester(object):
         # Restart or kill workers as necessary
         for id, result in results.items():
             worker = self.ids_to_workers.pop(id)
-            seed = self.ids_to_seeds.pop(id)
             if not isinstance(result, Exception):
-                worker_id = worker.step.remote(*step_args)
-                self.ids_to_workers[worker_id] = worker
-                self.ids_to_seeds[worker_id] = seed
+                self.ids_to_workers[worker.step.remote(*step_args)] = worker
                 valid_results.append(result)
                 self.n_success += 1
             else:
                 self.n_death += 1
                 self.last_error = result
                 self.last_error_time = time.time()
-                self.seeds.remove(seed)
 
         for res in valid_results:
             self.accumulator(res)
