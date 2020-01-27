@@ -87,14 +87,14 @@ class ComposedEnergyModel(object):
         cell_coords = torch.matmul(
             self.cell_maps.view(-1, self.cell_maps.size(2)), global_coords
         )
-        cell_coords = cell_coords.view(self.n_cells, -1, self.fsm.udim)
+        cell_coords = cell_coords.view(self.n_cells, -1, self.sem.fsm.udim)
 
         if force_data is not None:
             cell_force_data = torch.matmul(
                 self.cell_maps.view(-1, self.cell_maps.size(2)), force_data
             )
             cell_force_data = cell_force_data.view(self.n_cells, -1,
-                                                   self.fsm.udim)
+                                                   self.sem.fsm.udim)
 
         else:
             cell_force_data = torch.zeros_like(cell_coords)
