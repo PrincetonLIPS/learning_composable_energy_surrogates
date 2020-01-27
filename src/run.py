@@ -314,7 +314,8 @@ if __name__ == "__main__":
             args.max_collectors if (args.adv_collect or args.deploy_collect) else 0,
         )
 
-        def deploy_feed(x, c1c2):
+        def deploy_feed(ret):
+            x, c1c2 = ret
             deploy_ems.feed(x[0])
             # pdb.set_trace()
             img = io.BytesIO(bytes(x[1]))

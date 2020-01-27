@@ -89,7 +89,7 @@ class EvaluatorBase(object):
 
         error_V = fa.assemble(fa.inner(diff, diff) * self.fsm.boundary_ds)
 
-        return error_V, img_buf, step
+        return ((error_V, img_buf, step), (self.args.c1, self.args.c2))
 
     def visualize_trajectory(
         self,
@@ -159,7 +159,7 @@ class EvaluatorBase(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-        return buf.getvalue(), (self.args.c1, self.args.c2)
+        return buf.getvalue()
 
 
 class CompressionEvaluatorBase(object):
@@ -262,12 +262,13 @@ class CompressionEvaluatorBase(object):
 
         err = ((surr_soln-self.true_soln_points)**2).sum().item()
 
-        return err, img_buf, step
+        return ((err, img_buf, step), (self.args.c1, self.args.c2))
 
     def visualize_trajectory(
         self,
         traj_u,
         traj_f,
+
         traj_g
     ):
         nrows = int(len(traj_u))
@@ -322,4 +323,4 @@ class CompressionEvaluatorBase(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-        return buf.getvalue(), (self.args.c1, self.args.c2)
+        return buf.getvalue()
