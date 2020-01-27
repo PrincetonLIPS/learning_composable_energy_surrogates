@@ -25,8 +25,12 @@ RVES_WIDTH = 4
 class EvaluatorBase(object):
     def __init__(self, args, seed):
         self.args = args
-        np.random.seed(seed)
-        self.p = make_p(self.args)
+        if seed > 0:
+            np.random.seed(seed)
+            make_p(self.args)
+        else:
+            self.args.c1 = 0.0
+            self.args.c2 = 0.0
         self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
@@ -155,7 +159,7 @@ class EvaluatorBase(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-        return buf.getvalue()
+        return buf.getvalue(), (self.args.c1, self.args.c2)
 
 
 class CompressionEvaluatorBase(object):
@@ -318,4 +322,4 @@ class CompressionEvaluatorBase(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-        return buf.getvalue()
+        return buf.getvalue(), (self.args.c1, self.args.c2)

@@ -314,11 +314,13 @@ if __name__ == "__main__":
             args.max_collectors if (args.adv_collect or args.deploy_collect) else 0,
         )
 
-        def deploy_feed(x):
+        def deploy_feed(x, c1c2):
             deploy_ems.feed(x[0])
             # pdb.set_trace()
             img = io.BytesIO(bytes(x[1]))
-            tflogger.log_images("Deployment trajectory", [img], x[2])
+            tflogger.log_images(
+                "Deployment trajectory, c = ({:.3g}, {:.3g})".format(*c1c2),
+                [img], x[2])
 
         deploy_harvester = Harvester(
             args, deploy_feed, Evaluator, args.max_evaluators if args.deploy else 0
