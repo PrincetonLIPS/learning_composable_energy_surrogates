@@ -294,7 +294,7 @@ class AdversarialCollectorBase(object):
 
         # print("guess norm {}".format(torch.Tensor(guess).norm().item()))
 
-        f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
+        f, JV, H = self.fem.f_J_H(u0, initial_guess=guess)
 
         J = self.fsm.to_torch(JV)
 
