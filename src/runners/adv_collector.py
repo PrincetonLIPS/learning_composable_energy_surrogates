@@ -203,7 +203,8 @@ class AdversarialCollectorBase(object):
         stepsize = self.args.adv_newton_stepsize if self.args.adv_newton else self.args.adv_gd_stepsize
 
         for i in range(steps):
-            print("Step ", i)
+            if self.args.verbose:
+                print("Step ", i)
             try:
                 if self.args.adv_newton:
                     stack_u = torch.autograd.Variable(
@@ -272,7 +273,8 @@ class AdversarialCollectorBase(object):
                         u0 = u.clone().detach()
                         success = True
                     except Exception as e:
-                        print("reducing size of u for time ", tries)
+                        if self.args.verbose:
+                            print("reducing size of u for time ", tries)
                         tries += 1
                         if tries > 10:
                             raise e
