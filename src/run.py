@@ -320,8 +320,9 @@ if __name__ == "__main__":
             # pdb.set_trace()
             img = io.BytesIO(bytes(x[1]))
             tflogger.log_images(
-                "Deployment trajectory, c = ({:.3g}, {:.3g})".format(*c1c2),
+                "Deployment trajectory, c=({:.3g},{:.3g})".format(*c1c2),
                 [img], x[2])
+            tflogger.log_scalar("Deployment loss, c=({:.3g},{:.3g})", x[0], x[2])
 
         deploy_harvester = Harvester(
             args, deploy_feed, Evaluator, args.max_evaluators if args.deploy else 0

@@ -336,19 +336,35 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--adv_collector_stepsize", help="stepsize for adv collector", type=float,
+    "--adv_gd_stepsize", help="stepsize for adv collector", type=float,
     default=1e-5
 )
 
 parser.add_argument(
-    "--adv_gd_steps", help="steps of GD for adv collector "
-                           "against 2nd-order fenics approx", type=int,
+    "--adv_newton_stepsize", help="stepsize for adv collector", type=float,
+    default=1e-2
+)
+
+parser.add_argument(
+    "--adv_gd_steps", help="steps of GD for adv collector ", type=int,
     default=100
+)
+
+parser.add_argument(
+    "--adv_newton_steps", help="steps of newton for adv collector ", type=int,
+    default=3
 )
 
 parser.add_argument(
     "--adv_newton", help="use Newton step for adv collector", type=s2b,
     default=False
+)
+
+parser.add_argument(
+    "--adv_newton_damp",
+    help="damping factor for adv_newton",
+    type=float,
+    default=0.1, # Compression from Overvelde and Bertoldi
 )
 
 parser.add_argument("--cd_sgld_eps", help="eps for CD sgld", type=float, default=1e-6)

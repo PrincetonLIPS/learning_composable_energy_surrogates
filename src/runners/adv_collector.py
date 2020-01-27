@@ -36,7 +36,7 @@ class AdversarialCollectorBase(object):
         self.sem = SurrogateEnergyModel(args, self.net, self.fsm)
 
         self.n = 0
-        self.BASE_ITER = 80
+        self.BASE_ITER = 100
         self.BASE_FACTOR = 0.99
         self.rigid_remover = RigidRemover(self.fsm)
 
@@ -90,7 +90,7 @@ class AdversarialCollectorBase(object):
                     self.args.atol
                 )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
                 new_args.rtol = 10 ** (math.log10(self.args.rtol) * 2 ** i / Z)
-                new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
+                new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 10
                 # print("solve with rtol {} atol {} iter {} factor {} u_norm {} guess_norm {}".format(
                 #    new_args.atol, new_args.rtol, new_args.max_newton_iter, new_args.relaxation_parameter, q.norm().item(),
                 #    torch.Tensor(guess).norm().item()))
@@ -100,7 +100,8 @@ class AdversarialCollectorBase(object):
             return u.vector()
         except Exception as e:
             if q_last is None and recursion_depth == 0:
-                return self.solve(q, guess, q_last, max_iter, factor=0.1)
+                return self.solve(q, guess, q_last, max_iter, factor=0.1,
+                                  recursion_depth=recursion_depth+1)
             elif q_last is None:
                 raise e
             elif recursion_depth >= 8:
@@ -194,7 +195,15 @@ class AdversarialCollectorBase(object):
         obj = - self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
         # print("error: {:.5e}".format(-obj.mean().item()))
 
-        for i in range(1 if self.args.adv_newton else self.args.adv_gd_steps):
+        newton_damp = np.random.uniform(0., args.adv_newton_damp)
+
+        steps = args.adv_newton_steps if args.adv_newton else args.adv_gd_steps
+
+        stepsize = args.adv_newton_stepsize if args.adv_newton else args.adv_gd_stepsize
+
+        for i in range(steps):
+            if self.args.verbose:
+                print("Step ", i)
             try:
                 if self.args.adv_newton:
                     stack_u = torch.autograd.Variable(
@@ -204,6 +213,8 @@ class AdversarialCollectorBase(object):
                     # pdb.set_trace()
 
                     # objective to minimize is the negative of the error
+                    if self.args.verbose:
+                        print("Pytorch bit")
                     obj = - self.damped_error(stack_u, u0, p, f, J, H)
 
                     # print("error: {:.5e}".format(-obj.mean().item()))
@@ -214,7 +225,9 @@ class AdversarialCollectorBase(object):
                     grad = stack_grad[0]
 
                     hess = torch.autograd.grad(torch.trace(stack_grad), stack_u)[0]
-                    hess = hess.view(len(u), len(u))
+                    hess = hess.view(len(u), len(u)) + newton_damp * H
+
+                    grad = grad + newton_damp * J
 
                     eig = torch.symeig(hess).eigenvalues
                     min_eig = torch.min(eig)
@@ -223,7 +236,10 @@ class AdversarialCollectorBase(object):
                     if min_eig < 1e-9:
                         hess = hess + (1e-9 - min_eig) * torch.eye(len(u))
                     hinv = torch.cholesky_inverse(hess)
-                    delta_u = torch.matmul(hinv, grad.view(-1, 1)).view(-1)
+
+                    delta_u = torch.matmul(
+                        hinv,
+                        grad.view(-1, 1)).view(-1)
                 else:
                     stack_u = torch.autograd.Variable(u.unsqueeze(0).data,
                                                       requires_grad=True)
@@ -238,13 +254,15 @@ class AdversarialCollectorBase(object):
                 # else:
                 #    delta_u_scaled = delta_u
 
-                u = (u - self.args.adv_collector_stepsize * delta_u_scaled).detach().clone()
+                u = (u - stepsize * delta_u_scaled).detach().clone()
 
+                if self.args.verbose:
+                    print("Fenics bit")
                 success = False
                 tries = 0
                 while not success:
                     try:
-                        guess = self.solve(u, guess, last_u)
+                        guess = self.solve(u, guess)
                         if self.args.adv_newton:
                             f, JV, H = self.fem.f_J_H(u, initial_guess=guess)
                         else:
@@ -259,6 +277,8 @@ class AdversarialCollectorBase(object):
                         if tries > 10:
                             raise e
                         u = (u + last_u) / 2
+
+                last_u = u
             except Exception as e:
                 if i == 0:
                     raise e #  Didn't even get one step
@@ -297,7 +317,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     args.c1 = 0.
     args.c2 = 0.
-    fa.set_log_level(20)
+    if args.verbose:
+        fa.set_log_level(20)
     pde = make_metamaterial(args)
     fsm = FunctionSpaceMap(pde.V, args.bV_dim)
     fem = FenicsEnergyModel(args, pde, fsm)
