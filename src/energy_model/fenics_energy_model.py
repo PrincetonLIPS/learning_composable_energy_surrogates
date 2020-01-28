@@ -121,13 +121,13 @@ class FenicsEnergyModel(object):
 # Taylor test
 if __name__ == "__main__":
     from ..arguments import parser
-    from ..pde.metamaterial import Metamaterial
+    from ..pde.metamaterial import make_metamaterial
     from ..maps.function_space_map import FunctionSpaceMap
     from ..data.sample_params import make_bc
 
     print("Preparing for Taylor test")
     args = parser.parse_args()
-    pde = Metamaterial(args)
+    pde = make_metamaterial(args)
     print("Created PDE")
     fsm = FunctionSpaceMap(V=pde.V, bV_dim=args.bV_dim, cuda=False)
     print("Created FSM")
