@@ -40,7 +40,7 @@ class DeployCollectorBase(CollectorBase):
         force_data = torch.zeros_like(cem_boundary)
         surr_soln, traj_u, traj_f, traj_g = cem.solve(params, cem_boundary,
                       constraint_mask, force_data,
-                      step_size=0.1, opt_steps=1000,
+                      step_size=0.2, opt_steps=2500,
                       return_intermediate=True)
         cell_idx = np.random.choice(cem.n_cells)
 

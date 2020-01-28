@@ -234,7 +234,7 @@ class CompressionEvaluatorBase(object):
 
         surr_soln, traj_u, traj_f, traj_g = self.cem.solve(self.params, self.init_boundary_data,
                               self.cem_constraint_mask, self.force_data,
-                              step_size=0.1, opt_steps=5000, return_intermediate=True)
+                              step_size=0.2, opt_steps=5000, return_intermediate=True)
 
         traj_u_interp = [traj_u[0]]
         traj_f_interp = [traj_f[0]]
