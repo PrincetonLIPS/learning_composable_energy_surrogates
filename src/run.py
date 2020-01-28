@@ -173,14 +173,14 @@ if __name__ == "__main__":
                     args,
                     lambda x: train_data.feed(x),
                     Collector,
-                    int(args.max_collectors * (1.0 - val_frac)),
+                    int(math.floor(args.max_collectors * (1.0 - val_frac))),
                 )
                 print("Train harvester size ", train_harvester.max_workers)
                 val_harvester = Harvester(
                     args,
                     lambda x: val_data.feed(x),
                     Collector,
-                    int(args.max_collectors * val_frac),
+                    int(math.ceil(args.max_collectors * val_frac)),
                 )
                 print("Val harvester size ", val_harvester.max_workers)
                 harvested = train_data.size() + val_data.size()
