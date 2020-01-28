@@ -201,7 +201,7 @@ class PoissonMetamaterial(Metamaterial):
     def _energy_density(self, u):
         """Energy density is NeoHookean strain energy. See strain.py for def."""
         udim1 = fa.inner(u, fa.Constant((0.0, 1.0)))
-        f = udim0 - fa.exp(udim1)
+        f = udim1 - fa.exp(udim1)
         return 0.5 * fa.inner(fa.grad(udim1), fa.grad(udim1)) - f
 
 

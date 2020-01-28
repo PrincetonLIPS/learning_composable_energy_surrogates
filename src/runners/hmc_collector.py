@@ -1,6 +1,6 @@
 import torch
 from .. import fa_combined as fa
-from ..pde.metamaterial import Metamaterial
+from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
@@ -21,7 +21,7 @@ class HMCCollectorBase(object):
         self.args = args
         np.random.seed(seed)
         make_p(args)
-        self.pde = Metamaterial(args)
+        self.pde = make_metamaterial(args)
         self.fsm = FunctionSpaceMap(self.pde.V, args.bV_dim, args=args)
         self.fem = FenicsEnergyModel(args, self.pde, self.fsm)
         self.guess = fa.Function(self.fsm.V).vector()
