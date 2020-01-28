@@ -256,6 +256,12 @@ class Trainer(object):
 
         with Timer() as timer:
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
+
+        if self.args.poisson:
+            u = self.surrogate.fsm.to_ring(u)
+            u[:, 0] = 0.
+            u = self.surrogate.fsm.to_torch(u)
+
         # pdb.set_trace()
         # T = torch.stack([self.trans_mats[i]
         #                  for i in np.random.choice(len(self.trans_mats), size=len(u))])
@@ -359,6 +365,12 @@ class Trainer(object):
         for i, batch in enumerate(self.val_loader):
             u, p, f, J, H, _ = batch
             u, p, f, J, H = _cuda(u), _cuda(p), _cuda(f), _cuda(J), _cuda(H)
+
+            if self.args.poisson:
+                u = self.surrogate.fsm.to_ring(u)
+                u[:, 0] = 0.
+                u = self.surrogate.fsm.to_torch(u)
+
             if self.args.hess:
                 vectors = torch.randn(*J.size()).to(J.device)
                 fhat, Jhat, Hvphat = self.surrogate.f_J_Hvp(u, p, vectors=vectors)
@@ -394,6 +406,12 @@ class Trainer(object):
     def visualize(self, step, batch, dataset_name):
         u, p, f, J, H, _ = batch
         u, p, f, J = u[:16], p[:16], f[:16], J[:16]
+
+        if self.args.poisson:
+            u = self.surrogate.fsm.to_ring(u)
+            u[:, 0] = 0.
+            u = self.surrogate.fsm.to_torch(u).cpu()
+
         fhat, Jhat = self.surrogate.f_J(u, p)
 
         assert len(u) <= 16
