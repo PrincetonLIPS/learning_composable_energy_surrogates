@@ -204,7 +204,8 @@ class AdversarialCollectorBase(object):
         steps = np.random.randint(1, steps)
 
         stepsize = self.args.adv_newton_stepsize if self.args.adv_newton else self.args.adv_gd_stepsize
-
+        stepsize = np.random.random() * stepsize  # Randomize length to allow variations at diff lenghts
+       
         for i in range(steps):
             if self.args.verbose:
                 print("Step ", i)
@@ -306,7 +307,7 @@ class AdversarialCollectorBase(object):
 
         # pdb.set_trace()
 
-        return Example(u, p, torch.Tensor([f]), J, H,
+        return Example(u0, p, torch.Tensor([f]), J, H,
                        torch.Tensor(new_Vsmall_guess))
 
 
