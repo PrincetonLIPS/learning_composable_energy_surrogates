@@ -310,7 +310,7 @@ class CompressionEvaluatorBase(object):
                         ))
             # Symmetry 1
             traj1 = traj_u[i]
-            traj2 = torch.stack(-traj_u[i][:, 0], traj_u[i][:, 1], dim=1)
+            traj2 = torch.stack((-traj_u[i][:, 0], traj_u[i][:, 1]), dim=1)
 
             traj = (traj1 
                     if (traj1 - self.true_soln_points).norm() < 
