@@ -260,9 +260,13 @@ class CompressionEvaluatorBase(object):
         assert all(i==j for i, j in zip(self.true_soln_points.size(),
                                         surr_soln.size()))
 
-        err = ((surr_soln-self.true_soln_points)**2).sum().item()
+        soln_1 = surr_soln
+        err1 = ((soln1-self.true_soln_points)**2).sum().item()
 
-        return ((err, img_buf, step), (self.args.c1, self.args.c2))
+        soln_2 = torch.stack((-surr_soln[:, 0], surr_soln[:, 1]), dim=1)
+        err2 = ((soln1-self.true_soln_points)**2).sum().item()
+
+        return ((min(err1, err2), img_buf, step), (self.args.c1, self.args.c2))
 
     def visualize_trajectory(
         self,
@@ -312,8 +316,8 @@ class CompressionEvaluatorBase(object):
             traj1 = traj_u[i]
             traj2 = torch.stack((-traj_u[i][:, 0], traj_u[i][:, 1]), dim=1)
 
-            traj = (traj1 
-                    if (traj1 - self.true_soln_points).norm() < 
+            traj = (traj1
+                    if (traj1 - self.true_soln_points).norm() <
                     (traj2 - self.true_soln_points).norm()
                     else traj2)
 

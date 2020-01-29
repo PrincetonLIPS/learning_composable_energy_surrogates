@@ -106,7 +106,11 @@ class FunctionSpaceMap(object):
             return self.vec_to_ring_map_cpu
 
     def make_A(self, V):
-        coords = np.array(V.tabulate_dof_coordinates()[V.sub(0).dofmap().dofs()])
+        coords = np.array(V.tabulate_dof_coordinates()[
+            V.sub(0).dofmap().dofs()
+            if self.channels > 1
+            else V.dofmap().dofs()
+        ])
         # Find s, which we will use to sort coords
         coords_s = np.array([self.x_to_s(x1, x2) for x1, x2 in coords])
 
