@@ -317,8 +317,8 @@ class CompressionEvaluatorBase(object):
                     (traj2 - self.true_soln_points).norm()
                     else traj2)
 
-            ax.scatter(initial_coords[:, 0] + traj.data.numpy(),
-                        initial_coords[:, 1] + traj.data.numpy(),
+            ax.scatter(initial_coords[:, 0] + traj.data.numpy()[:, 0],
+                    initial_coords[:, 1] + traj.data.numpy()[:, 1],
                         color='red', label='surrogate solution, fhat={:.2e}, ||ghat||={:.2e}'.format(
                             traj_f[i], traj_g[i].norm()
                         ))
