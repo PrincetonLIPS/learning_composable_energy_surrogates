@@ -314,7 +314,7 @@ class CompressionEvaluatorBase(object):
 
             traj = (traj1 
                     if (traj1 - self.true_soln_points).norm() < 
-                    (traj2 - self.true_soln_points.norm()) 
+                    (traj2 - self.true_soln_points).norm()
                     else traj2)
 
             ax.scatter(initial_coords[:, 0] + traj.data.numpy(),
