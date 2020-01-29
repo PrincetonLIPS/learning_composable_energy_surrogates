@@ -308,8 +308,17 @@ class CompressionEvaluatorBase(object):
                         color='blue', label='true solution, f={:.2e}, fhat={:.2e}'.format(
                             self.true_f, fhat_on_true
                         ))
-            ax.scatter(initial_coords[:, 0] + traj_u[i][:, 0].data.numpy(),
-                        initial_coords[:, 1] + traj_u[i][:, 1].data.numpy(),
+            # Symmetry 1
+            traj1 = traj_u[i]
+            traj2 = torch.stack(-traj_u[i][:, 0], traj_u[i][:, 1], dim=1)
+
+            traj = (traj1 
+                    if (traj1 - self.true_soln_points).norm() < 
+                    (traj2 - self.true_soln_points.norm()) 
+                    else traj2)
+
+            ax.scatter(initial_coords[:, 0] + traj.data.numpy(),
+                        initial_coords[:, 1] + traj.data.numpy(),
                         color='red', label='surrogate solution, fhat={:.2e}, ||ghat||={:.2e}'.format(
                             traj_f[i], traj_g[i].norm()
                         ))

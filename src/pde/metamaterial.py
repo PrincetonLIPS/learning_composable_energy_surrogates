@@ -200,9 +200,8 @@ def verify_params(pore_points, radii, L0, min_feature_size):
 class PoissonMetamaterial(Metamaterial):
     def _energy_density(self, u):
         """Energy density is NeoHookean strain energy. See strain.py for def."""
-        udim1 = fa.inner(u, fa.Constant((0.0, 1.0)))
-        f = udim1 - fa.exp(udim1)
-        return 0.5 * fa.inner(fa.grad(udim1), fa.grad(udim1)) - f
+        f = fa.inner(u, fa.Constant((1.0, 1.0))) - fa.exp(fa.inner(u, fa.Constant((1.0, 1.0))))
+        return 0.5 * fa.inner(fa.grad(u), fa.grad(u)) - f
 
 
 def make_metamaterial(args, mesh=None):
