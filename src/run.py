@@ -112,7 +112,7 @@ if __name__ == "__main__":
                                                'ckpt.pt'))
             except Exception as e:
                 ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
-                                               'last_ckpt.pt'))
+                                               'ckpt_last.pt'))
             train_data = ckpt['traindata']
             val_data = ckpt['valdata']
             if args.load_net_state:

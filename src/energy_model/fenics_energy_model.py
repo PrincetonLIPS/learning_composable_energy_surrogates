@@ -103,6 +103,8 @@ class FenicsEnergyModel(object):
         )
 
     def check_initial_guess(self, initial_guess=None, boundary_fn=None):
+        if self.args.poisson:
+            return
         init_guess_fn = fa.Function(self.fsm.V)
         if initial_guess is not None:
             init_guess_fn.vector().set_local(initial_guess)
