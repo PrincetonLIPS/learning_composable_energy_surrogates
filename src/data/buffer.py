@@ -33,7 +33,7 @@ class DataBuffer(Dataset):
         return not len(self.data)
 
     def __len__(self):
-        return self.memory_size
+        return len(self.data)
 
     def __getitem__(self, idx):
         return self.data[idx % self.size()]

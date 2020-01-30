@@ -188,12 +188,10 @@ if __name__ == "__main__":
                 with Timer() as htimer:
                     last_save_time = time.time()
                     last_msg_time = time.time()
-                    while train_data.size() < len(train_data) or val_data.size() < len(
-                        val_data
-                    ):
-                        if train_data.size() < len(train_data):
+                    while train_data.size() < args.train_size or val_data.size() < args.val_size:
+                        if train_data.size() < args.train_size:
                             train_harvester.step()
-                        if val_data.size() < len(val_data):
+                        if val_data.size() < args.val_size:
                             val_harvester.step()
                         if time.time() > last_msg_time + 5:
                             last_msg_time = time.time()
@@ -214,7 +212,7 @@ if __name__ == "__main__":
                             print(
                                 "Harvested {} of {} with {} deaths at time={}s".format(
                                     harvested,
-                                    len(train_data) + len(val_data),
+                                    args.train_size + args.val_size,
                                     failed,
                                     htimer.interval,
                                 )

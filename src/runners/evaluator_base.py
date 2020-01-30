@@ -197,6 +197,7 @@ class CompressionEvaluatorBase(object):
         init_guess = fa.Function(cfem.pde.V).vector()
 
         _, _, made_fn = make_random_deploy_bc(self.args, self.cem)
+        made_fn = fa.project(made_fn, cfem.pde.V)
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
