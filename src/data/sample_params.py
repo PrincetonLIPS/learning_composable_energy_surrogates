@@ -67,7 +67,7 @@ def make_random_deploy_bc(args, cem):
     shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
     ax_scale = np.random.uniform(0.0, args.boundary_ax_scale)
     boundary_expression = make_random_fourier_expression(
-        2, 5000, amp_scale, freq_scale, fsm.V.ufl_element()
+        2, 5000, amp_scale, freq_scale, cem.sem.fsm.V.ufl_element()
     )
 
     W = np.random.randn(2, 2)
