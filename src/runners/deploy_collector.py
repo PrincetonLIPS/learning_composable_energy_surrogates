@@ -86,7 +86,7 @@ class DeployCollectorBase(CollectorBase):
 
         residual = factor - self.buckets[idx]
 
-        alpha = residual / (self.buckets[max(idx + 1, len(self.buckets)-1)] -
+        alpha = residual / (self.buckets[min(idx + 1, len(self.buckets)-1)] -
                                          self.buckets[idx] + 1e-7)
 
         u = alpha * u2 + (1.0 - alpha) * u1
