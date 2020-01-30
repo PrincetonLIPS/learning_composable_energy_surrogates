@@ -4,7 +4,7 @@ from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
-from ..data.sample_params import make_p, make_bc, make_force
+from ..data.sample_params import make_p, make_bc, make_force, make_random_deploy_bc
 from ..nets.feed_forward_net import FeedForwardNet
 from ..viz.plotting import plot_boundary
 from ..energy_model.composed_energy_model import ComposedEnergyModel
@@ -195,13 +195,18 @@ class CompressionEvaluatorBase(object):
         MAX_DISP = args.deploy_disp
         ANNEAL_STEPS = args.anneal_steps
         init_guess = fa.Function(cfem.pde.V).vector()
+
+        _, _, made_fn = make_random_deploy_bc(self.args, self.cem)
+
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
             print("Compression evaluator anneal step {}/{}".format(i, ANNEAL_STEPS))
-            fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
-                                           element=self.pde.V.ufl_element(),
-                                            X=MAX_DISP*(i+1)/ANNEAL_STEPS)
-
+            if seed==0:
+                fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
+                                               element=self.pde.V.ufl_element(),
+                                                X=MAX_DISP*(i+1)/ANNEAL_STEPS)
+            else:
+                fenics_boundary_fn = made_fn * (i+1)/ANNEAL_STEPS
             true_soln = cfem.solve(args=args, boundary_fn=fenics_boundary_fn,
                                    constrained_sides=constrained_sides,
                                    initial_guess=init_guess)

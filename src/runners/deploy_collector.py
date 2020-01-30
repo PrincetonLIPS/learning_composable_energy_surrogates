@@ -4,7 +4,7 @@ from ..pde.metamaterial import make_metamaterial
 from ..maps.function_space_map import FunctionSpaceMap
 from ..energy_model.fenics_energy_model import FenicsEnergyModel
 from ..energy_model.surrogate_energy_model import SurrogateEnergyModel
-from ..data.sample_params import make_p, make_compression_deploy_bc
+from ..data.sample_params import make_p, make_random_deploy_bc, make_compression_deploy_bc
 from ..data.example import Example
 from ..nets.feed_forward_net import FeedForwardNet
 from ..energy_model.composed_energy_model import ComposedEnergyModel
@@ -33,7 +33,7 @@ class DeployCollectorBase(CollectorBase):
         cem = ComposedEnergyModel(args, sem,
                                   args.n_high, args.n_wide)
         rr = RigidRemover(self.fsm)
-        cem_boundary, constraint_mask = make_compression_deploy_bc(args, cem)
+        cem_boundary, constraint_mask, _ = make_random_deploy_bc(args, cem)
         params = torch.zeros(args.n_high * args.n_wide, 2)
         params[:, 0] = args.c1
         params[:, 1] = args.c2

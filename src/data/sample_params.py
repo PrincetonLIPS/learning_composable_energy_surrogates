@@ -105,7 +105,7 @@ def make_random_deploy_bc(args, cem):
     elif constrained_sides[3]:
         cem_constraint_mask[cem.lhs_idxs()] = 1.0
 
-    return boundary_data, cem_constraint_mask
+    return boundary_data, cem_constraint_mask, boundary_expression+lin_expression
 
 def make_bc(args, fsm):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
