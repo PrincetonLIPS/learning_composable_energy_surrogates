@@ -490,6 +490,6 @@ def de_interleave(c, n):
         b = c[1::2]
         return torch.stack((a, b))
     elif n == 1:
-        return c
+        return c.unsqueeze(0)
     else:
         raise Exception("Unsupported")
