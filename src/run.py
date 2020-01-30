@@ -265,7 +265,7 @@ if __name__ == "__main__":
 
 
             if args.adv_collect or args.deploy_collect:
-                train_data.memory_size = train_data.memory_size * 5
+                train_data.memory_size = train_data.memory_size * 100
 
 
 
