@@ -36,10 +36,12 @@ class Trainer(object):
         self.val_data = val_data
         # self.init_transformations()
         self.train_loader = DataLoader(
-            self.train_data, batch_size=args.batch_size, shuffle=True, pin_memory=True
+            self.train_data, batch_size=args.batch_size, shuffle=True,
+            pin_memory=True, num_workers=8,
         )
         self.val_loader = DataLoader(
-            self.val_data, batch_size=args.batch_size, shuffle=False, pin_memory=True
+            self.val_data, batch_size=args.batch_size, shuffle=False,
+            pin_memory=True, num_workers=8,
         )
         self.init_optimizer()
         self.train_f_std = _cuda(torch.Tensor([[1.0]]))
