@@ -190,13 +190,13 @@ class CompressionEvaluatorBase(object):
                                          c1s, c2s)
 
         print("Built energy models for compression evaluator")
-        constrained_sides = [True, False, True, False]
+        # constrained_sides = [True, False, True, False]
 
         MAX_DISP = args.deploy_disp
         ANNEAL_STEPS = args.anneal_steps
         init_guess = fa.Function(cfem.pde.V).vector()
 
-        _, _, made_fn = make_random_deploy_bc(self.args, self.cem)
+        self.init_boundary_data, self.cem_constraint_mask, constrained_sides, made_fn = make_random_deploy_bc(self.args, self.cem)
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
@@ -218,8 +218,8 @@ class CompressionEvaluatorBase(object):
         self.true_scaled_f = cfem.pde.energy(fa.project(fenics_boundary_fn,
                                              cfem.pde.V))
 
-        self.init_boundary_data = torch.zeros(len(self.cem.global_coords), 2)
-        self.init_boundary_data[:, 1] = MAX_DISP * torch.Tensor(self.cem.global_coords)[:, 1]
+        # self.init_boundary_data = torch.zeros(len(self.cem.global_coords), 2)
+        # self.init_boundary_data[:, 1] = MAX_DISP * torch.Tensor(self.cem.global_coords)[:, 1]
 
         self.true_soln_points = torch.Tensor([
             self.true_soln(*x)
@@ -228,9 +228,9 @@ class CompressionEvaluatorBase(object):
         self.params = torch.zeros(RVES_WIDTH*RVES_WIDTH, 2)
         self.params[:, 0] = self.args.c1
         self.params[:, 1] = self.args.c2
-        self.cem_constraint_mask = torch.zeros(len(self.cem.global_coords))
-        self.cem_constraint_mask[self.cem.bot_idxs()] = 1.0
-        self.cem_constraint_mask[self.cem.top_idxs()] = 1.0
+        # self.cem_constraint_mask = torch.zeros(len(self.cem.global_coords))
+        # self.cem_constraint_mask[self.cem.bot_idxs()] = 1.0
+        # self.cem_constraint_mask[self.cem.top_idxs()] = 1.0
         self.force_data = torch.zeros(len(self.cem.global_coords), 2)
         print("Finished building CompressionEvaluator")
 

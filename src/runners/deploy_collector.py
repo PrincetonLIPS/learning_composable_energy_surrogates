@@ -33,7 +33,7 @@ class DeployCollectorBase(CollectorBase):
         cem = ComposedEnergyModel(args, sem,
                                   args.n_high, args.n_wide)
         rr = RigidRemover(self.fsm)
-        cem_boundary, constraint_mask, _ = make_random_deploy_bc(args, cem)
+        cem_boundary, constraint_mask, _, _ = make_random_deploy_bc(args, cem)
         params = torch.zeros(args.n_high * args.n_wide, 2)
         params[:, 0] = args.c1
         params[:, 1] = args.c2
