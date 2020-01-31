@@ -267,10 +267,10 @@ class CompressionEvaluatorBase(object):
                                         surr_soln.size()))
 
         soln_1 = surr_soln
-        err1 = ((soln1-self.true_soln_points)**2).sum().item()
+        err1 = ((soln_1-self.true_soln_points)**2).sum().item()
 
         soln_2 = torch.stack((-surr_soln[:, 0], surr_soln[:, 1]), dim=1)
-        err2 = ((soln1-self.true_soln_points)**2).sum().item()
+        err2 = ((soln_2-self.true_soln_points)**2).sum().item()
 
         return ((min(err1, err2), img_buf, step), (self.args.c1, self.args.c2))
 
