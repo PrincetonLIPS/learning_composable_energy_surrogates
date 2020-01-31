@@ -197,7 +197,6 @@ class CompressionEvaluatorBase(object):
         init_guess = fa.Function(cfem.pde.V).vector()
 
         _, _, made_fn = make_random_deploy_bc(self.args, self.cem)
-        made_fn = fa.project(made_fn, cfem.pde.V)
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
@@ -208,6 +207,7 @@ class CompressionEvaluatorBase(object):
                                                 X=MAX_DISP*(i+1)/ANNEAL_STEPS)
             else:
                 fenics_boundary_fn = made_fn * (i+1)/ANNEAL_STEPS
+                fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
             true_soln = cfem.solve(args=args, boundary_fn=fenics_boundary_fn,
                                    constrained_sides=constrained_sides,
                                    initial_guess=init_guess)
@@ -343,3 +343,8 @@ class CompressionEvaluatorBase(object):
         buf.seek(0)
         plt.close()
         return buf.getvalue()
+
+if __name__ == '__main__':
+    from ..arguments import parser
+    args = parser.parse_args()
+    ce = CompressionEvaluatorBase(args, 1)
