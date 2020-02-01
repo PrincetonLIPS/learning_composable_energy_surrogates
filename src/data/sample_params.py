@@ -98,11 +98,11 @@ def make_random_deploy_bc(args, cem):
     cem_constraint_mask = torch.zeros(len(cem.global_coords))
     if constrained_sides[0]:
         cem_constraint_mask[cem.bot_idxs()] = 1.0
-    elif constrained_sides[1]:
+    if constrained_sides[1]:
         cem_constraint_mask[cem.rhs_idxs()] = 1.0
-    elif constrained_sides[2]:
+    if constrained_sides[2]:
         cem_constraint_mask[cem.top_idxs()] = 1.0
-    elif constrained_sides[3]:
+    if constrained_sides[3]:
         cem_constraint_mask[cem.lhs_idxs()] = 1.0
 
     return boundary_data, cem_constraint_mask, constrained_sides, boundary_expression+lin_expression

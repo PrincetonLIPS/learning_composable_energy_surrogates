@@ -196,26 +196,26 @@ class CompressionEvaluatorBase(object):
         ANNEAL_STEPS = args.anneal_steps
         init_guess = fa.Function(cfem.pde.V).vector()
 
-        self.init_boundary_data, self.cem_constraint_mask, constrained_sides, made_fn = make_random_deploy_bc(self.args, self.cem)
+        self.init_boundary_data, self.cem_constraint_mask, self.constrained_sides, self.made_fn = make_random_deploy_bc(self.args, self.cem)
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
             print("Compression evaluator anneal step {}/{}".format(i, ANNEAL_STEPS))
             if seed==0:
-                fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
+                self.fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
                                                element=self.pde.V.ufl_element(),
                                                 X=MAX_DISP*(i+1)/ANNEAL_STEPS)
             else:
-                fenics_boundary_fn = made_fn * (i+1)/ANNEAL_STEPS
-                fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
-            true_soln = cfem.solve(args=args, boundary_fn=fenics_boundary_fn,
-                                   constrained_sides=constrained_sides,
+                fenics_boundary_fn = self.made_fn * (i+1)/ANNEAL_STEPS
+                self.fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
+            true_soln = cfem.solve(args=args, boundary_fn=self.fenics_boundary_fn,
+                                   constrained_sides=self.constrained_sides,
                                    initial_guess=init_guess)
             init_guess = true_soln.vector()
 
         self.true_soln = true_soln
         self.true_f = cfem.pde.energy(true_soln)
-        self.true_scaled_f = cfem.pde.energy(fa.project(fenics_boundary_fn,
+        self.true_scaled_f = cfem.pde.energy(fa.project(self.fenics_boundary_fn,
                                              cfem.pde.V))
 
         # self.init_boundary_data = torch.zeros(len(self.cem.global_coords), 2)
@@ -271,6 +271,8 @@ class CompressionEvaluatorBase(object):
 
         soln_2 = torch.stack((-surr_soln[:, 0], surr_soln[:, 1]), dim=1)
         err2 = ((soln_2-self.true_soln_points)**2).sum().item()
+
+        # pdb.set_trace()
 
         return ((min(err1, err2), img_buf, step), (self.args.c1, self.args.c2))
 
@@ -346,5 +348,11 @@ class CompressionEvaluatorBase(object):
 
 if __name__ == '__main__':
     from ..arguments import parser
-    args = parser.parse_args()
+    fa.set_log_level(20)
+    args = parser.parse_args(['--boundary_ax_scale', '0.01',
+                              '--boundary_shear_scale', '0.01',
+                              '--anneal_steps', '2',
+                              '--metamaterial_mesh_size', '5',
+                              '--relaxation_parameter', '0.9'])
     ce = CompressionEvaluatorBase(args, 1)
+    ce.step(ce.cem.sem.net.state_dict(), 0)
