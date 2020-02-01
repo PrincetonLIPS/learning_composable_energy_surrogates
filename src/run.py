@@ -262,8 +262,8 @@ if __name__ == "__main__":
             # ---------- Finish data collection
 
 
-            if args.adv_collect or args.deploy_collect:
-                train_data.memory_size = train_data.memory_size * 100
+        if args.adv_collect or args.deploy_collect:
+            train_data.memory_size = train_data.memory_size * 100
 
 
 
