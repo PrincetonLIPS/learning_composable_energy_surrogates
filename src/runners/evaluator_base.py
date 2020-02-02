@@ -165,12 +165,12 @@ class EvaluatorBase(object):
 class CompressionEvaluatorBase(object):
     def __init__(self, args, seed):
         self.args = args
+        print("CompressionEvaluator called with seed {}".format(seed))
+        np.random.seed(seed)
+        make_p(self.args)
         if seed == 0:
             self.args.c1 = 0.
             self.args.c2 = 0.
-        else:
-            np.random.seed(seed)
-            make_p(self.args)
 
         print("Starting compression evaluator with seed {}, c1 {:.3g}, c2 {:.3g}".format(
             seed, self.args.c1, self.args.c2
