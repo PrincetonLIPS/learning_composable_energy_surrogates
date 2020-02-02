@@ -66,11 +66,19 @@ def make_random_deploy_bc(args, cem):
     amp_scale = np.random.uniform(0.0, args.boundary_amp_scale)
     shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
     ax_scale = np.random.uniform(0.0, args.boundary_ax_scale)
+
+    W = np.random.randn(2, 2)
+
+    if random.random() < 0.8:
+        W[1,1] = - 1.
+        W[0,0] = 0.
+    else:
+        W[1,1] = 1.
+        W[0,0] = 0.
+
     boundary_expression = make_random_fourier_expression(
         2, 5000, amp_scale, freq_scale, cem.sem.fsm.V.ufl_element()
     )
-
-    W = np.random.randn(2, 2)
 
     lin_expression = fa.Expression(
         ("w00*x[0] + w01*x[1]", "w10*x[0]+w11*x[1]"),
