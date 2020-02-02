@@ -65,7 +65,7 @@ def make_random_deploy_bc(args, cem):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
     amp_scale = np.random.uniform(0.0, args.boundary_amp_scale)
     shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
-    ax_scale = np.random.uniform(0.0, args.boundary_ax_scale)
+    ax_scale = np.random.uniform(args.boundary_ax_scale/4, 3*args.boundary_ax_scale/4)
 
     W = np.random.randn(2, 2)
 
@@ -99,10 +99,7 @@ def make_random_deploy_bc(args, cem):
         boundary_data[s][0] += u1 + u1l
         boundary_data[s][1] += u2 + u2l
 
-    if random.random() < 0.5:
-        constrained_sides = [True, False, True, False]
-    else:
-        constrained_sides = [False, True, False, True]
+    constrained_sides = [True, False, True, False]
 
     cem_constraint_mask = torch.zeros(len(cem.global_coords))
     if constrained_sides[0]:
