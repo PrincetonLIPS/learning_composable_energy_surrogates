@@ -39,7 +39,7 @@ class Harvester(object):
                     self.args, seed, *init_args
                 )
                 self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
-            print("Started {} with seed {}".format(super(self.WorkerClass.__bases__, seed))
+            print("Started {} with seed {}".format(super(self.WorkerClass.__bases__, seed)))
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(
