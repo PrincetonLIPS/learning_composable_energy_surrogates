@@ -34,10 +34,12 @@ class Harvester(object):
                 self.zero_id = id
                 self.ids_to_workers[id] = new_worker
             else:
+                seed = np.random.randint(2**32)
                 new_worker = self.WorkerClass.remote(
-                    self.args, np.random.randint(2**32), *init_args
+                    self.args, seed, *init_args
                 )
                 self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
+            print("Started {} with seed {}".format(self.WorkerClass, seed))
 
     def reap(self, step_args):
         ready_ids, remaining_ids = ray.wait(

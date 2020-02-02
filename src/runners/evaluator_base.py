@@ -197,17 +197,26 @@ class CompressionEvaluatorBase(object):
         init_guess = fa.Function(cfem.pde.V).vector()
 
         self.init_boundary_data, self.cem_constraint_mask, self.constrained_sides, self.made_fn = make_random_deploy_bc(self.args, self.cem)
+        if seed == 0:
+            self.made_fn = fa.Expression(('0.0', 'X*x[1]'),
+                                           element=self.pde.V.ufl_element(),
+                                            X=MAX_DISP)
+            self.init_boundary_data.zero_()
+            for i in range(len(self.cem.global_coords)):
+                y1, y2 = self.made_fn(self.cem.global_coords[i])
+                self.init_boundary_data[i, 0] = y1
+                self.init_boundary_data[i, 1] = y2
+            self.cem_constraint_mask.zero_()
+            self.cem_constraint_mask[self.cem.top_idxs()] = 1.
+            self.cem_constraint_mask[self.cem.bot_idxs()] = 1.
+            self.constrained_sides = [True, False, True, False]
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
             print("Compression evaluator anneal step {}/{}".format(i, ANNEAL_STEPS))
-            if seed==0:
-                self.fenics_boundary_fn = fa.Expression(('0.0', 'X*x[1]'),
-                                               element=self.pde.V.ufl_element(),
-                                                X=MAX_DISP*(i+1)/ANNEAL_STEPS)
-            else:
-                fenics_boundary_fn = self.made_fn * (i+1)/ANNEAL_STEPS
-                self.fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
+
+            fenics_boundary_fn = self.made_fn * (i+1)/ANNEAL_STEPS
+            self.fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
             true_soln = cfem.solve(args=args, boundary_fn=self.fenics_boundary_fn,
                                    constrained_sides=self.constrained_sides,
                                    initial_guess=init_guess)
