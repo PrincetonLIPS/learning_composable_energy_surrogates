@@ -28,7 +28,7 @@ class Harvester(object):
             if self.zero_id is None:
                 seed = 0
                 new_worker = self.WorkerClass.remote(
-                    self.args, np.random.randint(2**32), *init_args
+                    self.args, seed, *init_args
                 )
                 id = new_worker.step.remote(*step_args)
                 self.zero_id = id
