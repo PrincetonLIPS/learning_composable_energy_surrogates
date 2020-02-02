@@ -91,9 +91,10 @@ def make_random_deploy_bc(args, cem):
         boundary_data[s][0] += u1 + u1l
         boundary_data[s][1] += u2 + u2l
 
-    constrained_sides = [False, False, False, False]
-    while not any(constrained_sides):
-        constrained_sides = [random.random() < 0.5 for _ in constrained_sides]
+    if random.random() < 0.5:
+        constrained_sides = [True, False, True, False]
+    else:
+        constrained_sides = [False, True, False, True]
 
     cem_constraint_mask = torch.zeros(len(cem.global_coords))
     if constrained_sides[0]:
