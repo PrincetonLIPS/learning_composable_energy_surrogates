@@ -549,9 +549,15 @@ class Trainer(object):
     def stats(self, step, u, f, J, Hvp, fhat, Jhat, Hvphat, phase="train"):
         """Take ground truth and predictions. Log stats and return loss."""
 
-        f_loss = torch.nn.functional.mse_loss(
-            self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
-        )
+
+        if self.args.l1_loss:
+            f_loss = torch.nn.functional.l1_loss(
+                self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
+            )
+        else:
+            f_loss = torch.nn.functional.mse_loss(
+                self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
+            )
 
         if self.args.angle_magnitude:
             J_loss = (
