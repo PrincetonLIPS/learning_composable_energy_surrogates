@@ -48,7 +48,7 @@ class ComposedEnergyModel(object):
         if self.sem.fsm.cuda:
             self.cell_maps = self.cell_maps.cuda()
 
-        self.flip_horiz_map = [None for _ in range(len(global_coords))]
+        self.flip_horiz_map = [None for _ in range(len(self.global_coords))]
         Lh = max([x1 for x1, _ in self.global_coords])
         for i, (x1, x2) in enumerate(self.global_coords):
             target_x1 = Lh - x1
@@ -57,7 +57,7 @@ class ComposedEnergyModel(object):
                     self.flip_horiz_map[i] = j
         assert all([m is not None for m in self.flip_horiz_map])
 
-        self.flip_vert_map = [None for _ in range(len(global_coords))]
+        self.flip_vert_map = [None for _ in range(len(self.global_coords))]
         Lh = max([x1 for x1, _ in self.global_coords])
         for i, (x1, x2) in enumerate(self.global_coords):
             target_x1 = Lh - x1
