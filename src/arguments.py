@@ -298,6 +298,9 @@ parser.add_argument(
 parser.add_argument("--lr", help="Learning rate", type=float, default=3e-4)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument("--cd_weight", help="Weight on cd loss", type=float, default=1e-3)
+parser.add_argument("--l1_loss", help="L1 on energies instead of MSE",
+                    type=s2b, default=False)
+
 parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
 )
