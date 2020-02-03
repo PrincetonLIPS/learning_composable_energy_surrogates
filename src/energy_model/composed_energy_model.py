@@ -64,7 +64,7 @@ class ComposedEnergyModel(object):
             for j, (y1, y2) in enumerate(self.global_coords):
                 if np.isclose(target_x1, y1) and np.isclose(x2, y2):
                     self.flip_vert_map[i] = j
-        assert all([m is not None for m in in self.flip_vert_map])
+        assert all([m is not None for m in self.flip_vert_map])
 
     def flip_horiz(self, coords, flip_about=None):
         assert (len(out.size()) == 2 and
