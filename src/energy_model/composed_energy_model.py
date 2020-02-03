@@ -58,11 +58,11 @@ class ComposedEnergyModel(object):
         assert all([m is not None for m in self.flip_horiz_map])
 
         self.flip_vert_map = [None for _ in range(len(self.global_coords))]
-        Lh = max([x1 for x1, _ in self.global_coords])
+        Lv = max([x2 for _, x2 in self.global_coords])
         for i, (x1, x2) in enumerate(self.global_coords):
-            target_x1 = Lh - x1
+            target_x2 = Lv - x2
             for j, (y1, y2) in enumerate(self.global_coords):
-                if np.isclose(target_x1, y1) and np.isclose(x2, y2):
+                if np.isclose(x1, y1) and np.isclose(target_x2, y2):
                     self.flip_vert_map[i] = j
         assert all([m is not None for m in self.flip_vert_map])
 
