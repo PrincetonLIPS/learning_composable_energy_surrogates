@@ -17,6 +17,7 @@ from PIL import Image
 
 import numpy as np
 import pdb
+import copy
 
 
 RVES_WIDTH = 4
@@ -276,14 +277,16 @@ class CompressionEvaluatorBase(object):
                                         surr_soln.size()))
 
         soln_1 = surr_soln
+        soln_2 = self.cem.flip_horiz(surr_soln, self.init_boundary_data)
+        soln_3 = self.cem.flip_vert(surr_soln, self.init_boundary_data)
+        soln_4 = self.cem.flip_horiz(soln_3, self.init_boundary_data)
+
         err1 = ((soln_1-self.true_soln_points)**2).sum().item()
-
-        soln_2 = torch.stack((-surr_soln[:, 0], surr_soln[:, 1]), dim=1)
         err2 = ((soln_2-self.true_soln_points)**2).sum().item()
+        err3 = ((soln_3-self.true_soln_points)**2).sum().item()
+        err4 = ((soln_4-self.true_soln_points)**2).sum().item()
 
-        # pdb.set_trace()
-
-        return ((min(err1, err2), img_buf, step), (self.args.c1, self.args.c2))
+        return ((min(err1, err2, err3, err4), img_buf, step), (self.args.c1, self.args.c2))
 
     def visualize_trajectory(
         self,
@@ -329,17 +332,25 @@ class CompressionEvaluatorBase(object):
                         color='blue', label='true solution, f={:.2e}, fhat={:.2e}'.format(
                             self.true_f, fhat_on_true
                         ))
-            # Symmetry 1
-            traj1 = traj_u[i]
-            traj2 = torch.stack((-traj_u[i][:, 0], traj_u[i][:, 1]), dim=1)
+            # Symmetry
+            solns = [
+                traj_u[i],
+                self.cem.flip_horiz(traj_u[i], self.init_boundary_data),
+                self.cem.flip_vert(traj_u[i], self.init_boundary_data),
+                self.cem.flip_horiz(self.cem.flip_vert(
+                    traj_u[i], self.init_boundary_data),
+                                    self.init_boundary_data)
+            ]
 
-            traj = (traj1
-                    if (traj1 - self.true_soln_points).norm() <
-                    (traj2 - self.true_soln_points).norm()
-                    else traj2)
+            errs = [((soln - self.true_soln_points)**2).sum().item()
+                    for soln in solns]
 
-            ax.scatter(initial_coords[:, 0] + traj.data.numpy()[:, 0],
-                    initial_coords[:, 1] + traj.data.numpy()[:, 1],
+            best = np.argmin(errs)
+
+            soln = solns[best]
+
+            ax.scatter(initial_coords[:, 0] + soln.data.numpy()[:, 0],
+                    initial_coords[:, 1] + soln.data.numpy()[:, 1],
                         color='red', label='surrogate solution, fhat={:.2e}, ||ghat||={:.2e}'.format(
                             traj_f[i], traj_g[i].norm()
                         ))

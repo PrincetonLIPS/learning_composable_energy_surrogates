@@ -281,6 +281,21 @@ parser.add_argument(
     type=int,
     help=" Number of points around each pore",
 )
+
+parser.add_argument(
+    "--composed_mesh_size",
+    default=5,
+    type=int,
+    help="N points along one dim in each cell. "
+    " Overvelde&Bertoldi use about sqrt(1000)",
+)
+parser.add_argument(
+    "--composed_pore_resolution",
+    default=60,
+    type=int,
+    help=" Number of points around each pore",
+)
+
 parser.add_argument(
     "--n_cells", default=2, type=int, help="number cells on one side of ref volume"
 )

@@ -48,6 +48,54 @@ class ComposedEnergyModel(object):
         if self.sem.fsm.cuda:
             self.cell_maps = self.cell_maps.cuda()
 
+        self.flip_horiz_map = [None for _ in range(len(global_coords))]
+        Lh = max([x1 for x1, _ in self.global_coords])
+        for i, (x1, x2) in enumerate(self.global_coords):
+            target_x1 = Lh - x1
+            for j, (y1, y2) in enumerate(self.global_coords):
+                if np.isclose(target_x1, y1) and np.isclose(x2, y2):
+                    self.flip_horiz_map[i] = j
+        assert all([m is not None for m in in self.flip_horiz_map])
+
+        self.flip_vert_map = [None for _ in range(len(global_coords))]
+        Lh = max([x1 for x1, _ in self.global_coords])
+        for i, (x1, x2) in enumerate(self.global_coords):
+            target_x1 = Lh - x1
+            for j, (y1, y2) in enumerate(self.global_coords):
+                if np.isclose(target_x1, y1) and np.isclose(x2, y2):
+                    self.flip_vert_map[i] = j
+        assert all([m is not None for m in in self.flip_vert_map])
+
+    def flip_horiz(self, coords, flip_about=None):
+        assert (len(out.size()) == 2 and
+                out.size(0) == len(self.global_coords) and
+                out.size(1) == 2)
+        if flip_about is not None:
+            coords = coords - flip_about
+        out = torch.zeros_like(coords)
+        for i in range(len(coords)):
+            j = self.flip_horiz_map[i]
+            out[i, 0] = -coords[j, 0]
+            out[i, 1] = coords[j, 1]
+        if flip_about is not None:
+            coords = coords + flip_about
+        return out
+
+    def flip_vert(self, coords, flip_about=None):
+        assert (len(out.size()) == 2 and
+                out.size(0) == len(self.global_coords) and
+                out.size(1) == 2)
+        if flip_about is not None:
+            coords = coords - flip_about
+        out = torch.zeros_like(coords)
+        for i in range(len(coords)):
+            j = self.flip_vert_map[i]
+            out[i, 0] = coords[j, 0]
+            out[i, 1] = -coords[j, 1]
+        if flip_about is not None:
+            coords = coords + flip_about
+        return out
+
     def top_idxs(self):
         out = []
         for i, c in enumerate(self.global_coords):

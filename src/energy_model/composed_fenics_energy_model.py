@@ -15,6 +15,9 @@ class ComposedFenicsEnergyModel(object):
         if self.args.L0 is None:
             self.args.L0 = 1.0 / self.args.n_cells
 
+        self.args.metamaterial_mesh_size = self.args.composed_mesh_size
+        self.args.pore_radial_resolution = self.args.composed_pore_resolution
+
         c1s = np.repeat(
             np.repeat(np.reshape(c1s, (n_high, n_wide)), self.args.n_cells, axis=1),
             self.args.n_cells,
