@@ -140,7 +140,7 @@ parser.add_argument(
     "--boundary_shear_scale",
     type=float,
     help="maximum amplitude scale for boundary shear strain,",
-    default=0.1,
+    default=0.0,
 )
 parser.add_argument(
     "--force_freq_scale",
