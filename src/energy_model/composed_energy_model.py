@@ -67,9 +67,9 @@ class ComposedEnergyModel(object):
         assert all([m is not None for m in self.flip_vert_map])
 
     def flip_horiz(self, coords, flip_about=None):
-        assert (len(out.size()) == 2 and
-                out.size(0) == len(self.global_coords) and
-                out.size(1) == 2)
+        assert (len(coords.size()) == 2 and
+                coords.size(0) == len(self.global_coords) and
+                coords.size(1) == 2)
         if flip_about is not None:
             coords = coords - flip_about
         out = torch.zeros_like(coords)
@@ -82,9 +82,9 @@ class ComposedEnergyModel(object):
         return out
 
     def flip_vert(self, coords, flip_about=None):
-        assert (len(out.size()) == 2 and
-                out.size(0) == len(self.global_coords) and
-                out.size(1) == 2)
+        assert (len(coords.size()) == 2 and
+                coords.size(0) == len(self.global_coords) and
+                coords.size(1) == 2)
         if flip_about is not None:
             coords = coords - flip_about
         out = torch.zeros_like(coords)
