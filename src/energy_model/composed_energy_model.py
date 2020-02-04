@@ -78,7 +78,7 @@ class ComposedEnergyModel(object):
             out[i, 0] = -coords[j, 0]
             out[i, 1] = coords[j, 1]
         if flip_about is not None:
-            coords = coords + flip_about
+            out = out + flip_about
         return out
 
     def flip_vert(self, coords, flip_about=None):
@@ -93,7 +93,7 @@ class ComposedEnergyModel(object):
             out[i, 0] = coords[j, 0]
             out[i, 1] = -coords[j, 1]
         if flip_about is not None:
-            coords = coords + flip_about
+            out = out + flip_about
         return out
 
     def top_idxs(self):
