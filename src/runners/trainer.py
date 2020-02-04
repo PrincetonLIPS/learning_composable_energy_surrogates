@@ -189,20 +189,29 @@ class Trainer(object):
                     milestones=[1e2,5e2,2e3,1e4,1e5])
                 """
             '''
-            self.scheduler = torch.optim.lr_scheduler.CyclicLR(
-                self.optimizer,
-                base_lr=self.args.lr * 1e-3,
-                max_lr=3 * self.args.lr,
-                step_size_up=int(math.ceil(len(self.train_loader) / 2)),
-                step_size_down=int(math.floor(len(self.train_loader) / 2)),
-                mode="triangular",
-                scale_fn=None,
-                scale_mode="cycle",
-                cycle_momentum=False,
-                base_momentum=0.8,
-                max_momentum=0.9,
-                last_epoch=-1,
-            )
+            if self.args.swa:
+                from torchcontrib.optim import SWA
+                self.optimizer = SWA(
+                    self.optimizer,
+                    swa_start=args.swa_start*len(self.train_loader),
+                    swa_freq=len(self.train_loader),
+                    swa_lr=args.lr)
+
+            else:
+                self.scheduler = torch.optim.lr_scheduler.CyclicLR(
+                    self.optimizer,
+                    base_lr=self.args.lr * 1e-3,
+                    max_lr=3 * self.args.lr,
+                    step_size_up=int(math.ceil(len(self.train_loader) / 2)),
+                    step_size_down=int(math.floor(len(self.train_loader) / 2)),
+                    mode="triangular",
+                    scale_fn=None,
+                    scale_mode="cycle",
+                    cycle_momentum=False,
+                    base_momentum=0.8,
+                    max_momentum=0.9,
+                    last_epoch=-1,
+                )
         else:
             self.optimizer = None
 
@@ -344,7 +353,8 @@ class Trainer(object):
                         self.surrogate.net.parameters(), self.args.clip_grad_norm
                     )
                 self.optimizer.step()
-                self.scheduler.step()
+                if not self.args.swa:
+                    self.scheduler.step()
                 if self.args.verbose:
                     log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
         self.tflogger.log_scalar("backward_time", timer.interval, step)

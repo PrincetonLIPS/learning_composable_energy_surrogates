@@ -344,7 +344,11 @@ if __name__ == "__main__":
             t_losses = np.zeros(7)
 
             last_state_dict = state_dict
+            if self.args.swa:
+                trainer.optimizer.swap_swa_sgd()
             state_dict = surrogate.net.state_dict()
+            if self.args.swa:
+                trainer.optimizer.swap_swa_sgd()
             state_dict = {
                 k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
                 for k, v in state_dict.items()
@@ -384,7 +388,11 @@ if __name__ == "__main__":
 
             surrogate.net.eval()
 
+            if self.args.swa:
+                trainer.optimizer.swap_swa_sgd()
             v_losses = trainer.val_step(step)
+            if self.args.swa:
+                trainer.optimizer.swap_swa_sgd()
 
             # visualize and save at most once every 2min
             if time.time() - last_viz_time > 120:

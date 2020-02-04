@@ -408,6 +408,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--swa",
+    help="Stochastic weight averaging",
+    type=s2b,
+    default=False,
+)
+
+parser.add_argument(
     "--load_ckpt_dir",
     help="Dir under data_dir to load ckpt from.",
     type=str,
