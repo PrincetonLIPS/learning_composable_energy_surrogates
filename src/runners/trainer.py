@@ -195,7 +195,7 @@ class Trainer(object):
                     self.optimizer,
                     swa_start=self.args.swa_start*len(self.train_loader),
                     swa_freq=len(self.train_loader),
-                    swa_lr=args.lr)
+                    swa_lr=self.args.lr)
 
             else:
                 self.scheduler = torch.optim.lr_scheduler.CyclicLR(
