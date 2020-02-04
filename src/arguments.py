@@ -415,6 +415,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--swa_start",
+    help="Stochastic weight averaging start epoch",
+    type=int,
+    default=50,
+)
+
+parser.add_argument(
     "--load_ckpt_dir",
     help="Dir under data_dir to load ckpt from.",
     type=str,

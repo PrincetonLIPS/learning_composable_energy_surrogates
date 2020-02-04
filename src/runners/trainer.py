@@ -193,7 +193,7 @@ class Trainer(object):
                 from torchcontrib.optim import SWA
                 self.optimizer = SWA(
                     self.optimizer,
-                    swa_start=args.swa_start*len(self.train_loader),
+                    swa_start=self.args.swa_start*len(self.train_loader),
                     swa_freq=len(self.train_loader),
                     swa_lr=args.lr)
 
