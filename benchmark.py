@@ -100,47 +100,49 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
         args.composed_mesh_size = ms
         args.composed_pore_resolution = pr
 
-        for factor, anneal, max_iter in zip(factors, anneal_steps, max_iters):
-            ANNEAL_STEPS = anneal
-        args.relaxation_parameter = factor
-        args.max_newton_iter = max_iter
-        try:
-            with Timer() as t:
-                cfem = ComposedFenicsEnergyModel(
-                    args,
-                    RVES_WIDTH,
-                    RVES_WIDTH,
-                    Xi1 * np.ones(RVES_WIDTH * RVES_WIDTH),
-                    Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
-                )
-                print(len(fa.Function(cfem.pde.V).vector()))
-                init_guess = fa.Function(cfem.pde.V).vector()
 
-                for i in range(ANNEAL_STEPS):
-                    print("Anneal {} of {}".format(i + 1, ANNEAL_STEPS))
-                    fenics_boundary_fn = fa.Expression(
-                        ("0.0", "X*x[1]"),
-                        element=pde.V.ufl_element(),
-                        X=MAX_DISP * (i + 1) / ANNEAL_STEPS,
+        for idx, (factor, anneal, max_iter) in enumerate(zip(factors, anneal_steps, max_iters)):
+            ANNEAL_STEPS = anneal
+            args.relaxation_parameter = factor
+            args.max_newton_iter = max_iter
+            try:
+                with Timer() as t:
+                    cfem = ComposedFenicsEnergyModel(
+                        args,
+                        RVES_WIDTH,
+                        RVES_WIDTH,
+                        Xi1 * np.ones(RVES_WIDTH * RVES_WIDTH),
+                        Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
                     )
-                    true_soln = cfem.solve(
-                        args=args,
-                        boundary_fn=fenics_boundary_fn,
-                        constrained_sides=constrained_sides,
-                        initial_guess=init_guess,
+                    print(len(fa.Function(cfem.pde.V).vector()))
+                    init_guess = fa.Function(cfem.pde.V).vector()
+
+                    for i in range(ANNEAL_STEPS):
+                        print("Anneal {} of {}".format(i + 1, ANNEAL_STEPS))
+                        fenics_boundary_fn = fa.Expression(
+                            ("0.0", "X*x[1]"),
+                            element=pde.V.ufl_element(),
+                            X=MAX_DISP * (i + 1) / ANNEAL_STEPS,
+                        )
+                        true_soln = cfem.solve(
+                            args=args,
+                            boundary_fn=fenics_boundary_fn,
+                            constrained_sides=constrained_sides,
+                            initial_guess=init_guess,
+                        )
+                        init_guess = true_soln.vector()
+                break
+            except Exception as e:
+                print(e)
+                if idx >= len(factors) - 1:
+                    cfem = ComposedFenicsEnergyModel(
+                        args,
+                        RVES_WIDTH,
+                        RVES_WIDTH,
+                        Xi1 * np.ones(RVES_WIDTH * RVES_WIDTH),
+                        Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
                     )
-                    init_guess = true_soln.vector()
-            break
-        except Exception as e:
-            print(e)
-            cfem = ComposedFenicsEnergyModel(
-                args,
-                RVES_WIDTH,
-                RVES_WIDTH,
-                Xi1 * np.ones(RVES_WIDTH * RVES_WIDTH),
-                Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
-            )
-            soln = fa.project(base_expr, cfem.pde.V)
+                    soln = fa.project(base_expr, cfem.pde.V)
     fem_times.append(t.interval)
     print("time ", t.interval)
     print("energy ", cfem.pde.energy(soln))
