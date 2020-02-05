@@ -142,7 +142,7 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
                         Xi1 * np.ones(RVES_WIDTH * RVES_WIDTH),
                         Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
                     )
-                    soln = fa.project(base_expr, cfem.pde.V)
+                    true_soln = fa.project(base_expr, cfem.pde.V)
     fem_times.append(t.interval)
     print("time ", t.interval)
     print("energy ", cfem.pde.energy(true_soln))
