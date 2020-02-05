@@ -8,6 +8,7 @@ from src.energy_model.surrogate_energy_model import SurrogateEnergyModel
 from src.energy_model.composed_energy_model import ComposedEnergyModel
 from src.energy_model.composed_fenics_energy_model import ComposedFenicsEnergyModel
 import matplotlib.pyplot as plt
+import numpy as np
 
 load_ckpt_path = "gen_deploy_16"
 
