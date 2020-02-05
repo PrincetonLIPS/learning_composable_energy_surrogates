@@ -255,9 +255,10 @@ class Trainer(object):
             )
         self.optimizer.step()
 
-        self.tflogger.log_scalar("cd_E+_mean", eplus.item(), step)
-        self.tflogger.log_scalar("cd_E-_mean", eminus.item(), step)
-        self.tflogger.log_scalar("cd_loss", cd_loss.item(), step)
+        if self.tflogger is not None:
+            self.tflogger.log_scalar("cd_E+_mean", eplus.item(), step)
+            self.tflogger.log_scalar("cd_E-_mean", eminus.item(), step)
+            self.tflogger.log_scalar("cd_loss", cd_loss.item(), step)
 
     def train_step(self, step, batch):
         """Do a single step of Sobolev training. Log stats to tensorboard."""
@@ -305,7 +306,8 @@ class Trainer(object):
         """
         # pdb.set_trace()
 
-        self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
+        if self.tflogger is not None:
+            self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
 
         with Timer() as timer:
             if self.args.hess:
@@ -325,14 +327,15 @@ class Trainer(object):
             J[f.view(-1) < 0] *= 0.0
             f[f.view(-1) < 0] *= 0.0
         # pdb.set_trace()
-
-        self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
+        if self.tflogger is not None:
+            self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
 
         with Timer() as timer:
             f_loss, f_pce, J_loss, J_sim, H_loss, H_sim, total_loss = self.stats(
                 step, u, f, J, Hvp, fhat, Jhat, Hvphat
             )
-        self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
+        if self.tflogger is not None:
+            self.tflogger.log_scalar("stats_forward_time", timer.interval, step)
 
         if not np.isfinite(total_loss.data.cpu().numpy().sum()):
             pdb.set_trace()
@@ -360,7 +363,8 @@ class Trainer(object):
                     self.scheduler.step()
                 if self.args.verbose:
                     log("lr: {}".format(self.optimizer.param_groups[0]["lr"]))
-        self.tflogger.log_scalar("backward_time", timer.interval, step)
+        if self.tflogger is not None:
+            self.tflogger.log_scalar("backward_time", timer.interval, step)
         # pdb.set_trace()
         return (
             f_loss.item(),
@@ -516,7 +520,8 @@ class Trainer(object):
         plt.savefig(buf, format="png")
         buf.seek(0)
         plt.close()
-        self.tflogger.log_images("{} displacements".format(dataset_name), [buf], step)
+        if self.tflogger is not None:
+            self.tflogger.log_images("{} displacements".format(dataset_name), [buf], step)
 
         if J is not None and Jhat is not None:
             fig, axes = plt.subplots(4, 4, figsize=(16, 16))
@@ -556,7 +561,8 @@ class Trainer(object):
             plt.savefig(buf, format="png")
             buf.seek(0)
             plt.close()
-            self.tflogger.log_images("{} Jacobians".format(dataset_name), [buf], step)
+            if self.tflogger is not None:
+                self.tflogger.log_images("{} Jacobians".format(dataset_name), [buf], step)
         self.surrogate.fsm.cuda = cuda
 
     def stats(self, step, u, f, J, Hvp, fhat, Jhat, Hvphat, phase="train"):
