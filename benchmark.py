@@ -143,7 +143,6 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
                         Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
                     )
                     true_soln = fa.project(base_expr, cfem.pde.V)
-        
         fem_times.append(t.interval)
         print("time ", t.interval)
         print("energy ", cfem.pde.energy(true_soln))
@@ -165,6 +164,8 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
     
     torch.save(
         {
+            "homogenized_disp": boundary_data,
+            "initial_coords": np.array(cem.global_coords),
             "Xi": (Xi1, Xi2),
             "surr_time": surr_time,
             "surr_numel": surr_numel,
