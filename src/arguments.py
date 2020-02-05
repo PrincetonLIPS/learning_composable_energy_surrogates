@@ -17,7 +17,12 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument("--run_local", help="Run locally", type=s2b, default=True)
 
-parser.add_argument("--poisson", help="Use nonlinear Poisson instead of elasticity", type=s2b, default=False)
+parser.add_argument(
+    "--poisson",
+    help="Use nonlinear Poisson instead of elasticity",
+    type=s2b,
+    default=False,
+)
 
 parser.add_argument("--dagger", help="Do dagger", type=s2b, default=False)
 
@@ -44,31 +49,19 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--nmc_stepsize",
-    help="nmc stepsize",
-    type=float,
-    default=0.1,
+    "--nmc_stepsize", help="nmc stepsize", type=float, default=0.1,
 )
 
 parser.add_argument(
-    "--nmc_temp",
-    help="nmc temp",
-    type=float,
-    default=0.1,
+    "--nmc_temp", help="nmc temp", type=float, default=0.1,
 )
 
 parser.add_argument(
-    "--nmc_online_stepsize",
-    help="nmc online stepsize",
-    type=float,
-    default=0.1,
+    "--nmc_online_stepsize", help="nmc online stepsize", type=float, default=0.1,
 )
 
 parser.add_argument(
-    "--nmc_online_temp",
-    help="nmc online temp",
-    type=float,
-    default=0.1,
+    "--nmc_online_temp", help="nmc online temp", type=float, default=0.1,
 )
 
 
@@ -313,8 +306,9 @@ parser.add_argument(
 parser.add_argument("--lr", help="Learning rate", type=float, default=3e-4)
 parser.add_argument("--wd", help="Weight decay", type=float, default=0.0)
 parser.add_argument("--cd_weight", help="Weight on cd loss", type=float, default=1e-3)
-parser.add_argument("--l1_loss", help="L1 on energies instead of MSE",
-                    type=s2b, default=False)
+parser.add_argument(
+    "--l1_loss", help="L1 on energies instead of MSE", type=s2b, default=False
+)
 
 parser.add_argument(
     "--J_weight", help="Weight on Jacobian loss", type=float, default=1.0
@@ -344,52 +338,48 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--adv_collect", help="Do online adversarial data collection", type=s2b,
-    default=False
+    "--adv_collect",
+    help="Do online adversarial data collection",
+    type=s2b,
+    default=False,
 )
 
 parser.add_argument(
-    "--adv_burnin",
-    type=int,
-    help="burnin time for adv collector",
-    default=2500,
+    "--adv_burnin", type=int, help="burnin time for adv collector", default=2500,
 )
 
 parser.add_argument(
-    "--deploy_collect", help="Do online deployment data collection", type=s2b,
-    default=False
+    "--deploy_collect",
+    help="Do online deployment data collection",
+    type=s2b,
+    default=False,
 )
 
 parser.add_argument(
-    "--adv_gd_stepsize", help="stepsize for adv collector", type=float,
-    default=1e-5
+    "--adv_gd_stepsize", help="stepsize for adv collector", type=float, default=1e-5
 )
 
 parser.add_argument(
-    "--adv_newton_stepsize", help="stepsize for adv collector", type=float,
-    default=1e-2
+    "--adv_newton_stepsize", help="stepsize for adv collector", type=float, default=1e-2
 )
 
 parser.add_argument(
-    "--adv_gd_steps", help="steps of GD for adv collector ", type=int,
-    default=100
+    "--adv_gd_steps", help="steps of GD for adv collector ", type=int, default=100
 )
 
 parser.add_argument(
-    "--adv_newton_steps", help="steps of newton for adv collector ", type=int,
-    default=3
+    "--adv_newton_steps", help="steps of newton for adv collector ", type=int, default=3
 )
 
 parser.add_argument(
-    "--adv_newton", help="use Newton step for adv collector", type=s2b,
-    default=False
+    "--adv_newton", help="use Newton step for adv collector", type=s2b, default=False
 )
 
 parser.add_argument(
     "--adv_newton_damp",
     help="damping factor for adv_newton",
     type=float,
-    default=0.1, # Compression from Overvelde and Bertoldi
+    default=0.1,  # Compression from Overvelde and Bertoldi
 )
 
 parser.add_argument("--cd_sgld_eps", help="eps for CD sgld", type=float, default=1e-6)
@@ -408,17 +398,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--swa",
-    help="Stochastic weight averaging",
-    type=s2b,
-    default=False,
+    "--swa", help="Stochastic weight averaging", type=s2b, default=False,
 )
 
 parser.add_argument(
-    "--swa_start",
-    help="Stochastic weight averaging start epoch",
-    type=int,
-    default=50,
+    "--swa_start", help="Stochastic weight averaging start epoch", type=int, default=50,
 )
 
 parser.add_argument(
@@ -429,36 +413,24 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--load_net_state",
-    help="Reload net state.",
-    type=s2b,
-    default=False,
+    "--load_net_state", help="Reload net state.", type=s2b, default=False,
 )
 
 parser.add_argument(
-    "--load_opt_state",
-    help="Reload optimizer state",
-    type=s2b,
-    default=False,
+    "--load_opt_state", help="Reload optimizer state", type=s2b, default=False,
 )
 
 parser.add_argument(
-    "--n_high",
-    help="n_high for deployment / deploy_collect",
-    type=int,
-    default=4,
+    "--n_high", help="n_high for deployment / deploy_collect", type=int, default=4,
 )
 
 parser.add_argument(
-    "--n_wide",
-    help="n_wide for deployment / deploy_collect",
-    type=int,
-    default=4,
+    "--n_wide", help="n_wide for deployment / deploy_collect", type=int, default=4,
 )
 
 parser.add_argument(
     "--deploy_disp",
     help="displacement for deployment evaluation",
     type=float,
-    default=-0.125, # Compression from Overvelde and Bertoldi
+    default=-0.125,  # Compression from Overvelde and Bertoldi
 )

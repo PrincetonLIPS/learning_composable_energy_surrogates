@@ -3,14 +3,7 @@ import copy
 
 
 def solve(
-    fem,
-    args,
-    q,
-    guess,
-    q_last,
-    max_iter,
-    factor,
-    recursion_depth=0,
+    fem, args, q, guess, q_last, max_iter, factor, recursion_depth=0,
 ):
     try:
         # print("recursion {}, iter {}, factor {}".format(recursion_depth, max_iter, factor))
@@ -22,9 +15,7 @@ def solve(
         Z = sum([2 ** i for i in range(T)])
         new_guess = guess
         for i in range(T):
-            new_args.atol = (
-                args.atol
-            )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
+            new_args.atol = args.atol  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
             new_args.rtol = 10 ** (math.log10(args.rtol) * 2 ** i / Z)
             new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
             # print("solve with rtol {} atol {} iter {} factor {} u_norm {} guess_norm {}".format(
@@ -36,7 +27,9 @@ def solve(
         return u.vector()
     except Exception as e:
         if q_last is None and recursion_depth == 0:
-            return solve(fem, args, q, guess, q_last, max_iter, factor=0.1, recursion_depth=1)
+            return solve(
+                fem, args, q, guess, q_last, max_iter, factor=0.1, recursion_depth=1
+            )
         elif q_last is None:
             raise e
         elif recursion_depth >= 8:
@@ -46,7 +39,7 @@ def solve(
             # print("recursing due to error, depth {}:".format(recursion_depth+1))
             # print(e)
             # q_mid = q_last + 0.5*(q-q_last)
-            new_factor = 0.1 # max(factor*0.5, 0.05)
+            new_factor = 0.1  # max(factor*0.5, 0.05)
             new_max_iter = int(
                 5
                 + max_iter
@@ -58,8 +51,10 @@ def solve(
             # guess = solve(q_mid, guess, q_last, max_iter=new_max_iter,
             #               factor=new_factor, recursion_depth=recursion_depth+1)
             # print("first half of recursion {}".format(recursion_depth+1))
-            guess = solve(fem, args,
-                (q+q_last)/2,
+            guess = solve(
+                fem,
+                args,
+                (q + q_last) / 2,
                 guess,
                 q_last,
                 max_iter=new_max_iter,
@@ -67,10 +62,12 @@ def solve(
                 recursion_depth=recursion_depth + 1,
             )
             # print("second half of recursion {}".format(recursion_depth+1))
-            return solve(fem, args,
+            return solve(
+                fem,
+                args,
                 q,
                 guess,
-                (q+q_last)/2,
+                (q + q_last) / 2,
                 max_iter=new_max_iter,
                 factor=new_factor,
                 recursion_depth=recursion_depth + 1,

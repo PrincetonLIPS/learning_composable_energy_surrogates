@@ -30,11 +30,14 @@ class EnergyScaler(object):
                 ]
             ).view(-1, 1)
         elif self.quadratic_scale:
-            f = f / (torch.sum(
-                self.preproc(bparams) ** 2,
-                dim=tuple(i for i in range(1, len(bparams.size()))),
-                keepdims=True,
-            ) + 1e-14)
+            f = f / (
+                torch.sum(
+                    self.preproc(bparams) ** 2,
+                    dim=tuple(i for i in range(1, len(bparams.size()))),
+                    keepdims=True,
+                )
+                + 1e-14
+            )
 
         if self.log_scale:
             f = torch.log(1e6 * f) - torch.log(torch.ones_like(f) * 1e6)
@@ -53,11 +56,14 @@ class EnergyScaler(object):
                 ]
             ).view(-1, 1)
         elif self.quadratic_scale:
-            f = f * (torch.sum(
-                self.preproc(bparams) ** 2,
-                dim=tuple(i for i in range(1, len(bparams.size()))),
-                keepdims=True,
-            ) + 1e-14)
+            f = f * (
+                torch.sum(
+                    self.preproc(bparams) ** 2,
+                    dim=tuple(i for i in range(1, len(bparams.size()))),
+                    keepdims=True,
+                )
+                + 1e-14
+            )
 
         return f
 

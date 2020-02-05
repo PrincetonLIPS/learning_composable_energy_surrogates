@@ -67,9 +67,11 @@ class ComposedEnergyModel(object):
         assert all([m is not None for m in self.flip_vert_map])
 
     def flip_horiz(self, coords, flip_about=None):
-        assert (len(coords.size()) == 2 and
-                coords.size(0) == len(self.global_coords) and
-                coords.size(1) == 2)
+        assert (
+            len(coords.size()) == 2
+            and coords.size(0) == len(self.global_coords)
+            and coords.size(1) == 2
+        )
         if flip_about is not None:
             coords = coords - flip_about
         out = torch.zeros_like(coords)
@@ -82,9 +84,11 @@ class ComposedEnergyModel(object):
         return out
 
     def flip_vert(self, coords, flip_about=None):
-        assert (len(coords.size()) == 2 and
-                coords.size(0) == len(self.global_coords) and
-                coords.size(1) == 2)
+        assert (
+            len(coords.size()) == 2
+            and coords.size(0) == len(self.global_coords)
+            and coords.size(1) == 2
+        )
         if flip_about is not None:
             coords = coords - flip_about
         out = torch.zeros_like(coords)
@@ -141,8 +145,7 @@ class ComposedEnergyModel(object):
             cell_force_data = torch.matmul(
                 self.cell_maps.view(-1, self.cell_maps.size(2)), force_data
             )
-            cell_force_data = cell_force_data.view(self.n_cells, -1,
-                                                   self.sem.fsm.udim)
+            cell_force_data = cell_force_data.view(self.n_cells, -1, self.sem.fsm.udim)
 
         else:
             cell_force_data = torch.zeros_like(cell_coords)

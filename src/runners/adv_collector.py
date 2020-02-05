@@ -23,7 +23,7 @@ class AdversarialCollectorBase(object):
     def __init__(self, args, seed, state_dict):
         self.args = args
         np.random.seed(seed)
-        torch.manual_seed(np.random.randint(2**32))
+        torch.manual_seed(np.random.randint(2 ** 32))
         make_p(args)
         # self.last_sample = torch.zeros(self.fsm.vector_dim)
 
@@ -50,9 +50,7 @@ class AdversarialCollectorBase(object):
 
         # Hack to impose the correct grad
         du = u - u0
-        f = f + (du*J).sum(dim=1) + torch.matmul(
-            du, torch.matmul(H, du.t())).diag()
-
+        f = f + (du * J).sum(dim=1) + torch.matmul(du, torch.matmul(H, du.t())).diag()
 
         fhat = self.sem.f(u, params=p.unsqueeze(0).expand((len(u)), len(p))).view(-1)
         # print("f ", f.mean().item())
@@ -60,17 +58,12 @@ class AdversarialCollectorBase(object):
         f += 1e-9
         fhat += 1e-9
         # pdb.set_trace()
-        return torch.nn.functional.mse_loss(torch.log(f), torch.log(fhat)) - 1e-9 * (u**2).sum(dim=1)
-
+        return torch.nn.functional.mse_loss(torch.log(f), torch.log(fhat)) - 1e-9 * (
+            u ** 2
+        ).sum(dim=1)
 
     def solve(
-        self,
-        q,
-        guess,
-        q_last=None,
-        max_iter=None,
-        factor=None,
-        recursion_depth=0,
+        self, q, guess, q_last=None, max_iter=None, factor=None, recursion_depth=0,
     ):
         # fa.set_log_level(20)
         if max_iter is None:
@@ -95,14 +88,22 @@ class AdversarialCollectorBase(object):
                 # print("solve with rtol {} atol {} iter {} factor {} u_norm {} guess_norm {}".format(
                 #    new_args.atol, new_args.rtol, new_args.max_newton_iter, new_args.relaxation_parameter, q.norm().item(),
                 #    torch.Tensor(guess).norm().item()))
-                f, u = self.fem.f(q, initial_guess=new_guess, return_u=True, args=new_args)
+                f, u = self.fem.f(
+                    q, initial_guess=new_guess, return_u=True, args=new_args
+                )
                 new_guess = u.vector()
             # print("energy: {:.3e}, sq(q): {:.3e},  f/sq(q): {:.3e}".format(f, sq(q), (f+EPS)/sq(q)))
             return u.vector()
         except Exception as e:
             if q_last is None and recursion_depth == 0:
-                return self.solve(q, guess, q_last, max_iter, factor=0.1,
-                                  recursion_depth=recursion_depth+1)
+                return self.solve(
+                    q,
+                    guess,
+                    q_last,
+                    max_iter,
+                    factor=0.1,
+                    recursion_depth=recursion_depth + 1,
+                )
             elif q_last is None:
                 raise e
             elif recursion_depth >= 8:
@@ -112,7 +113,7 @@ class AdversarialCollectorBase(object):
                 # print("recursing due to error, depth {}:".format(recursion_depth+1))
                 # print(e)
                 # q_mid = q_last + 0.5*(q-q_last)
-                new_factor = 0.1 # max(factor*0.5, 0.05)
+                new_factor = 0.1  # max(factor*0.5, 0.05)
                 new_max_iter = int(
                     5
                     + max_iter
@@ -125,7 +126,7 @@ class AdversarialCollectorBase(object):
                 #               factor=new_factor, recursion_depth=recursion_depth+1)
                 # print("first half of recursion {}".format(recursion_depth+1))
                 guess = self.solve(
-                    (q+q_last)/2,
+                    (q + q_last) / 2,
                     guess,
                     q_last,
                     max_iter=new_max_iter,
@@ -136,7 +137,7 @@ class AdversarialCollectorBase(object):
                 return self.solve(
                     q,
                     guess,
-                    (q+q_last)/2,
+                    (q + q_last) / 2,
                     max_iter=new_max_iter,
                     factor=new_factor,
                     recursion_depth=recursion_depth + 1,
@@ -154,7 +155,7 @@ class AdversarialCollectorBase(object):
         J = J[i]
         H = H[i]
 
-        if f <= 0.:
+        if f <= 0.0:
             raise Exception("Received too low energy f")
 
         self.n += 1
@@ -171,9 +172,11 @@ class AdversarialCollectorBase(object):
 
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
 
-        if True:#Vsmall_guess is None or np.all(np.isclose(Vsmall_guess[i].numpy(), 0., atol=1e-9, rtol=1e-9)):
+        if (
+            True
+        ):  # Vsmall_guess is None or np.all(np.isclose(Vsmall_guess[i].numpy(), 0., atol=1e-9, rtol=1e-9)):
             # print("starting solve from scratch")
-            guess = fa.Function(self.fsm.V).vector() # self.fsm.to_V(u).vector()
+            guess = fa.Function(self.fsm.V).vector()  # self.fsm.to_V(u).vector()
             last_u = torch.zeros_like(u)
             guess = self.solve(u, guess, last_u)
             last_u = u
@@ -193,19 +196,29 @@ class AdversarialCollectorBase(object):
 
         u0 = u.clone().detach()
 
-        obj = - self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
+        obj = -self.damped_error(u.unsqueeze(0), u0, p, f, J, H)
         # print("error: {:.5e}".format(-obj.mean().item()))
 
-        newton_damp = np.random.uniform(0., self.args.adv_newton_damp)
+        newton_damp = np.random.uniform(0.0, self.args.adv_newton_damp)
 
-        steps = self.args.adv_newton_steps if self.args.adv_newton else self.args.adv_gd_steps
+        steps = (
+            self.args.adv_newton_steps
+            if self.args.adv_newton
+            else self.args.adv_gd_steps
+        )
 
         # Randomize number of steps : combination of cheap small deltas and expensive big deltas
         steps = np.random.randint(1, steps)
 
-        stepsize = self.args.adv_newton_stepsize if self.args.adv_newton else self.args.adv_gd_stepsize
-        stepsize = np.random.random() * stepsize  # Randomize length to allow variations at diff lenghts
-       
+        stepsize = (
+            self.args.adv_newton_stepsize
+            if self.args.adv_newton
+            else self.args.adv_gd_stepsize
+        )
+        stepsize = (
+            np.random.random() * stepsize
+        )  # Randomize length to allow variations at diff lenghts
+
         for i in range(steps):
             if self.args.verbose:
                 print("Step ", i)
@@ -213,20 +226,21 @@ class AdversarialCollectorBase(object):
                 if self.args.adv_newton:
                     stack_u = torch.autograd.Variable(
                         torch.stack([u.data for _ in range(len(u))], dim=0),
-                                                requires_grad=True)
+                        requires_grad=True,
+                    )
 
                     # pdb.set_trace()
 
                     # objective to minimize is the negative of the error
                     if self.args.verbose:
                         print("Pytorch bit")
-                    obj = - self.damped_error(stack_u, u0, p, f, J, H)
+                    obj = -self.damped_error(stack_u, u0, p, f, J, H)
 
                     # print("error: {:.5e}".format(-obj.mean().item()))
 
-                    stack_grad = torch.autograd.grad(obj.sum(), stack_u,
-                                               create_graph=True,
-                                               retain_graph=True)[0]
+                    stack_grad = torch.autograd.grad(
+                        obj.sum(), stack_u, create_graph=True, retain_graph=True
+                    )[0]
                     grad = stack_grad[0]
 
                     hess = torch.autograd.grad(torch.trace(stack_grad), stack_u)[0]
@@ -242,13 +256,12 @@ class AdversarialCollectorBase(object):
                         hess = hess + (1e-9 - min_eig) * torch.eye(len(u))
                     hinv = torch.cholesky_inverse(hess)
 
-                    delta_u = torch.matmul(
-                        hinv,
-                        grad.view(-1, 1)).view(-1)
+                    delta_u = torch.matmul(hinv, grad.view(-1, 1)).view(-1)
                 else:
-                    stack_u = torch.autograd.Variable(u.unsqueeze(0).data,
-                                                      requires_grad=True)
-                    obj = - self.damped_error(stack_u, u0, p, f, J, H)
+                    stack_u = torch.autograd.Variable(
+                        u.unsqueeze(0).data, requires_grad=True
+                    )
+                    obj = -self.damped_error(stack_u, u0, p, f, J, H)
                     # print("error: {:.5e}".format(-obj.mean().item()))
                     grad = torch.autograd.grad(obj.sum(), stack_u)[0][0]
                     delta_u = grad
@@ -287,9 +300,9 @@ class AdversarialCollectorBase(object):
                 last_u = u
             except Exception as e:
                 if i == 0:
-                    raise e #  Didn't even get one step
+                    raise e  #  Didn't even get one step
                 else:
-                    u = u0 #  Iterate from last successful step
+                    u = u0  #  Iterate from last successful step
 
         # print("error: {:.5e}".format(-obj.mean().item()))
 
@@ -307,8 +320,7 @@ class AdversarialCollectorBase(object):
 
         # pdb.set_trace()
 
-        return Example(u0, p, torch.Tensor([f]), J, H,
-                       torch.Tensor(new_Vsmall_guess))
+        return Example(u0, p, torch.Tensor([f]), J, H, torch.Tensor(new_Vsmall_guess))
 
 
 @ray.remote(resources={"WorkerFlags": 0.33})
@@ -316,13 +328,14 @@ class AdversarialCollector(AdversarialCollectorBase):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from ..arguments import parser
     import pdb
     from ..pde.metamaterial import make_metamaterial
+
     args = parser.parse_args()
-    args.c1 = 0.
-    args.c2 = 0.
+    args.c1 = 0.0
+    args.c2 = 0.0
     if args.verbose:
         fa.set_log_level(20)
     pde = make_metamaterial(args)
@@ -343,11 +356,14 @@ if __name__ == '__main__':
     example = Example(u, p, f, J, H, None)
     for i in range(10):
         print(i)
-        example = collector.step((example.u.unsqueeze(0),
-                                  example.p.unsqueeze(0),
-                                  example.f.unsqueeze(0),
-                                  example.J.unsqueeze(0),
-                                  example.H.unsqueeze(0),
-                                  None if example.guess is None
-                                  else example.guess.unsqueeze(0)))
+        example = collector.step(
+            (
+                example.u.unsqueeze(0),
+                example.p.unsqueeze(0),
+                example.f.unsqueeze(0),
+                example.J.unsqueeze(0),
+                example.H.unsqueeze(0),
+                None if example.guess is None else example.guess.unsqueeze(0),
+            )
+        )
         print(example[0])

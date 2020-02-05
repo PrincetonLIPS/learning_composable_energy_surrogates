@@ -78,7 +78,9 @@ class CollectorBase(object):
         J = self.fsm.to_torch(JV)
 
         solution.set_allow_extrapolation(True)
-        new_usmall_guess = torch.Tensor(fa.interpolate(solution, self.fsm.small_V).vector())
+        new_usmall_guess = torch.Tensor(
+            fa.interpolate(solution, self.fsm.small_V).vector()
+        )
 
         return Example(u, p, f, J, H, new_usmall_guess)
 

@@ -45,7 +45,6 @@ class Trainer(object):
         self.train_f_std = _cuda(torch.Tensor([[1.0]]))
         self.train_J_std = _cuda(torch.Tensor([[1.0]]))
 
-
     def init_transformations(self):
         # Init transformations corresponding to rotations, flips
 
@@ -58,9 +57,9 @@ class Trainer(object):
 
         # rotated = R * original
         p1 = np.array([i for i in range(d)])
-        p2 = np.mod(p1 + int(d/4), d)  # rotate 90
-        p3 = np.mod(p2 + int(d/4), d)  # rotate 180
-        p4 = np.mod(p3 + int(d/4), d)  # rotate 270
+        p2 = np.mod(p1 + int(d / 4), d)  # rotate 90
+        p3 = np.mod(p2 + int(d / 4), d)  # rotate 180
+        p4 = np.mod(p3 + int(d / 4), d)  # rotate 270
 
         # flip about 0th loc which is two points in 2d
         # TODO: make this dimension-agnostic
@@ -69,7 +68,7 @@ class Trainer(object):
             p = np.concatenate(([p[0]], p[1:][::-1]), axis=0)
             return p.reshape(-1)
 
-        ps = [p1, p2, p3, p4]#, p2, p3, p4]
+        ps = [p1, p2, p3, p4]  # , p2, p3, p4]
         # ps = ps + [flip(p) for p in ps]
         # ps = [p.tolist() for p in ps]
 
@@ -98,12 +97,16 @@ class Trainer(object):
             Hs = Hs[:, :, perm]
 
             for i in range(len(us)):
-                self.train_data.feed(Example(us[i].clone().detach(),
-                                             self.train_data.data[i][1].clone().detach(),
-                                             self.train_data.data[i][2].clone().detach(),
-                                             Js[i].clone().detach(),
-                                             Hs[i].clone().detach()))
-            '''
+                self.train_data.feed(
+                    Example(
+                        us[i].clone().detach(),
+                        self.train_data.data[i][1].clone().detach(),
+                        self.train_data.data[i][2].clone().detach(),
+                        Js[i].clone().detach(),
+                        Hs[i].clone().detach(),
+                    )
+                )
+            """
             for n in range(N):
                 if n % 1000 == 0:
                     print('preproc perm {}, n {}'.format(pn, n))
@@ -118,8 +121,8 @@ class Trainer(object):
                       [perm for _ in range(len(perm))]]
 
                 self.train_data.feed(Example(u, p, f, J, H))
-            '''
-            '''
+            """
+            """
                 ii = [[i for _ in range(self.surrogate.fsm.vector_dim)]
                         for i in range(len(u))]
                 jjs = [self.perms[np.random.choice(len(self.perms))]
@@ -138,10 +141,8 @@ class Trainer(object):
                 # pdb.set_trace()
                 H = H[iis, jjs, kks]
                 H = H[iis, kks, jjs]
-            '''
+            """
         # for tm in self.trans_mats:
-
-
 
     def init_optimizer(self):
         # Create optimizer if surrogate is trainable
@@ -191,11 +192,13 @@ class Trainer(object):
             '''
             if self.args.swa:
                 from torchcontrib.optim import SWA
+
                 self.optimizer = SWA(
                     self.optimizer,
-                    swa_start=self.args.swa_start*len(self.train_loader),
+                    swa_start=self.args.swa_start * len(self.train_loader),
                     swa_freq=len(self.train_loader),
-                    swa_lr=self.args.lr)
+                    swa_lr=self.args.lr,
+                )
 
             else:
                 self.scheduler = torch.optim.lr_scheduler.CyclicLR(
@@ -268,7 +271,7 @@ class Trainer(object):
 
         if self.args.poisson:
             u = self.surrogate.fsm.to_ring(u)
-            u[:, 0] = 0.
+            u[:, 0] = 0.0
             u = self.surrogate.fsm.to_torch(u)
 
         # pdb.set_trace()
@@ -280,7 +283,7 @@ class Trainer(object):
         #     torch.matmul(J.unsqueeze(1), T).squeeze(),
         #     torch.matmul(torch.matmul(T.permute(0, 2, 1), H), T)
         # )
-        '''
+        """
         iis = [[i for _ in range(self.surrogate.fsm.vector_dim)]
                 for i in range(len(u))]
         jjs = [self.perms[np.random.choice(len(self.perms))]
@@ -299,7 +302,7 @@ class Trainer(object):
         # pdb.set_trace()
         H = H[iis, jjs, kks]
         H = H[iis, kks, jjs]
-        '''
+        """
         # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_cuda_time", timer.interval, step)
@@ -315,12 +318,12 @@ class Trainer(object):
                 Hvp = torch.zeros_like(Jhat)
 
         if not self.args.poisson:
-            fhat[f.view(-1)<0] *= 0.
-            Jhat[f.view(-1)<0] *= 0.
-            Hvphat[f.view(-1)<0] *= 0.
-            Hvp[f.view(-1)<0] *= 0.
-            J[f.view(-1)<0] *= 0.
-            f[f.view(-1)<0] *= 0.
+            fhat[f.view(-1) < 0] *= 0.0
+            Jhat[f.view(-1) < 0] *= 0.0
+            Hvphat[f.view(-1) < 0] *= 0.0
+            Hvp[f.view(-1) < 0] *= 0.0
+            J[f.view(-1) < 0] *= 0.0
+            f[f.view(-1) < 0] *= 0.0
         # pdb.set_trace()
 
         self.tflogger.log_scalar("batch_forward_time", timer.interval, step)
@@ -378,7 +381,7 @@ class Trainer(object):
 
             if self.args.poisson:
                 u = self.surrogate.fsm.to_ring(u)
-                u[:, 0] = 0.
+                u[:, 0] = 0.0
                 u = self.surrogate.fsm.to_torch(u)
 
             if self.args.hess:
@@ -391,12 +394,12 @@ class Trainer(object):
                 Hvp = torch.zeros_like(Jhat)
 
             if not self.args.poisson:
-                fhat[f.view(-1)<0] *= 0.
-                Jhat[f.view(-1)<0] *= 0.
-                Hvphat[f.view(-1)<0] *= 0.
-                Hvp[f.view(-1)<0] *= 0.
-                J[f.view(-1)<0] *= 0.
-                f[f.view(-1)<0] *= 0.
+                fhat[f.view(-1) < 0] *= 0.0
+                Jhat[f.view(-1) < 0] *= 0.0
+                Hvphat[f.view(-1) < 0] *= 0.0
+                Hvp[f.view(-1) < 0] *= 0.0
+                J[f.view(-1) < 0] *= 0.0
+                f[f.view(-1) < 0] *= 0.0
 
             u_ = torch.cat([u_, u.data], dim=0) if i > 0 else u.data
             f_ = torch.cat([f_, f.data], dim=0) if i > 0 else f.data
@@ -419,7 +422,7 @@ class Trainer(object):
 
         if self.args.poisson:
             u = self.surrogate.fsm.to_ring(u)
-            u[:, 0] = 0.
+            u[:, 0] = 0.0
             u = self.surrogate.fsm.to_torch(u).cpu()
 
         fhat, Jhat = self.surrogate.f_J(u, p)
@@ -559,21 +562,22 @@ class Trainer(object):
     def stats(self, step, u, f, J, Hvp, fhat, Jhat, Hvphat, phase="train"):
         """Take ground truth and predictions. Log stats and return loss."""
 
-
         if self.args.l1_loss:
             f_loss = torch.nn.functional.l1_loss(
-                self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
+                self.surrogate.scaler.scale(f + EPS, u),
+                self.surrogate.scaler.scale(fhat + EPS, u),
             )
         else:
             f_loss = torch.nn.functional.mse_loss(
-                self.surrogate.scaler.scale(f+EPS, u), self.surrogate.scaler.scale(fhat+EPS, u)
+                self.surrogate.scaler.scale(f + EPS, u),
+                self.surrogate.scaler.scale(fhat + EPS, u),
             )
 
         if self.args.angle_magnitude:
             J_loss = (
                 self.args.mag_weight
                 * torch.nn.functional.mse_loss(
-                    torch.log(J.norm(dim=1)+EPS), torch.log(Jhat.norm(dim=1)+EPS)
+                    torch.log(J.norm(dim=1) + EPS), torch.log(Jhat.norm(dim=1) + EPS)
                 )
                 + 1.0
                 - similarity(J, Jhat)
@@ -581,7 +585,8 @@ class Trainer(object):
             H_loss = (
                 self.args.mag_weight
                 * torch.nn.functional.mse_loss(
-                    torch.log(Hvp.norm(dim=1)+EPS), torch.log(Hvphat.norm(dim=1)+EPS)
+                    torch.log(Hvp.norm(dim=1) + EPS),
+                    torch.log(Hvphat.norm(dim=1) + EPS),
                 )
                 + 1.0
                 - similarity(Hvp, Hvphat)
