@@ -16,6 +16,8 @@ import math
 
 import pdb
 
+import ray
+
 from .arguments import parser
 
 # from ..runners.online_trainer import OnlineTrainer
@@ -56,8 +58,6 @@ if __name__ == "__main__":
         if args.max_collectors > 0 or args.max_evaluators > 0:
             import ray
             ray.init(resources={"WorkerFlags": 3}, memory=12e9, object_store_memory=5e9)
-        import setproctitle
-        setproctitle.setproctitle(args.experiment_name)
         # args.verbose = True
     else:
         import ray
