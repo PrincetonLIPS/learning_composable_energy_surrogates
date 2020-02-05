@@ -10,7 +10,7 @@ from src.energy_model.composed_fenics_energy_model import ComposedFenicsEnergyMo
 import matplotlib.pyplot as plt
 import numpy as np
 
-load_ckpt_path = "gen_deploy_16"
+load_ckpt_path = "swa_reload_0"
 
 ckpt = torch.load(
     "/efs_nmor/results/bV_10_hmc_macro/" + load_ckpt_path + "/ckpt_last.pt",
@@ -27,13 +27,13 @@ fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=False)
 net = FeedForwardNet(args, fsm)
 net.load_state_dict(ckpt["model_state_dict"])
 
-Xi1s = [0.0, -0.1, 0.1, -0.2, -0.16, -0.23, -0.4]
-Xi2s = [0.0, 0.1, -0.1, 0.07, 0.21, -0.18, -0.06]
+Xi1s = [0.0, -0.0576, 0.0242, 0.0048, -0.0614, -0.0576, -0.184, -0.207]
+Xi2s = [0.0, -0.0379, -0.0153, -0.0655, -0.0228, -0.0379, -0.106, 0.121]
 
 RVES_WIDTH = 4
 
-MESH_SIZES = [16, 8, 4, 2, 1]
-PORE_RES = [64, 32, 16, 8, 4]
+MESH_SIZES = [16, 16, 8, 4, 2, 1]
+PORE_RES = [128, 64, 32, 16, 8, 4]
 
 MESH_SIZES = MESH_SIZES[::-1]
 PORE_RES = PORE_RES[::-1]
@@ -57,9 +57,9 @@ args.fenics_solver = "newton"
 
 from src.util.timer import Timer
 
-factors = [0.95, 0.9, 0.7, 0.9, 0.7, 0.5, 0.7, 0.5, 0.3, 0.5, 0.3, 0.1, 0.3, 0.1]
-anneal_steps = [1, 1, 1, 2, 2, 2, 4, 4, 4, 7, 7, 7, 10, 10]
-max_iters = [10, 20, 20, 20, 40, 40, 40, 80, 120, 120, 160, 160, 160, 160]
+factors = [0.9, 0.7, 0.4, 0.1, 0.05]
+anneal_steps = [1, 2, 5, 10, 20]
+max_iters = [10, 20, 40, 160, 320]
 assert len(factors) == len(anneal_steps)
 assert len(factors) == len(max_iters)
 
@@ -79,8 +79,8 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
             boundary_data,
             cem_constraint_mask,
             force_data,
-            step_size=0.2,
-            opt_steps=5000,
+            step_size=0.25,
+            opt_steps=10000,
             return_intermediate=True,
         )
     surr_time = t.interval
@@ -94,12 +94,12 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
     fem_solns = []
     fem_coords = []
     fem_fams = []
+    fem_figs = []
 
     for ms, pr in zip(MESH_SIZES, PORE_RES):
         print("{}, {}".format(ms, pr))
         args.composed_mesh_size = ms
         args.composed_pore_resolution = pr
-
 
         for idx, (factor, anneal, max_iter) in enumerate(zip(factors, anneal_steps, max_iters)):
             ANNEAL_STEPS = anneal
@@ -143,17 +143,26 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
                         Xi2 * np.ones(RVES_WIDTH * RVES_WIDTH),
                     )
                     true_soln = fa.project(base_expr, cfem.pde.V)
-    fem_times.append(t.interval)
-    print("time ", t.interval)
-    print("energy ", cfem.pde.energy(true_soln))
-    fem_Es.append(float(cfem.pde.energy(true_soln)))
-    fem_numels.append(len(fa.Function(cfem.pde.V)))
-    fem_solns.append(true_soln)
-    initial_coords = np.array(cem.global_coords)
-    coords = np.array([true_soln(*x) for x in initial_coords])
-    fem_coords.append(coords)
-    fem_fams.append((factor, anneal, max_iter))
-
+        
+        fem_times.append(t.interval)
+        print("time ", t.interval)
+        print("energy ", cfem.pde.energy(true_soln))
+        fem_Es.append(float(cfem.pde.energy(true_soln)))
+        fem_numels.append(len(fa.Function(cfem.pde.V)))
+        fem_solns.append(true_soln)
+        initial_coords = np.array(cem.global_coords)
+        coords = np.array([true_soln(*x) for x in initial_coords])
+        prj_fn = fa.project(base_expr, cfem.pde.V)
+        prj_coords = np.array([prj_fn(*x) for x in initial_coords])
+        fn = true_soln - fa.Constant((prj_coords.mean(axis=0)[0], prj_coords.mean(axis=0)[1]))
+        fn = fa.project(fn, cfem.pde.V)
+        plt.figure()
+        fa.plot(fn, mode='displacement')
+        fig = plt.gcf()
+        fem_figs.append(fig)
+        fem_coords.append(coords)
+        fem_fams.append((factor, anneal, max_iter))
+    
     torch.save(
         {
             "Xi": (Xi1, Xi2),
@@ -168,6 +177,7 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
             "fem_coords": fem_coords,
             "fem_Es": fem_Es,
             "fem_fams": fem_fams,
+            "fem_figs": fem_figs
         },
-        "benchmark_Xi1{}_Xi2{}_ckpt_{}".format(Xi1, Xi2, load_ckpt_path),
+        "benchmark_Xi1{}_Xi2{}_ckpt_{}.pt".format(Xi1, Xi2, load_ckpt_path),
     )
