@@ -20,6 +20,8 @@ fa.set_log_level(20)
 
 args = parser.parse_args([])
 
+pde = Metamaterial(args)
+
 fsm = FunctionSpaceMap(pde.V, args.bV_dim, cuda=False)
 net = FeedForwardNet(args, fsm)
 net.load_state_dict(ckpt["model_state_dict"])

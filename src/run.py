@@ -7,7 +7,6 @@ import torch
 
 from copy import deepcopy
 import os
-import ray
 
 import sys
 
@@ -54,15 +53,21 @@ if __name__ == "__main__":
     # torch.backends.cudnn.benchmark = True
     args = parser.parse_args()
     if args.run_local:
-        ray.init(resources={"WorkerFlags": 3}, memory=12e9, object_store_memory=5e9)
+        if args.max_collectors > 0 or args.max_evaluators > 0:
+            import ray
+            ray.init(resources={"WorkerFlags": 3}, memory=12e9, object_store_memory=5e9)
+        import setproctitle
+        setproctitle.setproctitle(args.experiment_name)
         # args.verbose = True
     else:
+        import ray
         ray.init(redis_address="localhost:6379")
     time.sleep(0.1)
     # print("Nodes: ", ray.nodes())
-    print("Resources: ", ray.cluster_resources())
-    print("Available resources: ", ray.available_resources())
-    print("{} nodes".format(len(ray.nodes())))
+    if (not args.run_local) or args.max_collectors > 0 or args.max_evaluators > 0:
+        print("Resources: ", ray.cluster_resources())
+        print("Available resources: ", ray.available_resources())
+        print("{} nodes".format(len(ray.nodes())))
 
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -364,7 +369,7 @@ if __name__ == "__main__":
             if args.deploy_collect:
                 last_state_dict = state_dict  # Use most up to date state_dict
 
-            if last_state_dict is not None:
+            if last_state_dict is not None and not (args.run_local and (args.max_collectors > 0 or args.max_evaluators > 0)):
                 broadcast_net_state = ray.put(last_state_dict)
 
             surrogate.net.train()
