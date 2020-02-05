@@ -56,11 +56,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.run_local:
         if args.max_collectors > 0 or args.max_evaluators > 0:
-            import ray
+            RAY = True
             ray.init(resources={"WorkerFlags": 3}, memory=12e9, object_store_memory=5e9)
-        # args.verbose = True
+        else:
+            RAY = False
     else:
-        import ray
+        RAY = True
         ray.init(redis_address="localhost:6379")
     time.sleep(0.1)
     # print("Nodes: ", ray.nodes())
@@ -174,6 +175,8 @@ if __name__ == "__main__":
 
             if train_data.size() < args.train_size or val_data.size() < args.val_size:
                 print("Gathering data to fill train and val buffers")
+                if not RAY:
+                    raise Exception("Require Ray.")
                 val_frac = float(args.val_size) / (args.train_size + args.val_size)
 
                 # Collect initial data
@@ -370,7 +373,7 @@ if __name__ == "__main__":
             if args.deploy_collect:
                 last_state_dict = state_dict  # Use most up to date state_dict
 
-            if last_state_dict is not None and not (args.run_local and (args.max_collectors > 0 or args.max_evaluators > 0)):
+            if last_state_dict is not None and RAY:
                 broadcast_net_state = ray.put(last_state_dict)
 
             surrogate.net.train()
