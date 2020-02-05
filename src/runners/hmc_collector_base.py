@@ -24,7 +24,7 @@ class HMCCollectorBase(object):
         self.guess = fa.Function(self.fsm.V).vector()
         self.last_sample = torch.zeros(self.fsm.vector_dim)
         self.n = 0
-        self.macro = 0.15*torch.randn(2,2)
+        self.macro = 0.15 * torch.randn(2, 2)
 
     def step(self):
         self.n += 1
@@ -32,9 +32,7 @@ class HMCCollectorBase(object):
             self.__init__(self.args, np.random.randint(2 ** 32))
         path_len = np.random.uniform(0.05, 0.3)
         std = np.random.uniform(0.01, 0.3)
-        temp = np.random.choice(
-            [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
-        )
+        temp = np.random.choice([0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1])
 
         BASE_ITER = 50
         BASE_FACTOR = 1.0
@@ -43,7 +41,7 @@ class HMCCollectorBase(object):
             step_size = 1e-4
             temp = 1.0
             std = 0.01
-            path_len = 10*step_size
+            path_len = 10 * step_size
         fem = self.fem
         fsm = self.fsm
         args = self.args
@@ -55,17 +53,17 @@ class HMCCollectorBase(object):
         def logp_macro(q):
             # Negative log probability
             q = fsm.to_ring(rigid_remover(q))
-            vert = (q[fsm.top_idxs()].mean(dim=0) - q[fsm.bottom_idxs()].mean(dim=0))
-            horiz = (q[fsm.lhs_idxs()].mean(dim=0) - q[fsm.rhs_idxs()].mean(dim=0))
+            vert = q[fsm.top_idxs()].mean(dim=0) - q[fsm.bottom_idxs()].mean(dim=0)
+            horiz = q[fsm.lhs_idxs()].mean(dim=0) - q[fsm.rhs_idxs()].mean(dim=0)
             # pdb.set_trace()
             # print("vert {}, horiz {}, periodic {}".format(vert.item(), horiz.item(), periodic_part_norm(q).item()))
             x = torch.stack([vert, horiz]).view(-1)
             mu = self.macro.view(-1)
-            Sigma_inv = mu**2
-            #print("x_macro: {}, residual: {}, scaled_res: {}".format(
+            Sigma_inv = mu ** 2
+            # print("x_macro: {}, residual: {}, scaled_res: {}".format(
             # x.data.cpu().numpy(), (x-mu).data.cpu().numpy(), (Sigma_inv*(x-mu)**2).data.cpu().numpy()))
             # pdb.set_trace()
-            return 100*(Sigma_inv*(x-mu)**2).sum()
+            return 100 * (Sigma_inv * (x - mu) ** 2).sum()
 
         def dlogp_macro(q):
             q = torch.autograd.Variable(q.data, requires_grad=True)
@@ -94,7 +92,9 @@ class HMCCollectorBase(object):
                     )  # 10**(math.log10(args.atol)*2**i / (2**(T-1)))
                     new_args.rtol = 10 ** (math.log10(args.rtol) * 2 ** i / Z)
                     new_args.max_newton_iter = int(math.ceil(2 ** i * max_iter / Z)) + 1
-                    f, u = fem.f(q, initial_guess=new_guess, return_u=True, args=new_args)
+                    f, u = fem.f(
+                        q, initial_guess=new_guess, return_u=True, args=new_args
+                    )
                     new_guess = u.vector()
                 # print("energy: {:.3e}, sq(q): {:.3e},  f/sq(q): {:.3e}".format(f, sq(q), (f+EPS)/sq(q)))
                 return u.vector()
@@ -106,8 +106,8 @@ class HMCCollectorBase(object):
                     print(e)
                     raise e
                 else:
-                    #print("recursing due to error:")
-                    #print(e)
+                    # print("recursing due to error:")
+                    # print(e)
                     # q_mid = q_last + 0.5*(q-q_last)
                     new_factor = factor * 0.3
                     new_max_iter = int(
@@ -155,7 +155,7 @@ class HMCCollectorBase(object):
                     dVdq, guess = make_dVdq(q, guess, q_last=q_last)
                     p = p - step_size * (dVdq / temp)  # whole step
                 except Exception as e:
-                    #print("passing leapfrog due to: {}".format(e))
+                    # print("passing leapfrog due to: {}".format(e))
                     q = q_last
                     failed = True
                     break
@@ -167,7 +167,7 @@ class HMCCollectorBase(object):
                 dVdq, guess = make_dVdq(q, guess, q_last=q_last)
                 p = p - step_size * dVdq / (2 * temp)  # half step
             except Exception as e:
-                #print("passing final of leapfrog due to: {}".format(e))
+                # print("passing final of leapfrog due to: {}".format(e))
                 q = q_last
 
             # momentum flip at end
@@ -208,21 +208,24 @@ class HMCCollectorBase(object):
         f = torch.Tensor([f])
         J = self.fsm.to_torch(JV)
 
-        if f <= 0. and not self.args.poisson:
+        if f <= 0.0 and not self.args.poisson:
             raise Exception("Invalid data point!")
 
         new_uV = fa.Function(self.fsm.V)
         new_uV.vector().set_local(new_guess)
         new_uV.set_allow_extrapolation(True)
-        new_usmall_guess = torch.Tensor(fa.interpolate(new_uV, self.fsm.small_V).vector())
+        new_usmall_guess = torch.Tensor(
+            fa.interpolate(new_uV, self.fsm.small_V).vector()
+        )
 
         return Example(u, p, f, J, H, new_usmall_guess)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("no segfault yet")
     from ..arguments import parser
     import pdb
+
     args = parser.parse_args()
     collector = HMCCollectorBase(args, 0)
     print(collector.step())

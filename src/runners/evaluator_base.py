@@ -170,12 +170,14 @@ class CompressionEvaluatorBase(object):
         np.random.seed(seed)
         make_p(self.args)
         if seed == 0:
-            self.args.c1 = 0.
-            self.args.c2 = 0.
+            self.args.c1 = 0.0
+            self.args.c2 = 0.0
 
-        print("Starting compression evaluator with seed {}, c1 {:.3g}, c2 {:.3g}".format(
-            seed, self.args.c1, self.args.c2
-        ))
+        print(
+            "Starting compression evaluator with seed {}, c1 {:.3g}, c2 {:.3g}".format(
+                seed, self.args.c1, self.args.c2
+            )
+        )
         self.pde = make_metamaterial(self.args)
         self.fsm = FunctionSpaceMap(self.pde.V, self.args.bV_dim, cuda=False, args=args)
         self.fem = FenicsEnergyModel(self.args, self.pde, self.fsm)
@@ -185,10 +187,9 @@ class CompressionEvaluatorBase(object):
         self.sem = SurrogateEnergyModel(self.args, self.net, self.fsm)
         self.cem = ComposedEnergyModel(self.args, self.sem, RVES_WIDTH, RVES_WIDTH)
 
-        c1s = np.ones(RVES_WIDTH*RVES_WIDTH) * self.args.c1
-        c2s = np.ones(RVES_WIDTH*RVES_WIDTH) * self.args.c2
-        cfem = ComposedFenicsEnergyModel(args, RVES_WIDTH, RVES_WIDTH,
-                                         c1s, c2s)
+        c1s = np.ones(RVES_WIDTH * RVES_WIDTH) * self.args.c1
+        c2s = np.ones(RVES_WIDTH * RVES_WIDTH) * self.args.c2
+        cfem = ComposedFenicsEnergyModel(args, RVES_WIDTH, RVES_WIDTH, c1s, c2s)
 
         print("Built energy models for compression evaluator")
         # constrained_sides = [True, False, True, False]
@@ -197,45 +198,53 @@ class CompressionEvaluatorBase(object):
         ANNEAL_STEPS = args.anneal_steps
         init_guess = fa.Function(cfem.pde.V).vector()
 
-        self.init_boundary_data, self.cem_constraint_mask, self.constrained_sides, self.made_fn = make_random_deploy_bc(self.args, self.cem)
+        (
+            self.init_boundary_data,
+            self.cem_constraint_mask,
+            self.constrained_sides,
+            self.made_fn,
+        ) = make_random_deploy_bc(self.args, self.cem)
         if seed == 0:
-            self.made_fn = fa.Expression(('0.0', 'X*x[1]'),
-                                           element=self.pde.V.ufl_element(),
-                                            X=MAX_DISP)
+            self.made_fn = fa.Expression(
+                ("0.0", "X*x[1]"), element=self.pde.V.ufl_element(), X=MAX_DISP
+            )
             self.init_boundary_data.zero_()
             for i in range(len(self.cem.global_coords)):
                 y1, y2 = self.made_fn(self.cem.global_coords[i])
                 self.init_boundary_data[i, 0] = y1
                 self.init_boundary_data[i, 1] = y2
             self.cem_constraint_mask.zero_()
-            self.cem_constraint_mask[self.cem.top_idxs()] = 1.
-            self.cem_constraint_mask[self.cem.bot_idxs()] = 1.
+            self.cem_constraint_mask[self.cem.top_idxs()] = 1.0
+            self.cem_constraint_mask[self.cem.bot_idxs()] = 1.0
             self.constrained_sides = [True, False, True, False]
 
         for i in range(ANNEAL_STEPS):
             # print("Anneal {} of {}".format(i+1, ANNEAL_STEPS))
             print("Compression evaluator anneal step {}/{}".format(i, ANNEAL_STEPS))
 
-            fenics_boundary_fn = self.made_fn * (i+1)/ANNEAL_STEPS
+            fenics_boundary_fn = self.made_fn * (i + 1) / ANNEAL_STEPS
             self.fenics_boundary_fn = fa.project(fenics_boundary_fn, cfem.pde.V)
-            true_soln = cfem.solve(args=args, boundary_fn=self.fenics_boundary_fn,
-                                   constrained_sides=self.constrained_sides,
-                                   initial_guess=init_guess)
+            true_soln = cfem.solve(
+                args=args,
+                boundary_fn=self.fenics_boundary_fn,
+                constrained_sides=self.constrained_sides,
+                initial_guess=init_guess,
+            )
             init_guess = true_soln.vector()
 
         self.true_soln = true_soln
         self.true_f = cfem.pde.energy(true_soln)
-        self.true_scaled_f = cfem.pde.energy(fa.project(self.fenics_boundary_fn,
-                                             cfem.pde.V))
+        self.true_scaled_f = cfem.pde.energy(
+            fa.project(self.fenics_boundary_fn, cfem.pde.V)
+        )
 
         # self.init_boundary_data = torch.zeros(len(self.cem.global_coords), 2)
         # self.init_boundary_data[:, 1] = MAX_DISP * torch.Tensor(self.cem.global_coords)[:, 1]
 
-        self.true_soln_points = torch.Tensor([
-            self.true_soln(*x)
-            for x in self.cem.global_coords
-        ])
-        self.params = torch.zeros(RVES_WIDTH*RVES_WIDTH, 2)
+        self.true_soln_points = torch.Tensor(
+            [self.true_soln(*x) for x in self.cem.global_coords]
+        )
+        self.params = torch.zeros(RVES_WIDTH * RVES_WIDTH, 2)
         self.params[:, 0] = self.args.c1
         self.params[:, 1] = self.args.c2
         # self.cem_constraint_mask = torch.zeros(len(self.cem.global_coords))
@@ -248,9 +257,15 @@ class CompressionEvaluatorBase(object):
         if state_dict is not None:
             self.cem.sem.net.load_state_dict(state_dict)
 
-        surr_soln, traj_u, traj_f, traj_g = self.cem.solve(self.params, self.init_boundary_data,
-                              self.cem_constraint_mask, self.force_data,
-                              step_size=0.2, opt_steps=5000, return_intermediate=True)
+        surr_soln, traj_u, traj_f, traj_g = self.cem.solve(
+            self.params,
+            self.init_boundary_data,
+            self.cem_constraint_mask,
+            self.force_data,
+            step_size=0.2,
+            opt_steps=5000,
+            return_intermediate=True,
+        )
 
         traj_u_interp = [traj_u[0]]
         traj_f_interp = [traj_f[0]]
@@ -258,43 +273,39 @@ class CompressionEvaluatorBase(object):
         T = len(traj_u)
         L = 12
         for i in range(1, L):
-            t = T * i/L
+            t = T * i / L
             idx = int(math.floor(t))
             rem = t - idx
-            traj_u_interp.append((1.-rem) * traj_u[idx] + rem * traj_u[idx+1])
-            traj_f_interp.append((1.-rem) * traj_f[idx] + rem * traj_f[idx+1])
-            traj_g_interp.append((1.-rem) * traj_g[idx] + rem * traj_g[idx+1])
+            traj_u_interp.append((1.0 - rem) * traj_u[idx] + rem * traj_u[idx + 1])
+            traj_f_interp.append((1.0 - rem) * traj_f[idx] + rem * traj_f[idx + 1])
+            traj_g_interp.append((1.0 - rem) * traj_g[idx] + rem * traj_g[idx + 1])
 
         traj_u_interp.append(traj_u[-1])
         traj_f_interp.append(traj_f[-1])
         traj_g_interp.append(traj_g[-1])
 
-        img_buf = self.visualize_trajectory(
-            traj_u_interp, traj_f_interp, traj_g_interp
-        )
+        img_buf = self.visualize_trajectory(traj_u_interp, traj_f_interp, traj_g_interp)
 
-        assert all(i==j for i, j in zip(self.true_soln_points.size(),
-                                        surr_soln.size()))
+        assert all(
+            i == j for i, j in zip(self.true_soln_points.size(), surr_soln.size())
+        )
 
         soln_1 = surr_soln
         soln_2 = self.cem.flip_horiz(surr_soln, self.init_boundary_data)
         soln_3 = self.cem.flip_vert(surr_soln, self.init_boundary_data)
         soln_4 = self.cem.flip_horiz(soln_3, self.init_boundary_data)
 
-        err1 = ((soln_1-self.true_soln_points)**2).sum().item()
-        err2 = ((soln_2-self.true_soln_points)**2).sum().item()
-        err3 = ((soln_3-self.true_soln_points)**2).sum().item()
-        err4 = ((soln_4-self.true_soln_points)**2).sum().item()
+        err1 = ((soln_1 - self.true_soln_points) ** 2).sum().item()
+        err2 = ((soln_2 - self.true_soln_points) ** 2).sum().item()
+        err3 = ((soln_3 - self.true_soln_points) ** 2).sum().item()
+        err4 = ((soln_4 - self.true_soln_points) ** 2).sum().item()
 
-        return ((min(err1, err2, err3, err4), img_buf, step), (self.args.c1, self.args.c2))
+        return (
+            (min(err1, err2, err3, err4), img_buf, step),
+            (self.args.c1, self.args.c2),
+        )
 
-    def visualize_trajectory(
-        self,
-        traj_u,
-        traj_f,
-
-        traj_g
-    ):
+    def visualize_trajectory(self, traj_u, traj_f, traj_g):
         nrows = int(len(traj_u))
         assert len(traj_u) == len(traj_f)
         assert len(traj_g) == len(traj_u)
@@ -313,49 +324,66 @@ class CompressionEvaluatorBase(object):
 
         fhat_on_true = self.cem.energy(self.true_soln_points, self.params, None).item()
 
-        fhat_on_scaled = self.cem.energy(self.init_boundary_data, self.params, None).item()
-
+        fhat_on_scaled = self.cem.energy(
+            self.init_boundary_data, self.params, None
+        ).item()
 
         for i, ax in enumerate(axes):
             if i >= len(traj_u):
                 break
             plt.sca(ax)
-            ax.scatter(initial_coords[:, 0], initial_coords[:, 1], color='silver',
-                        label='rest', alpha=0.2)
-            ax.scatter(initial_coords[:, 0] + self.init_boundary_data[:, 0].data.numpy(),
-                        initial_coords[:, 1] + self.init_boundary_data[:, 1].data.numpy(),
-                        color='k', label='scaled, f={:.2e}, fhat={:.2e}'.format(
-                            self.true_scaled_f, fhat_on_scaled
-                        ))
-            ax.scatter(initial_coords[:, 0] + self.true_soln_points[:, 0].data.numpy(),
-                        initial_coords[:, 1] + self.true_soln_points[:, 1].data.numpy(),
-                        color='blue', label='true solution, f={:.2e}, fhat={:.2e}'.format(
-                            self.true_f, fhat_on_true
-                        ))
+            ax.scatter(
+                initial_coords[:, 0],
+                initial_coords[:, 1],
+                color="silver",
+                label="rest",
+                alpha=0.2,
+            )
+            ax.scatter(
+                initial_coords[:, 0] + self.init_boundary_data[:, 0].data.numpy(),
+                initial_coords[:, 1] + self.init_boundary_data[:, 1].data.numpy(),
+                color="k",
+                label="scaled, f={:.2e}, fhat={:.2e}".format(
+                    self.true_scaled_f, fhat_on_scaled
+                ),
+            )
+            ax.scatter(
+                initial_coords[:, 0] + self.true_soln_points[:, 0].data.numpy(),
+                initial_coords[:, 1] + self.true_soln_points[:, 1].data.numpy(),
+                color="blue",
+                label="true solution, f={:.2e}, fhat={:.2e}".format(
+                    self.true_f, fhat_on_true
+                ),
+            )
             # Symmetry
             solns = [
                 traj_u[i],
                 self.cem.flip_horiz(traj_u[i], self.init_boundary_data),
                 self.cem.flip_vert(traj_u[i], self.init_boundary_data),
-                self.cem.flip_horiz(self.cem.flip_vert(
-                    traj_u[i], self.init_boundary_data),
-                                    self.init_boundary_data)
+                self.cem.flip_horiz(
+                    self.cem.flip_vert(traj_u[i], self.init_boundary_data),
+                    self.init_boundary_data,
+                ),
             ]
 
-            errs = [((soln - self.true_soln_points)**2).sum().item()
-                    for soln in solns]
+            errs = [
+                ((soln - self.true_soln_points) ** 2).sum().item() for soln in solns
+            ]
 
             best = np.argmin(errs)
 
             soln = solns[best]
 
-            ax.scatter(initial_coords[:, 0] + soln.data.numpy()[:, 0],
-                    initial_coords[:, 1] + soln.data.numpy()[:, 1],
-                        color='red', label='surrogate solution, fhat={:.2e}, ||ghat||={:.2e}'.format(
-                            traj_f[i], traj_g[i].norm()
-                        ))
+            ax.scatter(
+                initial_coords[:, 0] + soln.data.numpy()[:, 0],
+                initial_coords[:, 1] + soln.data.numpy()[:, 1],
+                color="red",
+                label="surrogate solution, fhat={:.2e}, ||ghat||={:.2e}".format(
+                    traj_f[i], traj_g[i].norm()
+                ),
+            )
 
-            fa.plot(self.true_soln, mode='displacement', alpha=0.2)
+            fa.plot(self.true_soln, mode="displacement", alpha=0.2)
 
             ax.legend()
         # plt.show()
@@ -366,13 +394,24 @@ class CompressionEvaluatorBase(object):
         plt.close()
         return buf.getvalue()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     from ..arguments import parser
+
     fa.set_log_level(20)
-    args = parser.parse_args(['--boundary_ax_scale', '0.01',
-                              '--boundary_shear_scale', '0.01',
-                              '--anneal_steps', '2',
-                              '--metamaterial_mesh_size', '5',
-                              '--relaxation_parameter', '0.9'])
+    args = parser.parse_args(
+        [
+            "--boundary_ax_scale",
+            "0.01",
+            "--boundary_shear_scale",
+            "0.01",
+            "--anneal_steps",
+            "2",
+            "--metamaterial_mesh_size",
+            "5",
+            "--relaxation_parameter",
+            "0.9",
+        ]
+    )
     ce = CompressionEvaluatorBase(args, 1)
     ce.step(ce.cem.sem.net.state_dict(), 0)

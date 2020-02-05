@@ -21,7 +21,7 @@ def torch_namedtuple(NamedtupleClass):
 """
 
 Example = collections.namedtuple("Example", "u p f J H guess")
-Example.__new__.__defaults__ = (None,)*len(Example._fields)
+Example.__new__.__defaults__ = (None,) * len(Example._fields)
 
 """
 if __name__ == '__main__':

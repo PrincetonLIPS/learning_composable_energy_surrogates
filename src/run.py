@@ -41,7 +41,6 @@ import time
 import io
 
 
-
 def _cuda(x):
     if torch.cuda.is_available():
         return x.cuda()
@@ -108,20 +107,18 @@ if __name__ == "__main__":
 
         tflogger = TFLogger(out_dir)
 
-
-
         if args.load_ckpt_dir is not None:
             print("Reloading checkpoint")
             try:
-                ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
-                                               'ckpt.pt'))
+                ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir, "ckpt.pt"))
             except Exception as e:
-                ckpt = torch.load(os.path.join(data_dir, args.load_ckpt_dir,
-                                               'ckpt_last.pt'))
-            train_data = ckpt['traindata']
-            val_data = ckpt['valdata']
+                ckpt = torch.load(
+                    os.path.join(data_dir, args.load_ckpt_dir, "ckpt_last.pt")
+                )
+            train_data = ckpt["traindata"]
+            val_data = ckpt["valdata"]
             if args.load_net_state:
-                net.load_state_dict(ckpt['model_state_dict'])
+                net.load_state_dict(ckpt["model_state_dict"])
 
         else:
             if args.reload_data and os.path.exists(
@@ -131,11 +128,11 @@ if __name__ == "__main__":
                 datasets = torch.load(os.path.join(data_dir, "initial_datasets.pt"))
 
                 train_data = datasets["train_data"]
-                train_data.data = train_data.data[:args.train_size]
+                train_data.data = train_data.data[: args.train_size]
                 train_data.memory_size = args.train_size
                 train_data.safe_idx = args.n_safe
                 val_data = datasets["val_data"]
-                val_data.data = val_data.data[:args.val_size]
+                val_data.data = val_data.data[: args.val_size]
                 val_data.memory_size = args.val_size
 
                 print(
@@ -156,12 +153,18 @@ if __name__ == "__main__":
                     if len(train_data.data[i]) == 5:
                         train_data.data[i] = (*train_data.data[i], None)
                     if train_data.data[i][-1] is None:
-                        train_data.data[i] = (*train_data.data[i][:-1], torch.zeros(small_V_dim))
+                        train_data.data[i] = (
+                            *train_data.data[i][:-1],
+                            torch.zeros(small_V_dim),
+                        )
                 for i in range(len(val_data.data)):
                     if len(val_data.data[i]) == 5:
                         val_data.data[i] = (*val_data.data[i], None)
                     if val_data.data[i][-1] is None:
-                        val_data.data[i] = (*val_data.data[i][:-1], torch.zeros(small_V_dim))
+                        val_data.data[i] = (
+                            *val_data.data[i][:-1],
+                            torch.zeros(small_V_dim),
+                        )
 
             else:
                 print("Gathering initial data from scratch")
@@ -193,7 +196,10 @@ if __name__ == "__main__":
                 with Timer() as htimer:
                     last_save_time = time.time()
                     last_msg_time = time.time()
-                    while train_data.size() < args.train_size or val_data.size() < args.val_size:
+                    while (
+                        train_data.size() < args.train_size
+                        or val_data.size() < args.val_size
+                    ):
                         if train_data.size() < args.train_size:
                             train_harvester.step()
                         if val_data.size() < args.val_size:
@@ -206,7 +212,9 @@ if __name__ == "__main__":
                             print("Resources: ", ray.cluster_resources())
                             if args.verbose:
                                 time.sleep(0.1)
-                                print("Available resources: ", ray.available_resources())
+                                print(
+                                    "Available resources: ", ray.available_resources()
+                                )
                             print("{} nodes".format(len(ray.nodes())))
                             print(
                                 "{} train collectors, {} val collectors".format(
@@ -224,7 +232,9 @@ if __name__ == "__main__":
                             )
                             last_error_msg = str(train_harvester.last_error)
                             if len(last_error_msg.split("\n")) > 10:
-                                last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
+                                last_error_msg = "\n".join(
+                                    last_error_msg.split("\n")[-10:]
+                                )
                             print(
                                 "Last error {}s ago: {}".format(
                                     time.time() - train_harvester.last_error_time,
@@ -263,14 +273,10 @@ if __name__ == "__main__":
 
                 time.sleep(0.1)
 
-
             # ---------- Finish data collection
-
 
         if args.adv_collect or args.deploy_collect:
             train_data.memory_size = train_data.memory_size * 100
-
-
 
         def is_valid(example):
             if (
@@ -290,7 +296,7 @@ if __name__ == "__main__":
 
         if args.load_ckpt_dir is not None and args.load_net_state:
             if args.load_opt_state:
-                trainer.optimizer.load_state_dict(ckpt['optimizer_state_dict'])
+                trainer.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
 
         else:
             # Init whitening module
@@ -323,9 +329,11 @@ if __name__ == "__main__":
             # pdb.set_trace()
             img = io.BytesIO(bytes(x[1]))
             tflogger.log_images(
-                "Deployment trajectory, c=({:.3g},{:.3g})".format(*c1c2),
-                [img], x[2])
-            tflogger.log_scalar("Deployment loss, c=({:.3g},{:.3g})".format(*c1c2), x[0], x[2])
+                "Deployment trajectory, c=({:.3g},{:.3g})".format(*c1c2), [img], x[2]
+            )
+            tflogger.log_scalar(
+                "Deployment loss, c=({:.3g},{:.3g})".format(*c1c2), x[0], x[2]
+            )
 
         deploy_harvester = Harvester(
             args, deploy_feed, Evaluator, args.max_evaluators if args.deploy else 0
@@ -349,17 +357,17 @@ if __name__ == "__main__":
             t_losses = np.zeros(7)
 
             last_state_dict = state_dict
-            if self.args.swa:
+            if args.swa:
                 trainer.optimizer.swap_swa_sgd()
             state_dict = surrogate.net.state_dict()
-            if self.args.swa:
+            if args.swa:
                 trainer.optimizer.swap_swa_sgd()
             state_dict = {
                 k: (deepcopy(v).cpu() if hasattr(v, "cpu") else deepcopy(v))
                 for k, v in state_dict.items()
             }
             if args.deploy_collect:
-                last_state_dict = state_dict # Use most up to date state_dict
+                last_state_dict = state_dict  # Use most up to date state_dict
 
             if last_state_dict is not None and not (args.run_local and (args.max_collectors > 0 or args.max_evaluators > 0)):
                 broadcast_net_state = ray.put(last_state_dict)
@@ -368,7 +376,9 @@ if __name__ == "__main__":
             train_step_time = 0.0
             for bidx, batch in enumerate(trainer.train_loader):
                 if step % 100 == 0:
-                    print("step {}, tsize {}".format(step, len(trainer.train_data.data)))
+                    print(
+                        "step {}, tsize {}".format(step, len(trainer.train_data.data))
+                    )
                 # if step % 100 == 0:
                 #     pdb.set_trace()
                 with Timer() as train_step_timer:
@@ -379,11 +389,13 @@ if __name__ == "__main__":
 
                 if broadcast_net_state is not None and step > args.adv_burnin:
                     if args.adv_collect:
-                        online_harvester.step(init_args=(broadcast_net_state,),
-                                              step_args=(batch,))
+                        online_harvester.step(
+                            init_args=(broadcast_net_state,), step_args=(batch,)
+                        )
                     if args.deploy_collect:
-                        online_harvester.step(init_args=(broadcast_net_state,),
-                                              step_args=())
+                        online_harvester.step(
+                            init_args=(broadcast_net_state,), step_args=()
+                        )
                 if args.deploy and broadcast_net_state is not None:
                     deploy_harvester.step(step_args=(broadcast_net_state, step))
 
@@ -393,10 +405,10 @@ if __name__ == "__main__":
 
             surrogate.net.eval()
 
-            if self.args.swa:
+            if args.swa:
                 trainer.optimizer.swap_swa_sgd()
             v_losses = trainer.val_step(step)
-            if self.args.swa:
+            if args.swa:
                 trainer.optimizer.swap_swa_sgd()
 
             # visualize and save at most once every 2min
@@ -468,18 +480,16 @@ if __name__ == "__main__":
             if len(last_error_msg.split("\n")) > 10:
                 last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
             print(
-               "Deploy harvester last error {}s ago: {}".format(
-                   time.time() - deploy_harvester.last_error_time,
-                   last_error_msg,
-               )
+                "Deploy harvester last error {}s ago: {}".format(
+                    time.time() - deploy_harvester.last_error_time, last_error_msg,
+                )
             )
             last_error_msg = str(online_harvester.last_error)
             if len(last_error_msg.split("\n")) > 10:
                 last_error_msg = "\n".join(last_error_msg.split("\n")[-10:])
             print(
                 "online harvester last error {}s ago: {}".format(
-                    time.time() - online_harvester.last_error_time,
-                    last_error_msg,
+                    time.time() - online_harvester.last_error_time, last_error_msg,
                 )
             )
     except Exception as e:

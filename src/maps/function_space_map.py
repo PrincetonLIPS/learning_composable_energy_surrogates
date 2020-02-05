@@ -30,12 +30,8 @@ class FunctionSpaceMap(object):
             self.small_V = fa.FunctionSpace(self.mesh, "P", 1)
             self.bV = fa.FunctionSpace(self.bmesh, "P", 1)
         else:
-            self.small_V = fa.VectorFunctionSpace(
-                self.mesh, "P", 1, dim=self.udim
-            )
-            self.bV = fa.VectorFunctionSpace(
-                self.bmesh, "P", 1, dim=self.udim
-            )
+            self.small_V = fa.VectorFunctionSpace(self.mesh, "P", 1, dim=self.udim)
+            self.bV = fa.VectorFunctionSpace(self.bmesh, "P", 1, dim=self.udim)
         self.bV_dim = bV_dim
         self.elems_along_edge = self.bV_dim - 1
         self.vector_dim = len(fa.Function(self.bV).vector())
@@ -106,11 +102,11 @@ class FunctionSpaceMap(object):
             return self.vec_to_ring_map_cpu
 
     def make_A(self, V):
-        coords = np.array(V.tabulate_dof_coordinates()[
-            V.sub(0).dofmap().dofs()
-            if self.channels > 1
-            else V.dofmap().dofs()
-        ])
+        coords = np.array(
+            V.tabulate_dof_coordinates()[
+                V.sub(0).dofmap().dofs() if self.channels > 1 else V.dofmap().dofs()
+            ]
+        )
         # Find s, which we will use to sort coords
         coords_s = np.array([self.x_to_s(x1, x2) for x1, x2 in coords])
 
@@ -245,7 +241,7 @@ class FunctionSpaceMap(object):
             return fn_or_vec
         else:
             return self.ring_to_V(self.to_ring(fn_or_vec))
-            '''
+            """
             ring = self.to_ring(fn_or_vec)
             if len(ring.size()) > 2:
                 assert len(ring.size()) == 3 and ring.size(0) == 1
@@ -254,7 +250,7 @@ class FunctionSpaceMap(object):
             V_nomean = self.ring_to_V(ring - mean)
             V_mean = fa.Constant((mean[0,0].item(), mean[0,1].item()))
             return fa.project(V_nomean + V_mean, self.V)
-            '''
+            """
 
     def to_small_V(self, fn_or_vec):
         fn_or_vec = self.maybe_interpolate(fn_or_vec)
@@ -481,7 +477,6 @@ def interleave(c):
         return c
     else:
         raise Exception("Unsupported")
-
 
 
 def de_interleave(c, n):

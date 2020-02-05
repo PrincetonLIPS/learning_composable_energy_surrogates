@@ -21,8 +21,8 @@ def make_p(args):
         if tries >= 100:
             raise Exception("Failed to sample parameters")
     else:
-        args.c1 = 0.
-        args.c2 = 0.
+        args.c1 = 0.0
+        args.c2 = 0.0
 
 
 def make_force(args, fsm):
@@ -65,16 +65,18 @@ def make_random_deploy_bc(args, cem):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
     amp_scale = np.random.uniform(0.0, args.boundary_amp_scale)
     shear_scale = np.random.uniform(0.0, args.boundary_shear_scale)
-    ax_scale = np.random.uniform(args.boundary_ax_scale/4, 3*args.boundary_ax_scale/4)
+    ax_scale = np.random.uniform(
+        args.boundary_ax_scale / 4, 3 * args.boundary_ax_scale / 4
+    )
 
     W = np.random.randn(2, 2)
 
     if random.random() < 0.8:
-        W[1,1] = - 1.
-        W[0,0] = 0.
+        W[1, 1] = -1.0
+        W[0, 0] = 0.0
     else:
-        W[1,1] = 1.
-        W[0,0] = 0.
+        W[1, 1] = 1.0
+        W[0, 0] = 0.0
 
     boundary_expression = make_random_fourier_expression(
         2, 5000, amp_scale, freq_scale, cem.sem.fsm.V.ufl_element()
@@ -111,7 +113,13 @@ def make_random_deploy_bc(args, cem):
     if constrained_sides[3]:
         cem_constraint_mask[cem.lhs_idxs()] = 1.0
 
-    return boundary_data, cem_constraint_mask, constrained_sides, boundary_expression+lin_expression
+    return (
+        boundary_data,
+        cem_constraint_mask,
+        constrained_sides,
+        boundary_expression + lin_expression,
+    )
+
 
 def make_bc(args, fsm):
     freq_scale = np.random.uniform(0.0, args.boundary_freq_scale)
@@ -187,8 +195,7 @@ def make_bc(args, fsm):
     return boundary_data, constrained_idxs, constrained_sides, constraint_mask
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     from ..nets.feed_forward_net import FeedForwardNet
     from ..maps.function_space_map import FunctionSpaceMap
     from ..energy_model.surrogate_energy_model import SurrogateEnergyModel

@@ -7,10 +7,11 @@ class HMCCollector(HMCCollectorBase):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("no segfault yet")
     from ..arguments import parser
     import pdb
+
     args = parser.parse_args()
     collector = HMCCollectorBase(args, 0)
     print(collector.step())

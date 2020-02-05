@@ -27,17 +27,13 @@ class Harvester(object):
         for _ in range(self.max_workers - len(self.ids_to_workers)):
             if self.zero_id is None:
                 seed = 0
-                new_worker = self.WorkerClass.remote(
-                    self.args, seed, *init_args
-                )
+                new_worker = self.WorkerClass.remote(self.args, seed, *init_args)
                 id = new_worker.step.remote(*step_args)
                 self.zero_id = id
                 self.ids_to_workers[id] = new_worker
             else:
-                seed = np.random.randint(2**32)
-                new_worker = self.WorkerClass.remote(
-                    self.args, seed, *init_args
-                )
+                seed = np.random.randint(2 ** 32)
+                new_worker = self.WorkerClass.remote(self.args, seed, *init_args)
                 self.ids_to_workers[new_worker.step.remote(*step_args)] = new_worker
             print("Started {} with seed {}".format(new_worker._ray_class_name, seed))
 

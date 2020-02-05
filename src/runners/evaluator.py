@@ -26,8 +26,6 @@ from .evaluator_base import EvaluatorBase, CompressionEvaluatorBase
 RVES_WIDTH = 4
 
 
-
-
 @ray.remote(resources={"WorkerFlags": 0.5})
 class Evaluator(object):
     pass
@@ -38,8 +36,9 @@ class CompressionEvaluator(CompressionEvaluatorBase):
     pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from ..arguments import parser
+
     args = parser.parse_args()
     fa.set_log_level(20)
     ce = CompressionEvaluatorBase(args, 0)
