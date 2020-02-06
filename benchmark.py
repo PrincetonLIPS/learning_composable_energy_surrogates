@@ -32,8 +32,8 @@ Xi2s = [0.0, -0.0379, -0.0153, -0.0655, -0.0228, -0.0379, -0.106, 0.121]
 
 RVES_WIDTH = 4
 
-MESH_SIZES = [16, 16, 8, 4, 2, 1]
-PORE_RES = [128, 64, 32, 16, 8, 4]
+MESH_SIZES = [16, 12, 8, 4, 2, 1]
+PORE_RES = [64, 48, 32, 16, 8, 4]
 
 MESH_SIZES = MESH_SIZES[::-1]
 PORE_RES = PORE_RES[::-1]
@@ -49,7 +49,7 @@ force_data = torch.zeros(len(cem.global_coords), 2)
 
 cem.args.solve_optimizer = "lbfgs"
 
-MAX_DISP = -0.125
+MAX_DISP = 0.125
 
 args.rtol = 1e-5
 args.atol = 1e-5
@@ -59,7 +59,7 @@ from src.util.timer import Timer
 
 factors = [0.9, 0.7, 0.4, 0.1, 0.05]
 anneal_steps = [1, 2, 5, 10, 20]
-max_iters = [10, 20, 40, 160, 320]
+max_iters = [8, 24, 40, 160, 320]
 assert len(factors) == len(anneal_steps)
 assert len(factors) == len(max_iters)
 
@@ -180,5 +180,5 @@ for Xi1, Xi2 in zip(Xi1s, Xi2s):
             "fem_fams": fem_fams,
             "fem_figs": fem_figs
         },
-        "benchmark_Xi1{}_Xi2{}_ckpt_{}.pt".format(Xi1, Xi2, load_ckpt_path),
+        "tension_benchmark_Xi1{}_Xi2{}_ckpt_{}.pt".format(Xi1, Xi2, load_ckpt_path),
     )
